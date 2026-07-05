@@ -30,6 +30,15 @@ export default function DocumentUploadStep({ onNext, onBack }) {
   const status = student?.status || 'registration';
   const isSubmitted = status === 'documents_submitted' || status === 'documents_approved' || status === 'advising_pending' || status === 'advising_approved' || status === 'enrollment_pending';
 
+  const submitOnCampus = student?.submitDocumentsOnCampus || false;
+
+  const handleToggleCampusSubmission = async (checked) => {
+    await dispatch({
+      type: 'UPDATE_ACTIVE_STUDENT',
+      payload: { submitDocumentsOnCampus: checked },
+    });
+  };
+
   // Track which document types are currently uploading
   const [uploadingTypes, setUploadingTypes] = useState(new Set());
   // Track which document type has drag-over active
@@ -123,7 +132,12 @@ export default function DocumentUploadStep({ onNext, onBack }) {
     }
   }
 
-  const requiredDocs = REQUIRED_DOCUMENTS.filter((d) => d.required);
+  const requiredDocs = REQUIRED_DOCUMENTS.filter((d) => {
+    if (submitOnCampus) {
+      return d.id === 'form-138';
+    }
+    return d.required;
+  });
   const allRequiredUploaded = requiredDocs.every((d) => getDocByTypeId(d.id));
 
   function renderStatusIcon(docStatus) {
@@ -188,6 +202,25 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         </div>
       )}
  
+      {/* On-Campus physical submission option */}
+      {!isSubmitted && (
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4.5 mb-6 flex items-start gap-3.5 shadow-sm hover:border-slate-300 transition-all duration-200">
+          <input
+            type="checkbox"
+            id="submit-on-campus"
+            checked={submitOnCampus}
+            onChange={(e) => handleToggleCampusSubmission(e.target.checked)}
+            className="mt-1 h-4.5 w-4.5 text-univ-indigo border-slate-300 rounded focus:ring-univ-indigo cursor-pointer transition-all"
+          />
+          <label htmlFor="submit-on-campus" className="cursor-pointer select-none">
+            <span className="text-xs font-extrabold text-univ-navy block uppercase tracking-wide">Submit remaining documents on-campus</span>
+            <span className="text-[11px] text-slate-500 mt-1 block leading-relaxed font-medium">
+              Check this option if you prefer to submit your Form 137 and PSA Birth Certificate physically at the Office of the Registrar. **Form 138 (Report Card) must still be uploaded online** to proceed with academic evaluation.
+            </span>
+          </label>
+        </div>
+      )}
+
       <div className="space-y-4">
         {REQUIRED_DOCUMENTS.map((doc) => {
           const uploaded = getDocByTypeId(doc.id);
@@ -200,7 +233,13 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-univ-navy uppercase tracking-wide">{doc.label}</span>
                   {doc.required && (
-                    <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+                    doc.id === 'form-138' ? (
+                      <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+                    ) : submitOnCampus ? (
+                      <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">On-Campus Submission</span>
+                    ) : (
+                      <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+                    )
                   )}
                 </div>
                 {uploaded && renderStatusLabel(uploaded.status)}

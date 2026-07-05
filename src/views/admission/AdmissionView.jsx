@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ClipboardList, FileText, CheckCircle, XCircle, User, ExternalLink } from 'lucide-react';
+import { ClipboardList, FileText, CheckCircle, XCircle, User, ExternalLink, AlertCircle } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import StatusBadge from '../../components/StatusBadge';
@@ -207,7 +207,17 @@ export default function AdmissionView() {
                 </div>
               </div>
             </div>
- 
+
+            {selectedStudent.submitDocumentsOnCampus && (
+              <div className="bg-amber-50 border border-amber-250/50 text-amber-800 text-xs font-medium px-4.5 py-3.5 rounded-2xl flex items-center gap-3 shadow-sm">
+                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="font-extrabold uppercase tracking-wide text-amber-800 text-[10px] block mb-0.5">On-Campus Submission Selected</span>
+                  This applicant has requested to submit their Form 137 and PSA Birth Certificate physically on-campus. Only Form 138 (Report Card) is required to be submitted online.
+                </div>
+              </div>
+            )}
+
             {/* Personal Information */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
               <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Personal Contact Details</h3>

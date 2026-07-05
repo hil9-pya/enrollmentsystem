@@ -54,12 +54,12 @@ await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
     await page.locator('input[type="file"]').first().waitFor({ state: 'attached' });
     
     const requiredDocs = [
-      { name: 'valid_id.png', mimeType: 'image/png' },
+      { name: 'form_138.pdf', mimeType: 'application/pdf' },
       { name: 'form_137.pdf', mimeType: 'application/pdf' },
-      { name: 'report_card.pdf', mimeType: 'application/pdf' },
-      { name: 'good_moral.pdf', mimeType: 'application/pdf' },
       { name: 'birth_certificate.pdf', mimeType: 'application/pdf' },
+      { name: 'good_moral.pdf', mimeType: 'application/pdf' },
       { name: 'photo.jpg', mimeType: 'image/jpeg' },
+      { name: 'med_cert.pdf', mimeType: 'application/pdf' },
     ];
 
     for (let i = 0; i < requiredDocs.length; i++) {
@@ -150,24 +150,32 @@ await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
     // Since advising is approved, the portal resumes directly on step 6 (Subject Enrollment)
     await expect(page.locator('text=Subject Enrollment Matrix')).toBeVisible();
 
-    // Select the first available subject. The backend auto-advances the status
-    // to payment_pending, which immediately redirects us to Step 7 (Payment)
+    // Select the first available subject.
     await page.locator('button:has-text("Add Subject")').first().click();
+
+    // Click "Proceed to Payment" to advance to Step 7
+    await page.getByRole('button', { name: 'Proceed to Payment' }).click();
 
     // Now on step 7 (Payment)
     await expect(page.locator('text=Tuition Assessment & Payment Portal')).toBeVisible();
     await page.locator('text=Card').click();
-    await page.getByRole('button', { name: 'Process Simulated Payment' }).click();
+    await page.getByRole('button', { name: 'Proceed with Payment' }).click();
 
-    // Confirm using custom modal
-    await page.locator('button:has-text("Process Payment")').last().click();
+    // Fill in secure payment details in the validation modal
+    await page.locator('input[placeholder="Cardholder Name"]').fill('Jeremiah Atayde');
+    await page.locator('input[placeholder="1111 2222 3333 4444"]').fill('1234 5678 1234 5678');
+    await page.locator('input[placeholder="MM/YY"]').fill('12/28');
+    await page.locator('input[placeholder="123"]').fill('123');
 
-    // Wait for the simulation delay and clearance feedback
-    await page.locator('text=Transaction Cleared').waitFor({ timeout: 15000 });
+    // Click the Authorize Payment button inside the validation modal form
+    await page.locator('button[type="submit"]:has-text("Authorize Payment")').click();
+
+    // Wait for the delay and clearance feedback
+    await page.locator('text=Payment Verification Pending').waitFor({ timeout: 15000 });
     await page.getByRole('button', { name: 'Proceed to Verification' }).click();
 
-    // Now on Step 8 (Fulfillment) showing 'Awaiting Registrar Validation'
-    await expect(page.locator('text=Awaiting Registrar Validation')).toBeVisible();
+    // Now on Step 8 (Fulfillment) showing 'Awaiting Accounting Verification'
+    await expect(page.locator('text=Awaiting Accounting Verification')).toBeVisible();
     // Exit portal and go back to gateway
     await page.getByRole('button', { name: 'Exit Portal' }).click();
     await page.getByRole('button', { name: 'Back to Gateway' }).click();

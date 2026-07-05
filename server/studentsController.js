@@ -112,6 +112,8 @@ const updateStudent = asyncHandler(async (req, res) => {
     'birthDate',
     'address',
     'paymentMethod',
+    'status',
+    'submitDocumentsOnCampus',
   ];
 
   for (const field of allowedFields) {
@@ -230,14 +232,13 @@ const setSubjects = asyncHandler(async (req, res) => {
   student.tuitionBreakdown = tuitionBreakdown;
   student.totalTuition = totalTuition;
 
-  // Only auto-advance to payment once the adviser has already approved the
-  // student (if advising hasn't happened yet, this is just the adviser
-  // pre-selecting subjects, so we leave the status alone).
-  if (subjectIds.length > 0 && ['advising_approved', 'enrollment_pending'].includes(previousStatus)) {
-    student.status = 'payment_pending';
-  } else if (subjectIds.length === 0 && previousStatus === 'payment_pending') {
-    student.status = 'advising_approved';
-  }
+  // Removed auto-advance status logic. The student portal will explicitly
+  // request payment_pending status transition on clicking Proceed to Payment.
+  // if (subjectIds.length > 0 && ['advising_approved', 'enrollment_pending'].includes(previousStatus)) {
+  //   student.status = 'payment_pending';
+  // } else if (subjectIds.length === 0 && previousStatus === 'payment_pending') {
+  //   student.status = 'advising_approved';
+  // }
 
   await student.save();
   res.json(student);
@@ -251,7 +252,7 @@ const processPayment = asyncHandler(async (req, res) => {
 
   const { paymentMethod, success } = req.body;
   if (paymentMethod) student.paymentMethod = paymentMethod;
-  student.paymentStatus = success ? 'paid' : 'failed';
+  student.paymentStatus = success ? 'processing' : 'failed';
 
   await student.save();
   res.json(student);

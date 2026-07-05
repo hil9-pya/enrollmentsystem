@@ -54,6 +54,7 @@ const StudentSchema = new mongoose.Schema(
 
     paymentMethod: { type: String, default: null },
     paymentStatus: { type: String, default: 'unpaid' },
+    submitDocumentsOnCampus: { type: Boolean, default: false },
 
     scheduleGenerated: { type: Boolean, default: false },
     registrationFormGenerated: { type: Boolean, default: false },

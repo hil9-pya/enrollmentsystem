@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 
-export default function LoginView() {
+export default function LoginView({ portalType }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,7 +94,7 @@ export default function LoginView() {
         <div className="bg-slate-50 border-t border-slate-100 p-6">
           <p className="text-xs font-medium text-slate-500 mb-3 text-center uppercase tracking-wider">Demo Accounts</p>
           <div className="flex flex-wrap justify-center gap-2">
-            {['admin', 'admission', 'adviser', 'accounting', 'registrar'].map((role) => (
+            {(portalType === 'admin' ? ['admin'] : ['admission', 'adviser', 'accounting', 'registrar']).map((role) => (
               <button
                 key={role}
                 onClick={() => fillCredentials(role)}

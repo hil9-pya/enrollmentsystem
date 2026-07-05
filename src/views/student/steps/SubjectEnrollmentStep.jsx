@@ -59,6 +59,18 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     dispatch({ type: 'REMOVE_SUBJECT', payload: { subjectId } });
   };
 
+  const handleProceedToPayment = async () => {
+    try {
+      await dispatch({
+        type: 'UPDATE_ACTIVE_STUDENT',
+        payload: { status: 'payment_pending' },
+      });
+      onNext();
+    } catch (err) {
+      console.error('Failed to update student status:', err);
+    }
+  };
+
   const isSelected = (subjectId) => {
     return selectedSubjects.some((s) => s.subjectId === subjectId);
   };
@@ -247,7 +259,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
         </button>
  
         <button
-          onClick={onNext}
+          onClick={handleProceedToPayment}
           disabled={selectedSubjects.length === 0 || totalUnits > 18 || conflicts.length > 0}
           className={`flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer ${
             selectedSubjects.length > 0 && totalUnits <= 18 && conflicts.length === 0

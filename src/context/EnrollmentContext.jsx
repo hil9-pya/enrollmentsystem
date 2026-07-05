@@ -71,7 +71,7 @@ export function EnrollmentProvider({ children }) {
     return () => clearInterval(interval);
   }, [token]);
 
-  // 1b. Fetch active student profile from backend when activeStudentId changes (even without admin token)
+  // 1b. Fetch active student profile from backend when activeStudentId changes and poll periodically
   useEffect(() => {
     async function loadActiveStudent() {
       if (!activeStudentId) return;
@@ -93,6 +93,9 @@ export function EnrollmentProvider({ children }) {
       }
     }
     loadActiveStudent();
+
+    const interval = setInterval(loadActiveStudent, 2000);
+    return () => clearInterval(interval);
   }, [activeStudentId]);
 
   // 2. Custom Dispatch Interceptor to handle async HTTP calls and synchronize state
@@ -128,6 +131,15 @@ export function EnrollmentProvider({ children }) {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+        });
+        updatedStudent = await safeJson(res);
+      } 
+      
+      else if (type === 'UPDATE_STUDENT_BY_ID') {
+        const res = await authFetch(`/api/students/${payload.studentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload.updates),
         });
         updatedStudent = await safeJson(res);
       } 

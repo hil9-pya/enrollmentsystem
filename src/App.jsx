@@ -15,7 +15,13 @@ import { Toaster } from 'react-hot-toast';
 function AppContent() {
   const { user, logout, isLoading } = useAuth();
   const { activeStudentId } = useEnrollment();
-  const [viewMode, setViewMode] = useState(null); // 'student' | 'admin' | null
+  const [viewMode, setViewMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const portal = params.get('portal');
+    if (portal === 'student') return 'student';
+    if (portal === 'staff' || portal === 'admin') return portal;
+    return null;
+  });
 
   const viewMap = {
     student: StudentView,
@@ -48,7 +54,10 @@ function AppContent() {
             </div>
           </div>
           <button 
-            onClick={() => setViewMode(null)} 
+            onClick={() => {
+              window.history.pushState({}, '', '/');
+              setViewMode(null);
+            }} 
             className="text-xs font-semibold bg-univ-navy-light hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
           >
             Back to Gateway
@@ -92,17 +101,20 @@ function AppContent() {
     );
   }
 
-  // 3. If admin mode selected but not logged in
-  if (viewMode === 'admin') {
+  // 3. If admin or staff mode selected but not logged in
+  if (viewMode === 'admin' || viewMode === 'staff') {
     return (
       <div className="relative min-h-screen bg-slate-50">
         <button 
-          onClick={() => setViewMode(null)} 
+          onClick={() => {
+            window.history.pushState({}, '', '/');
+            setViewMode(null);
+          }} 
           className="absolute top-6 left-6 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 shadow-sm text-slate-600 px-3.5 py-1.5 rounded-lg transition-all z-10 cursor-pointer"
         >
           ← Back to Gateway
         </button>
-        <LoginView />
+        <LoginView portalType={viewMode} />
       </div>
     );
   }
@@ -158,7 +170,7 @@ function AppContent() {
 
           {/* Admin Access card */}
           <button 
-            onClick={() => setViewMode('admin')}
+            onClick={() => setViewMode('staff')}
             className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-gold hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-64"
           >
             <div>

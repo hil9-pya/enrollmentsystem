@@ -203,7 +203,7 @@ export default function AccountingView() {
                   const totalUnits = getTotalUnits(student);
                   const canConfirm =
                     student.status === 'payment_pending' &&
-                    (student.paymentStatus === 'unpaid' || student.paymentStatus === 'paid');
+                    (student.paymentStatus === 'unpaid' || student.paymentStatus === 'paid' || student.paymentStatus === 'processing');
 
                   return (
                     <React.Fragment key={student.id}>
