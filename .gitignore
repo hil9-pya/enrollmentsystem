@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Server secrets and uploads
+/server/.env
+/server/uploads/
+
+# Test results
+test-results/
+
+# Build outputs
+/.cache

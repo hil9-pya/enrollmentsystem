@@ -24,27 +24,27 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
   const isComplete = selectedProgramId && selectedTerm;
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold text-slate-900">Program Selection</h1>
-      <p className="text-sm text-slate-500 mt-1 mb-6">
-        Choose your degree program and academic term.
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
+      <h1 className="text-xl font-extrabold text-univ-navy">Program Selection</h1>
+      <p className="text-xs text-slate-500 mt-1 mb-8 leading-relaxed font-medium">
+        Choose your desired degree program and the academic term you wish to enroll in.
       </p>
 
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Degree Program */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
             Degree Program <span className="text-rose-600">*</span>
           </label>
           <select
             value={selectedProgramId}
             onChange={(e) => handleChange('programId', e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-colors duration-150 bg-white"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-univ-indigo focus:border-transparent outline-none transition-all bg-slate-50/50 focus:bg-white cursor-pointer"
           >
             <option value="">Select a program</option>
             {PROGRAMS.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} — {p.department}
+                {p.name} ({p.department})
               </option>
             ))}
           </select>
@@ -52,13 +52,13 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
         {/* Academic Term */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
             Academic Term <span className="text-rose-600">*</span>
           </label>
           <select
             value={selectedTerm}
             onChange={(e) => handleChange('academicTerm', e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-colors duration-150 bg-white"
+            className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-univ-indigo focus:border-transparent outline-none transition-all bg-slate-50/50 focus:bg-white cursor-pointer"
           >
             <option value="">Select a term</option>
             {ACADEMIC_TERMS.map((t) => (
@@ -72,25 +72,25 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
       {/* Program Summary Card */}
       {selectedProgram && (
-        <div className="bg-white border border-slate-200 rounded-md p-6 mt-6">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Program Details</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="bg-slate-50/40 border border-slate-200/60 rounded-xl p-5 mt-8 shadow-sm">
+          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Program Details Summary</h3>
+          <div className="grid grid-cols-2 gap-5">
             <div>
-              <p className="text-slate-500">Program</p>
-              <p className="font-medium text-slate-900">{selectedProgram.name}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Program Course</p>
+              <p className="text-xs font-bold text-univ-navy mt-1 leading-snug">{selectedProgram.name}</p>
             </div>
             <div>
-              <p className="text-slate-500">Department</p>
-              <p className="font-medium text-slate-900">{selectedProgram.department}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Department</p>
+              <p className="text-xs font-bold text-univ-navy mt-1 leading-snug">{selectedProgram.department}</p>
             </div>
             <div>
-              <p className="text-slate-500">Total Units</p>
-              <p className="font-medium text-slate-900">{selectedProgram.totalUnits}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Curriculum Units</p>
+              <p className="text-xs font-bold text-univ-navy mt-1 leading-snug">{selectedProgram.totalUnits} Units</p>
             </div>
             {selectedTerm && (
               <div>
-                <p className="text-slate-500">Term</p>
-                <p className="font-medium text-slate-900">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Semester Term</p>
+                <p className="text-xs font-bold text-univ-navy mt-1 leading-snug">
                   {ACADEMIC_TERMS.find((t) => t.id === selectedTerm)?.label}
                 </p>
               </div>
@@ -100,22 +100,22 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between mt-6">
+      <div className="flex items-center justify-between mt-8 border-t border-slate-100 pt-6">
         <button
           type="button"
           onClick={onBack}
-          className="text-sm text-slate-600 hover:text-slate-900 transition-colors duration-150"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer"
         >
-          ← Back
+          Back
         </button>
         <button
           type="button"
           onClick={onNext}
           disabled={!isComplete}
-          className={`px-6 py-2.5 rounded-md text-sm font-medium text-white transition-colors duration-150 ${
+          className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
             isComplete
-              ? 'bg-indigo-600 hover:bg-indigo-700'
-              : 'bg-indigo-600 opacity-50 cursor-not-allowed'
+              ? 'bg-univ-indigo hover:bg-univ-blue'
+              : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >
           Continue

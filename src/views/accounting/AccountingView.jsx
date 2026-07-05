@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { DollarSign, ChevronDown, ChevronRight, Receipt } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
+import { useConfirm } from '../../context/ConfirmationContext';
 import StatusBadge from '../../components/StatusBadge';
 import SearchInput from '../../components/SearchInput';
 import { SUBJECTS, PROGRAMS } from '../../data/mockData';
@@ -18,10 +19,10 @@ function formatPeso(amount) {
 
 function PaymentStatusBadge({ status }) {
   const config = {
-    unpaid: 'bg-amber-50 text-amber-700 border-amber-200',
-    processing: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    failed: 'bg-rose-50 text-rose-700 border-rose-200',
+    unpaid: 'bg-amber-50 text-amber-700 border-amber-200/50',
+    processing: 'bg-indigo-50 text-indigo-700 border-indigo-200/50',
+    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200/50',
+    failed: 'bg-rose-50 text-rose-700 border-rose-200/50',
   };
 
   const labels = {
@@ -33,7 +34,7 @@ function PaymentStatusBadge({ status }) {
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium border rounded-sm ${
+      className={`inline-flex items-center px-2.5 py-1 text-[10px] font-bold border rounded-full uppercase tracking-wider ${
         config[status] || config.unpaid
       }`}
     >
@@ -44,6 +45,7 @@ function PaymentStatusBadge({ status }) {
 
 export default function AccountingView() {
   const { state, dispatch } = useEnrollment();
+  const { confirm } = useConfirm();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
@@ -108,24 +110,36 @@ export default function AccountingView() {
     setTimeout(() => setFlashMessage(null), 3000);
   }
 
-  function handleConfirmPayment(studentId) {
-    dispatch({ type: 'CONFIRM_PAYMENT', payload: { studentId } });
+  async function handleConfirmPayment(studentId) {
     const student = state.students.find((s) => s.id === studentId);
+    if (!student) return;
+    const isConfirmed = await confirm({
+      title: 'Confirm Tuition Payment',
+      message: `Are you sure you want to confirm the tuition payment of ${formatPeso(student.totalTuition)} for ${student.firstName} ${student.lastName}? This clears their accounting hold.`,
+      confirmText: 'Confirm Payment',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!isConfirmed) return;
+    await dispatch({ type: 'CONFIRM_PAYMENT', payload: { studentId } });
     showFlash(`Payment confirmed for ${student.firstName} ${student.lastName}`);
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="p-6 pb-0 space-y-4">
+    <div className="flex flex-col h-full bg-slate-50">
+      {/* Header */}
+      <div className="p-8 pb-4 space-y-4 bg-white border-b border-slate-200/80 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-md bg-slate-100 flex items-center justify-center">
-            <DollarSign className="h-4 w-4 text-slate-500" />
+          <div className="h-10 w-10 rounded-xl bg-univ-blue/10 flex items-center justify-center text-univ-blue">
+            <DollarSign className="h-5 w-5" />
           </div>
-          <h2 className="text-base font-semibold text-slate-900">Tuition Assessment &amp; Payment Ledger</h2>
+          <div>
+            <h2 className="text-base font-extrabold text-univ-navy">Tuition Assessment &amp; Payment Ledger</h2>
+            <p className="text-xs text-slate-400 font-medium">Verify pending student bank receipts and clear their financial holds.</p>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
           <div className="w-80">
             <SearchInput
               value={searchQuery}
@@ -133,15 +147,15 @@ export default function AccountingView() {
               placeholder="Search by name or ID..."
             />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {PAYMENT_FILTERS.map((filter) => (
               <button
                 key={filter.id}
                 onClick={() => setActiveFilter(filter.id)}
-                className={`text-sm px-3 py-1.5 rounded-md transition-colors duration-150 ${
+                className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer border shadow-sm ${
                   activeFilter === filter.id
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'bg-univ-navy text-white border-univ-navy'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
                 }`}
               >
                 {filter.label}
@@ -153,34 +167,34 @@ export default function AccountingView() {
 
       {/* Flash message */}
       {flashMessage && (
-        <div className="mx-6 mt-4 px-4 py-3 rounded-md text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <div className="mx-8 mt-6 px-4 py-3 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/40 shadow-sm">
           {flashMessage}
         </div>
       )}
 
-      {/* ── Ledger Table ───────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-6 pt-4">
-        <div className="border border-slate-200 rounded-md overflow-hidden">
-          <table className="w-full text-sm">
+      {/* Ledger Table */}
+      <div className="flex-1 overflow-y-auto p-8 pt-6">
+        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-premium bg-white">
+          <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="w-8 px-4 py-2.5" />
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Student ID</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Student Name</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Program</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Total Units</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Total Tuition</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Payment Method</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Payment Status</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                <th className="w-10 px-4 py-3.5" />
+                <th className="px-4 py-3.5">Student ID</th>
+                <th className="px-4 py-3.5">Student Name</th>
+                <th className="px-4 py-3.5">Program</th>
+                <th className="px-4 py-3.5">Total Units</th>
+                <th className="px-4 py-3.5">Total Tuition</th>
+                <th className="px-4 py-3.5">Payment Method</th>
+                <th className="px-4 py-3.5">Payment Status</th>
+                <th className="px-4 py-3.5">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 bg-white">
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
-                    <Receipt className="h-8 w-8 mx-auto mb-3" />
-                    <p className="text-sm">No records found</p>
+                    <Receipt className="h-9 w-9 mx-auto mb-3 opacity-55 text-slate-400" />
+                    <p className="text-xs font-bold text-slate-500">No payment records found</p>
                   </td>
                 </tr>
               ) : (
@@ -196,39 +210,39 @@ export default function AccountingView() {
                       {/* Main Row */}
                       <tr
                         onClick={() => toggleRow(student.id)}
-                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-150 cursor-pointer"
+                        className="hover:bg-slate-50/40 transition-colors cursor-pointer"
                       >
-                        <td className="px-4 py-3 text-slate-400">
+                        <td className="px-4 py-4.5 text-slate-400 text-center">
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-4 w-4 inline" />
                           ) : (
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4 inline" />
                           )}
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-slate-700">{student.id}</td>
-                        <td className="px-4 py-3 text-slate-900 font-medium">
+                        <td className="px-4 py-4.5 font-mono text-xs font-bold text-slate-400">{student.id}</td>
+                        <td className="px-4 py-4.5 text-univ-navy font-bold">
                           {student.firstName} {student.lastName}
                         </td>
-                        <td className="px-4 py-3 text-slate-500">{getProgramName(student.programId)}</td>
-                        <td className="px-4 py-3 text-slate-500">{totalUnits}</td>
-                        <td className="px-4 py-3 text-slate-900 font-medium">{formatPeso(student.totalTuition)}</td>
-                        <td className="px-4 py-3 text-slate-500 capitalize">{student.paymentMethod || '—'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-4.5 text-slate-500 font-semibold truncate max-w-[150px]">{getProgramName(student.programId)}</td>
+                        <td className="px-4 py-4.5 text-slate-500 font-bold">{totalUnits}</td>
+                        <td className="px-4 py-4.5 text-univ-navy font-extrabold">{formatPeso(student.totalTuition)}</td>
+                        <td className="px-4 py-4.5 text-slate-500 font-semibold capitalize">{student.paymentMethod || '—'}</td>
+                        <td className="px-4 py-4.5">
                           <PaymentStatusBadge status={student.paymentStatus} />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-4.5">
                           {canConfirm ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleConfirmPayment(student.id);
                               }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors duration-150"
+                              className="inline-flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
                             >
                               Confirm Payment
                             </button>
                           ) : (
-                            <span className="text-slate-300">—</span>
+                            <span className="text-slate-300 font-medium">—</span>
                           )}
                         </td>
                       </tr>
@@ -236,29 +250,31 @@ export default function AccountingView() {
                       {/* Expanded Breakdown */}
                       {isExpanded && student.tuitionBreakdown && student.tuitionBreakdown.length > 0 && (
                         <tr>
-                          <td colSpan={9} className="bg-slate-50 px-0 py-0">
-                            <div className="px-12 py-4">
-                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                Tuition Breakdown
+                          <td colSpan={9} className="bg-slate-50/50 border-y border-slate-150 px-0 py-0">
+                            <div className="px-14 py-5 space-y-4">
+                              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+                                Tuition &amp; Fees Breakdown
                               </p>
-                              <table className="w-full text-xs">
-                                <tbody>
-                                  {student.tuitionBreakdown.map((item, idx) => (
-                                    <tr key={idx} className="border-b border-slate-200 last:border-b-0">
-                                      <td className="py-2 text-slate-600">{item.label}</td>
-                                      <td className="py-2 text-right text-slate-700 font-medium">
-                                        {formatPeso(item.amount)}
+                              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white max-w-lg shadow-sm">
+                                <table className="w-full text-left text-xs divide-y divide-slate-100">
+                                  <tbody className="divide-y divide-slate-100">
+                                    {student.tuitionBreakdown.map((item, idx) => (
+                                      <tr key={idx}>
+                                        <td className="px-4 py-2.5 text-slate-600 font-semibold">{item.label}</td>
+                                        <td className="px-4 py-2.5 text-right text-univ-navy font-bold">
+                                          {formatPeso(item.amount)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    <tr className="bg-slate-50/60 font-bold border-t border-slate-200">
+                                      <td className="px-4 py-3 text-univ-navy font-extrabold">Total Tuition Due</td>
+                                      <td className="px-4 py-3 text-right text-univ-navy font-extrabold">
+                                        {formatPeso(student.totalTuition)}
                                       </td>
                                     </tr>
-                                  ))}
-                                  <tr className="border-t border-slate-300">
-                                    <td className="py-2 font-semibold text-slate-900">Total</td>
-                                    <td className="py-2 text-right font-semibold text-slate-900">
-                                      {formatPeso(student.totalTuition)}
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           </td>
                         </tr>

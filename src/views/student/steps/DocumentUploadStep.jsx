@@ -153,59 +153,59 @@ export default function DocumentUploadStep({ onNext, onBack }) {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold text-slate-900">Upload Documents</h1>
-      <p className="text-sm text-slate-500 mt-1 mb-2">
-        Upload the required documents for your enrollment application.
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
+      <h1 className="text-xl font-extrabold text-univ-navy">Upload Documents</h1>
+      <p className="text-xs text-slate-500 mt-1 mb-2 leading-relaxed font-medium">
+        Please upload the required files for your NCST admission evaluation.
       </p>
-      <p className="text-xs text-slate-400 mb-6">
+      <p className="text-[10px] text-slate-400 mb-6 font-semibold">
         Accepted formats: PDF, JPEG, PNG — Max size: 5MB per file
       </p>
-
+ 
       {/* Submitted banner */}
       {isSubmitted && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
-          <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-4 mb-6">
+          <AlertCircle className="h-5 w-5 text-univ-gold shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-amber-800">Documents Submitted</p>
-            <p className="text-sm text-amber-700 mt-0.5">
-              Your documents have been submitted for review. You will be notified once they are approved.
+            <p className="text-xs font-bold text-univ-gold uppercase tracking-wider">Documents Submitted</p>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Your files have been successfully submitted for review. They are currently being evaluated by the Admissions office.
             </p>
           </div>
         </div>
       )}
-
+ 
       {/* Rejected banner */}
       {status === 'documents_rejected' && (
-        <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-md p-4 mb-6">
+        <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4 mb-6">
           <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-rose-800">Resubmission Required</p>
-            <p className="text-sm text-rose-700 mt-0.5">
-              Some of your documents were rejected. Please re-upload the rejected documents and resubmit.
+            <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Resubmission Required</p>
+            <p className="text-xs text-rose-600 mt-1 leading-relaxed">
+              Some of your documents were not approved. Please review the feedback, upload corrected copies, and submit again.
             </p>
           </div>
         </div>
       )}
-
+ 
       <div className="space-y-4">
         {REQUIRED_DOCUMENTS.map((doc) => {
           const uploaded = getDocByTypeId(doc.id);
           const isUploading = uploadingTypes.has(doc.id);
           const isDragOver = dragOverType === doc.id;
-
+ 
           return (
-            <div key={doc.id} className="bg-white border border-slate-200 rounded-md p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div key={doc.id} className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm hover:border-slate-200 transition-all duration-200">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-900">{doc.label}</span>
+                  <span className="text-xs font-bold text-univ-navy uppercase tracking-wide">{doc.label}</span>
                   {doc.required && (
-                    <span className="text-xs text-rose-600 font-medium">Required</span>
+                    <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
                   )}
                 </div>
                 {uploaded && renderStatusLabel(uploaded.status)}
               </div>
-
+ 
               {/* Hidden file input */}
               <input
                 ref={(el) => (fileInputRefs.current[doc.id] = el)}
@@ -215,24 +215,24 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                 onChange={(e) => handleInputChange(doc.id, e)}
                 disabled={isSubmitted || isUploading}
               />
-
+ 
               {isUploading ? (
                 /* Uploading state */
-                <div className="w-full border-2 border-dashed border-indigo-300 bg-indigo-50 rounded-md p-4 flex flex-col items-center gap-2">
-                  <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />
-                  <span className="text-sm text-indigo-600 font-medium">Uploading...</span>
+                <div className="w-full border-2 border-dashed border-univ-indigo/30 bg-univ-indigo/5 rounded-xl p-6 flex flex-col items-center gap-2">
+                  <Loader2 className="h-5 w-5 text-univ-indigo animate-spin" />
+                  <span className="text-xs text-univ-indigo font-bold">Uploading file to server...</span>
                 </div>
               ) : uploaded ? (
                 /* Uploaded file display */
-                <div className="flex items-center justify-between bg-slate-50 rounded-md px-3 py-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center justify-between bg-slate-50/50 rounded-xl border border-slate-200/80 p-3 shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     {getFileIcon(uploaded.originalName || uploaded.fileName)}
                     <div className="min-w-0">
-                      <span className="text-sm text-slate-700 block truncate max-w-[220px]">
+                      <span className="text-xs font-bold text-slate-700 block truncate max-w-[220px]">
                         {uploaded.originalName || uploaded.fileName}
                       </span>
                       {uploaded.uploadedAt && (
-                        <span className="text-xs text-slate-400">
+                        <span className="text-[10px] text-slate-400 font-medium">
                           Uploaded {new Date(uploaded.uploadedAt).toLocaleDateString()}
                         </span>
                       )}
@@ -244,7 +244,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                       <button
                         type="button"
                         onClick={() => handleRemove(doc.id)}
-                        className="p-1 rounded hover:bg-slate-200 transition-colors duration-150"
+                        className="p-1.5 rounded-lg hover:bg-slate-200/80 transition-colors cursor-pointer"
                         title="Remove document"
                       >
                         <X className="h-4 w-4 text-slate-400 hover:text-rose-600" />
@@ -261,45 +261,45 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, doc.id)}
                   disabled={isSubmitted}
-                  className={`w-full border-2 border-dashed rounded-md p-4 flex flex-col items-center gap-2 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
                     isDragOver
-                      ? 'border-indigo-400 bg-indigo-50'
-                      : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
+                      ? 'border-univ-indigo bg-univ-indigo/[0.01]'
+                      : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50 hover:border-univ-indigo/50'
                   }`}
                 >
-                  <Upload className={`h-5 w-5 ${isDragOver ? 'text-indigo-500' : 'text-slate-400'}`} />
-                  <span className={`text-sm ${isDragOver ? 'text-indigo-600 font-medium' : 'text-slate-500'}`}>
-                    {isDragOver ? 'Drop file here' : 'Click to upload or drag and drop'}
+                  <Upload className={`h-5 w-5 ${isDragOver ? 'text-univ-indigo' : 'text-slate-400'}`} />
+                  <span className={`text-xs ${isDragOver ? 'text-univ-indigo font-bold' : 'text-slate-500 font-semibold'}`}>
+                    {isDragOver ? 'Drop file here' : 'Click to select or drag and drop here'}
                   </span>
-                  <span className="text-xs text-slate-400">PDF, JPEG, or PNG up to 5MB</span>
+                  <span className="text-[10px] text-slate-400 font-medium">PDF, JPEG, or PNG up to 5MB</span>
                 </button>
               )}
             </div>
           );
         })}
       </div>
-
+ 
       {/* Progress indicator */}
-      <div className="mt-4 flex items-center gap-2">
-        <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+      <div className="mt-6 flex items-center gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+        <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden shadow-inner">
           <div
-            className="bg-indigo-600 h-full rounded-full transition-all duration-300"
+            className="bg-univ-indigo h-full rounded-full transition-all duration-300 shadow-sm"
             style={{ width: `${(documents.length / REQUIRED_DOCUMENTS.length) * 100}%` }}
           />
         </div>
-        <span className="text-xs text-slate-500 whitespace-nowrap">
-          {documents.length} / {REQUIRED_DOCUMENTS.length} uploaded
+        <span className="text-xs text-slate-500 font-bold whitespace-nowrap">
+          {documents.length} of {REQUIRED_DOCUMENTS.length} uploaded
         </span>
       </div>
-
+ 
       {/* Actions */}
-      <div className="flex items-center justify-between mt-6">
+      <div className="flex items-center justify-between mt-8 border-t border-slate-100 pt-6">
         <button
           type="button"
           onClick={onBack}
-          className="text-sm text-slate-600 hover:text-slate-900 transition-colors duration-150"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer"
         >
-          ← Back
+          Back
         </button>
         <div className="flex items-center gap-3">
           {!isSubmitted && (
@@ -307,10 +307,10 @@ export default function DocumentUploadStep({ onNext, onBack }) {
               type="button"
               onClick={handleSubmit}
               disabled={!allRequiredUploaded}
-              className={`px-6 py-2.5 rounded-md text-sm font-medium text-white transition-colors duration-150 ${
+              className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
                 allRequiredUploaded
-                  ? 'bg-indigo-600 hover:bg-indigo-700'
-                  : 'bg-indigo-600 opacity-50 cursor-not-allowed'
+                  ? 'bg-univ-indigo hover:bg-univ-blue'
+                  : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
               Submit Documents
@@ -320,7 +320,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
             <button
               type="button"
               onClick={onNext}
-              className="px-6 py-2.5 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-150"
+              className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue transition-all shadow-sm cursor-pointer"
             >
               Continue
             </button>

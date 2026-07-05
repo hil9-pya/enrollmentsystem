@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
+import { useConfirm } from '../../../context/ConfirmationContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
 import { Banknote, Building2, CreditCard, Smartphone, ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 export default function PaymentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
+  const { confirm } = useConfirm();
   const student = getActiveStudent();
 
   const selectedMethodId = student?.paymentMethod;
@@ -25,13 +27,21 @@ export default function PaymentStep({ onNext, onBack }) {
     dispatch({ type: 'SET_PAYMENT_METHOD', payload: { method: methodId } });
   };
 
-  const handleProcessPayment = () => {
+  const handleProcessPayment = async () => {
+    const isConfirmed = await confirm({
+      title: 'Authorize Payment',
+      message: `Are you sure you want to authorize the simulated payment of ₱${student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })}? This initiates simulated bank gateway settlement.`,
+      confirmText: 'Process Payment',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!isConfirmed) return;
     setIsProcessing(true);
     // Simulate processing delay
     setTimeout(() => {
       setIsProcessing(false);
-      // 80% success rate simulation
-      const success = Math.random() > 0.2;
+      // Always succeed simulated payment to ensure test and demo reliability
+      const success = true;
       dispatch({ type: 'PROCESS_PAYMENT', payload: { success } });
     }, 1500);
   };
@@ -41,32 +51,32 @@ export default function PaymentStep({ onNext, onBack }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 rounded-md p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-2">Tuition Assessment & Payment Portal</h2>
-        <p className="text-sm text-slate-500 mb-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-premium">
+        <h2 className="text-xl font-extrabold text-univ-navy mb-1.5">Tuition Assessment &amp; Payment Portal</h2>
+        <p className="text-xs text-slate-500 mb-8 leading-relaxed font-medium">
           Review your tuition fees assessment and complete the simulation payment process to proceed with official validation.
         </p>
 
         {/* 1. Tuition Ledger Breakdown */}
-        <div className="border border-slate-200 rounded-md overflow-hidden mb-6">
-          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
-            <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Assessment Ledger</h3>
+        <div className="border border-slate-200/85 rounded-xl overflow-hidden mb-8 shadow-sm">
+          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+            Assessment Ledger Breakdown
           </div>
-          <table className="w-full text-left text-sm">
-            <tbody className="divide-y divide-slate-100">
+          <table className="w-full text-left text-xs">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {student?.tuitionBreakdown && student.tuitionBreakdown.map((item, index) => (
-                <tr key={index} className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 text-slate-700 font-medium">{item.label}</td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-900">
+                <tr key={index} className="hover:bg-slate-50/30">
+                  <td className="px-4 py-3.5 text-slate-600 font-semibold">{item.label}</td>
+                  <td className="px-4 py-3.5 text-right font-mono font-bold text-univ-navy">
                     ₱{item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-100 border-t border-slate-200 font-bold">
-                <td className="px-4 py-3.5 text-slate-900">Total Assessed Tuition & Fees</td>
-                <td className="px-4 py-3.5 text-right font-mono text-slate-900 text-base">
+              <tr className="bg-slate-100/60 border-t border-slate-200 font-extrabold">
+                <td className="px-4 py-4 text-[10px] text-slate-500 uppercase tracking-wider">Total Assessed Tuition &amp; Fees</td>
+                <td className="px-4 py-4 text-right font-mono text-univ-navy text-base">
                   ₱{student?.totalTuition ? student.totalTuition.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                 </td>
               </tr>
@@ -75,9 +85,9 @@ export default function PaymentStep({ onNext, onBack }) {
         </div>
 
         {/* 2. Payment Method Selector */}
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Select Payment Method</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mb-8">
+          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Select Payment Method</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             {PAYMENT_METHODS.map((method) => {
               const IconComp = iconMap[method.icon] || Banknote;
               const isSelected = selectedMethodId === method.id;
@@ -86,16 +96,16 @@ export default function PaymentStep({ onNext, onBack }) {
                 <div
                   key={method.id}
                   onClick={() => handleSelectMethod(method.id)}
-                  className={`border rounded-md p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-150 ${
-                    isPaid ? 'opacity-60 cursor-default' : ''
+                  className={`border rounded-xl p-4.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 shadow-sm ${
+                    isPaid ? 'opacity-55 cursor-not-allowed' : 'hover:border-slate-300 hover:shadow-premium'
                   } ${
                     isSelected
-                      ? 'border-indigo-600 bg-indigo-50/20 ring-1 ring-indigo-600'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      ? 'border-univ-indigo bg-univ-indigo/[0.02] ring-2 ring-univ-indigo/10'
+                      : 'border-slate-100 bg-white'
                   }`}
                 >
-                  <IconComp className={`h-6 w-6 mb-2 ${isSelected ? 'text-indigo-600' : 'text-slate-500'}`} />
-                  <span className={`text-xs font-semibold ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>
+                  <IconComp className={`h-6 w-6 mb-2.5 transition-colors ${isSelected ? 'text-univ-indigo' : 'text-slate-400'}`} />
+                  <span className={`text-[10px] font-extrabold uppercase tracking-wide transition-colors ${isSelected ? 'text-univ-navy' : 'text-slate-500'}`}>
                     {method.label}
                   </span>
                 </div>
@@ -106,31 +116,31 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* 3. Transaction Feedback Banners */}
         {isProcessing && (
-          <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200 rounded-md p-6 mb-4">
-            <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
-            <span className="text-sm font-medium text-slate-700">Simulating bank clearance gateway... Please wait.</span>
+          <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-6 mb-4">
+            <Loader2 className="h-5 w-5 animate-spin text-univ-indigo" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Simulating payment gateway clearance... Please wait.</span>
           </div>
         )}
 
         {isPaid && (
-          <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-md p-4 mb-4">
+          <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200/50 rounded-xl p-4.5 mb-4">
             <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-sm font-semibold text-emerald-800">Transaction Approved & Confirmed</h4>
-              <p className="text-xs text-emerald-700 mt-1">
-                Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified and cleared by Accounting. Status: <span className="font-bold">PAID</span>.
+              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Transaction Cleared</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified and approved by the Accounting department.
               </p>
             </div>
           </div>
         )}
 
         {paymentStatus === 'failed' && !isProcessing && (
-          <div className="flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-md p-4 mb-4">
-            <XCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4.5 mb-4">
+            <XCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-sm font-semibold text-rose-800">Payment Gateway Declined</h4>
-              <p className="text-xs text-rose-700 mt-1">
-                Transaction simulation declined by security checkpoint. Please check credentials or retry payment gateway.
+              <h4 className="text-xs font-bold text-rose-700 uppercase tracking-wider">Transaction Declined</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                The simulated transaction was declined. Please try again or select a different payment channel.
               </p>
             </div>
           </div>
@@ -138,14 +148,14 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* Action Button for Process Payment */}
         {!isPaid && !isProcessing && (
-          <div className="flex justify-end">
+          <div className="flex justify-end mt-4">
             <button
               onClick={handleProcessPayment}
               disabled={!selectedMethodId}
-              className={`px-6 py-2.5 text-sm font-semibold rounded-md border transition-all ${
+              className={`px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer ${
                 selectedMethodId
-                  ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 cursor-pointer shadow-sm'
-                  : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  ? 'bg-univ-indigo text-white hover:bg-univ-blue'
+                  : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
               {paymentStatus === 'failed' ? 'Re-attempt Gateway Simulation' : 'Process Simulated Payment'}
@@ -155,25 +165,25 @@ export default function PaymentStep({ onNext, onBack }) {
       </div>
 
       {/* Control Buttons */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mt-8 border-t border-slate-100 pt-6">
         <button
           onClick={onBack}
           disabled={isProcessing}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-950 transition-colors disabled:opacity-50"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <ArrowLeft className="h-4 w-4" /> Go Back
+          Back
         </button>
 
         <button
           onClick={onNext}
           disabled={!isPaid}
-          className={`flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-md transition-colors ${
+          className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
             isPaid
-              ? 'bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer'
-              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              ? 'bg-univ-indigo hover:bg-univ-blue'
+              : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >
-          Proceed to Verification <ArrowRight className="h-4 w-4" />
+          Proceed to Verification
         </button>
       </div>
     </div>

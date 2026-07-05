@@ -20,54 +20,56 @@ export default function EnrollmentTypeStep({ onNext }) {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold text-slate-900">Select Enrollment Type</h1>
-      <p className="text-sm text-slate-500 mt-1 mb-6">
-        Choose the enrollment category that applies to you.
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
+      <h1 className="text-xl font-extrabold text-univ-navy">Select Enrollment Type</h1>
+      <p className="text-xs text-slate-500 mt-1 mb-8 leading-relaxed font-medium">
+        Please select the category that matches your current enrollment status at NCST.
       </p>
-
-      <div className="grid grid-cols-2 gap-6">
+ 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {ENROLLMENT_TYPES.map((et) => {
           const Icon = iconMap[et.icon];
           const isSelected = selectedType === et.id;
-
+ 
           return (
             <button
               key={et.id}
               type="button"
               onClick={() => handleSelect(et.id)}
-              className={`bg-white border rounded-md p-6 text-left cursor-pointer transition-colors duration-150 ${
+              className={`border p-6 rounded-2xl text-left cursor-pointer transition-all duration-300 flex flex-col justify-between h-48 ${
                 isSelected
-                  ? 'border-indigo-600 ring-2 ring-indigo-100'
-                  : 'border-slate-200 hover:border-indigo-300'
+                  ? 'border-univ-indigo bg-univ-indigo/[0.02] ring-4 ring-univ-indigo/5 text-univ-navy shadow-premium'
+                  : 'border-slate-200 bg-white hover:border-univ-indigo hover:shadow-premium-lg hover:-translate-y-0.5'
               }`}
             >
-              {Icon && (
-                <Icon
-                  className={`h-8 w-8 mb-3 transition-colors duration-150 ${
-                    isSelected ? 'text-indigo-600' : 'text-slate-500'
-                  }`}
-                />
-              )}
-              <p className="text-base font-semibold text-slate-900">{et.label}</p>
-              <p className="text-sm text-slate-500 mt-1">{et.description}</p>
+              <div>
+                {Icon && (
+                  <div className={`p-2.5 rounded-xl inline-flex items-center justify-center mb-4 transition-colors ${
+                    isSelected ? 'bg-univ-indigo text-white' : 'bg-slate-50 text-slate-500'
+                  }`}>
+                    <Icon className="h-6 w-6 stroke-[2]" />
+                  </div>
+                )}
+                <p className="text-sm font-extrabold text-univ-navy">{et.label}</p>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed font-medium">{et.description}</p>
+              </div>
             </button>
           );
         })}
       </div>
-
-      <div className="flex justify-end mt-6">
+ 
+      <div className="flex justify-end mt-8 border-t border-slate-100 pt-6">
         <button
           type="button"
           onClick={onNext}
           disabled={!selectedType}
-          className={`px-6 py-2.5 rounded-md text-sm font-medium text-white transition-colors duration-150 ${
+          className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
             selectedType
-              ? 'bg-indigo-600 hover:bg-indigo-700'
-              : 'bg-indigo-600 opacity-50 cursor-not-allowed'
+              ? 'bg-univ-indigo hover:bg-univ-blue'
+              : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >
-          Continue
+          Continue Enrollment
         </button>
       </div>
     </div>

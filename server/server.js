@@ -14,9 +14,13 @@ import authRoutes from './authRoutes.js';
 import courseRoutes from './courses.js';
 import enrollmentRoutes from './enrollmentRoutes.js';
 import studentsRoutes from './studentsRoutes.js';
+import adminRoutes from './adminRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+let mongoServerInstance = null;
 
 // Load environment variables
 dotenv.config();
@@ -44,13 +48,25 @@ const startServer = async () => {
 
   try {
     // Database Connection
-    const MONGO_URI = process.env.MONGO_URI;
-    if (!MONGO_URI) {
+    let mongoUri = process.env.MONGO_URI;
+
+    if (process.env.USE_MEMORY_DB === 'true') {
+      console.log('Initializing in-memory MongoDB server...');
+      mongoServerInstance = await MongoMemoryServer.create();
+      mongoUri = mongoServerInstance.getUri();
+      console.log('In-memory MongoDB server started.');
+    }
+
+    if (!mongoUri) {
       console.error('FATAL ERROR: MONGO_URI is not defined. Please create a .env file and add the MONGO_URI variable.');
       process.exit(1);
     }
-    await mongoose.connect(MONGO_URI);
-    console.log('MongoDB connected successfully.');
+    await mongoose.connect(mongoUri);
+    if (process.env.USE_MEMORY_DB === 'true') {
+      console.log('Connected to in-memory MongoDB.');
+    } else {
+      console.log('MongoDB connected successfully.');
+    }
 
     // Seed default demo accounts & applicant records on first run.
     await seedUsers();
@@ -128,6 +144,7 @@ const startServer = async () => {
     app.use('/api/courses', courseRoutes);
     app.use('/api/enrollments', enrollmentRoutes);
     app.use('/api/students', studentsRoutes);
+    app.use('/api/admin/students', adminRoutes);
 
     // Error Handling Middleware
     app.use(notFound);
@@ -157,8 +174,12 @@ startServer().then(server => {
     console.log(`\n${signal} received. Shutting down gracefully...`);
     server.close(() => {
       console.log('✅ HTTP server closed.');
-      mongoose.connection.close(false, () => {
+      mongoose.connection.close(false, async () => {
         console.log('✅ MongoDB connection closed.');
+        if (mongoServerInstance) {
+          await mongoServerInstance.stop();
+          console.log('✅ In-memory MongoDB server stopped.');
+        }
         process.exit(0);
       });
     });

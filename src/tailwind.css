@@ -6,6 +6,19 @@
   --color-surface: var(--color-white);
   --color-surface-alt: var(--color-slate-50);
   --color-border: var(--color-slate-200);
+
+  /* NCST University Brand Color System */
+  --color-univ-navy: #0f172a;
+  --color-univ-navy-light: #1e293b;
+  --color-univ-navy-dark: #090d16;
+  --color-univ-blue: #1e3a8a;
+  --color-univ-indigo: #4f46e5;
+  --color-univ-gold: #d97706;
+  --color-univ-gold-light: #f59e0b;
+  --color-univ-gold-pale: #fef3c7;
+  
+  --shadow-premium: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 8px -1px rgba(15, 23, 42, 0.03);
+  --shadow-premium-lg: 0 10px 30px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
 }
 
 html, body, #root {

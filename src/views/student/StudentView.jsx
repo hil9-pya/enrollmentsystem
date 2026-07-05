@@ -285,17 +285,18 @@ export default function StudentView() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-slate-50">
       {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col">
-        <div className="p-6 border-b border-slate-200 flex flex-col items-center gap-3">
-          <img src="/logo.png" alt="NCST Logo" className="h-16 w-auto object-contain" />
-          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider text-center">
-            National College of Science & Technology
+      <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
+        <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
+          <img src="/logo.png" alt="NCST Logo" className="h-12 w-auto object-contain drop-shadow-sm" />
+          <h2 className="text-[10px] font-extrabold text-univ-navy uppercase tracking-widest text-center leading-relaxed">
+            National College of<br />Science &amp; Technology
           </h2>
+          <span className="text-[9px] font-bold text-univ-gold uppercase tracking-wider">Gateway Portal</span>
         </div>
 
-        <div className="p-6 flex-1 overflow-y-auto">
+        <div className="p-5 flex-1 overflow-y-auto">
           <StepIndicator
             currentStep={effectiveStep}
             completedSteps={completedSteps}
@@ -305,27 +306,30 @@ export default function StudentView() {
 
         {/* ── Student Info Footer ─────────────────────────────── */}
         {hasStudentInfo && (
-          <div className="p-6 border-t border-slate-200">
-            <p className="font-mono text-xs text-slate-400">{student.id}</p>
-            <p className="text-sm font-medium text-slate-900 mt-0.5">
-              {student.firstName} {student.lastName}
-            </p>
+          <div className="p-5 border-t border-slate-100 bg-slate-50/30">
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-premium">
+              <span className="px-1.5 py-0.5 text-[8px] font-bold bg-univ-blue/10 text-univ-blue border border-univ-blue/20 rounded uppercase tracking-wider inline-block">Active Applicant</span>
+              <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
+                {student.firstName} {student.lastName}
+              </p>
+              <p className="font-mono text-[9px] text-slate-400 mt-1.5">{student.id}</p>
+            </div>
             <button
               onClick={() => {
                 setActiveStudent(null);
                 setIsVerified(false);
               }}
-              className="mt-4 w-full px-3 py-1.5 border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors rounded-md text-center cursor-pointer"
+              className="mt-3 w-full py-2 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold text-slate-500 hover:text-rose-600 transition-all rounded-lg text-center cursor-pointer uppercase tracking-wider"
             >
-              Exit Student Portal
+              Exit Portal
             </button>
           </div>
         )}
       </aside>
-
-      {/* ── Main Content ────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-slate-50">
-        <div className="max-w-4xl mx-auto p-6">{renderStep()}</div>
+ 
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto bg-slate-50/70">
+        <div className="max-w-4xl mx-auto p-8">{renderStep()}</div>
       </main>
     </div>
   );

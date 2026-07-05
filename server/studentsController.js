@@ -47,8 +47,22 @@ const getStudents = asyncHandler(async (req, res) => {
 // @desc    Get a single student
 // @route   GET /api/students/:id
 const getStudentById = asyncHandler(async (req, res) => {
-  const student = await findStudentOr404(res, req.params.id);
-  if (!student) return;
+  const idOrEmail = req.params.id;
+  let student = null;
+  
+  if (idOrEmail.includes('@')) {
+    student = await Student.findOne({ email: idOrEmail.toLowerCase().trim() });
+  } else {
+    student = await Student.findById(idOrEmail);
+    if (!student) {
+      student = await Student.findOne({ email: idOrEmail.toLowerCase().trim() });
+    }
+  }
+
+  if (!student) {
+    res.status(404).json({ error: 'Student not found' });
+    return;
+  }
   res.json(student);
 });
 
@@ -250,7 +264,12 @@ const approveAdmission = asyncHandler(async (req, res) => {
   if (!student) return;
 
   student.admissionNotes = req.body.notes || '';
-  student.status = 'documents_approved';
+  
+  if (student.programId) {
+    student.status = 'advising_pending';
+  } else {
+    student.status = 'documents_approved';
+  }
 
   await student.save();
   res.json(student);

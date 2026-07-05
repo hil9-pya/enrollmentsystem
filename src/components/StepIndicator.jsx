@@ -32,48 +32,53 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
             onClick={() => canOpen && onStepClick(step.key)}
             disabled={!canOpen}
             aria-current={isCurrent ? 'step' : undefined}
-            className={`flex w-full items-start gap-3 rounded-md text-left transition-colors duration-150 ${
-              canOpen ? 'cursor-pointer hover:bg-slate-50' : 'cursor-not-allowed'
+            className={`flex w-full items-center gap-3.5 p-3 rounded-xl border transition-all duration-200 text-left ${
+              isCurrent
+                ? 'bg-white shadow-premium border-slate-200 text-univ-navy ring-1 ring-slate-100'
+                : canOpen
+                ? 'bg-transparent border-transparent hover:bg-slate-100/50 cursor-pointer text-slate-700'
+                : 'bg-transparent border-transparent opacity-45 cursor-not-allowed text-slate-400'
             }`}
             title={canOpen ? `Open ${step.label}` : `${step.label} is not available yet`}
           >
             {/* Connector + Circle */}
-            <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center shrink-0">
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center border-2 text-xs font-medium shrink-0 transition-colors duration-150 ${
+                className={`w-7.5 h-7.5 rounded-full flex items-center justify-center border-2 text-xs font-bold transition-all duration-200 ${
                   isCompleted || isPast
-                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    ? 'bg-univ-blue border-univ-blue text-white shadow-sm'
                     : isCurrent
-                    ? 'border-indigo-600 text-indigo-600 bg-white'
-                    : 'border-slate-300 text-slate-400 bg-white'
+                    ? 'bg-univ-gold border-univ-gold text-univ-navy shadow-sm'
+                    : 'border-slate-200 text-slate-400 bg-slate-50'
                 }`}
               >
                 {isCompleted || isPast ? (
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-4 w-4 stroke-[3]" />
                 ) : (
                   index + 1
                 )}
               </div>
-              {index < STEPS.length - 1 && (
-                <div
-                  className={`w-0.5 h-6 my-1 ${
-                    isPast || isCompleted ? 'bg-indigo-600' : 'bg-slate-200'
-                  }`}
-                />
+            </div>
+            {/* Label & Status Info */}
+            <div className="flex flex-col">
+              <span
+                className={`text-xs tracking-wide transition-colors ${
+                  isCurrent
+                    ? 'font-extrabold text-univ-navy'
+                    : isPast || isCompleted
+                    ? 'font-bold text-slate-700'
+                    : 'font-medium text-slate-400'
+                }`}
+              >
+                {step.label}
+              </span>
+              {isCurrent && (
+                <span className="text-[9px] text-univ-gold font-bold uppercase tracking-wider mt-0.5 animate-pulse">Active Step</span>
+              )}
+              {isCompleted && !isCurrent && (
+                <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">Completed</span>
               )}
             </div>
-            {/* Label */}
-            <span
-              className={`text-sm pt-1 ${
-                isCurrent
-                  ? 'font-semibold text-slate-900'
-                  : isPast || isCompleted
-                  ? 'font-medium text-slate-600'
-                  : 'text-slate-400'
-              }`}
-            >
-              {step.label}
-            </span>
           </button>
         );
       })}

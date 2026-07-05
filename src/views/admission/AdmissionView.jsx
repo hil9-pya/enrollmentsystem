@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { ClipboardList, FileText, CheckCircle, XCircle, User, ExternalLink } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
+import { useConfirm } from '../../context/ConfirmationContext';
 import StatusBadge from '../../components/StatusBadge';
 import SearchInput from '../../components/SearchInput';
 import { REQUIRED_DOCUMENTS, PROGRAMS } from '../../data/mockData';
 
 export default function AdmissionView() {
   const { dispatch, getStudentsByStatus, getStudentById } = useEnrollment();
+  const { confirm } = useConfirm();
 
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,9 +44,17 @@ export default function AdmissionView() {
     setTimeout(() => setFlashMessage(null), 3000);
   }
 
-  function handleApprove() {
+  async function handleApprove() {
     if (!selectedStudent) return;
-    dispatch({
+    const isConfirmed = await confirm({
+      title: 'Approve Admission',
+      message: `Are you sure you want to approve the documents for ${selectedStudent.firstName} ${selectedStudent.lastName}? This clears their admissions hold.`,
+      confirmText: 'Approve Documents',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!isConfirmed) return;
+    await dispatch({
       type: 'APPROVE_DOCUMENTS',
       payload: { studentId: selectedStudent.id, notes },
     });
@@ -53,9 +63,17 @@ export default function AdmissionView() {
     setNotes('');
   }
 
-  function handleReject() {
+  async function handleReject() {
     if (!selectedStudent) return;
-    dispatch({
+    const isConfirmed = await confirm({
+      title: 'Request Resubmission',
+      message: `Are you sure you want to request document resubmission for ${selectedStudent.firstName} ${selectedStudent.lastName}? This notifies the applicant to upload correct files.`,
+      confirmText: 'Request Resubmission',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+    await dispatch({
       type: 'REJECT_DOCUMENTS',
       payload: { studentId: selectedStudent.id, notes },
     });
@@ -103,158 +121,156 @@ export default function AdmissionView() {
       default:
         return <span className="inline-flex items-center gap-1 text-amber-600"><span className="h-2 w-2 rounded-full bg-amber-500" /> Pending</span>;
     }
-  };
-
-  return (
-    <div className="flex h-full">
-      {/* ── Left Panel: Queue ─────────────────────────────────────────────── */}
-      <div className="w-80 flex-shrink-0 border-r border-slate-200 flex flex-col">
-        <div className="p-6 pb-4 space-y-4">
-          <h2 className="text-base font-semibold text-slate-900">Document Review Queue</h2>
+  };  return (
+    <div className="flex h-full bg-slate-50">
+      {/* Left Panel: Queue */}
+      <div className="w-80 flex-shrink-0 border-r border-slate-200 flex flex-col bg-white shadow-sm">
+        <div className="p-5 pb-3.5 space-y-3.5">
+          <h2 className="text-xs font-bold text-univ-navy uppercase tracking-wider">Document Review Queue</h2>
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Search by name or ID..."
           />
         </div>
-
-        <div className="flex-1 overflow-y-auto">
+ 
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
           {filteredStudents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 px-6">
-              <ClipboardList className="h-10 w-10 mb-3" />
-              <p className="text-sm text-center">No documents pending review</p>
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 p-6">
+              <ClipboardList className="h-9 w-9 mb-2.5 opacity-55 text-slate-400" />
+              <p className="text-xs text-center font-bold text-slate-500">No applications pending review</p>
             </div>
           ) : (
             filteredStudents.map((student) => (
               <button
                 key={student.id}
                 onClick={() => handleSelectStudent(student.id)}
-                className={`w-full text-left p-4 border-b border-slate-100 transition-colors duration-150 cursor-pointer ${
+                className={`w-full text-left p-4.5 transition-colors cursor-pointer flex flex-col gap-2 ${
                   selectedStudentId === student.id
-                    ? 'bg-slate-50 border-l-2 border-l-indigo-600'
-                    : 'hover:bg-slate-50 border-l-2 border-l-transparent'
+                    ? 'bg-slate-50 border-l-4 border-l-univ-indigo'
+                    : 'hover:bg-slate-50/50 border-l-4 border-l-transparent'
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">
-                      {student.firstName} {student.lastName}
-                    </p>
-                    <p className="text-xs font-mono text-slate-400 mt-0.5">{student.id}</p>
-                  </div>
+                <div className="min-w-0 w-full">
+                  <p className="text-xs font-bold text-univ-navy truncate">
+                    {student.firstName} {student.lastName}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-400 font-bold mt-0.5">{student.id}</p>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center justify-between w-full mt-1.5">
                   <StatusBadge status={student.status} />
-                  <span className="text-xs text-slate-500 capitalize">{student.enrollmentType}</span>
+                  <span className="text-[10px] font-bold text-slate-500 capitalize">{student.enrollmentType}</span>
                 </div>
               </button>
             ))
           )}
         </div>
       </div>
-
-      {/* ── Right Panel: Detail ───────────────────────────────────────────── */}
+ 
+      {/* Right Panel: Detail */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Flash message */}
         {flashMessage && (
           <div
-            className={`mx-6 mt-4 px-4 py-3 rounded-md text-sm font-medium ${
+            className={`mx-8 mt-6 px-4 py-3 rounded-xl text-xs font-bold shadow-sm ${
               flashMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/40'
+                : 'bg-rose-50 text-rose-700 border border-rose-200/40'
             }`}
           >
             {flashMessage.message}
           </div>
         )}
-
+ 
         {!selectedStudent ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-            <ClipboardList className="h-12 w-12 mb-4" />
-            <p className="text-sm">Select a student to review their documents</p>
+            <ClipboardList className="h-10 w-10 mb-2.5 opacity-55 text-slate-400" />
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select an applicant to review</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* ── Student Header ──────────────────────────────────────── */}
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                <User className="h-5 w-5 text-slate-500" />
+          <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            {/* Student Header */}
+            <div className="flex items-center gap-4 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-premium">
+              <div className="h-12 w-12 rounded-xl bg-univ-blue/10 flex items-center justify-center flex-shrink-0 text-univ-blue font-extrabold text-lg">
+                {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-base font-extrabold text-univ-navy">
                   {selectedStudent.firstName} {selectedStudent.lastName}
                 </h2>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-sm font-mono text-slate-500">{selectedStudent.id}</span>
-                  <span className="text-sm text-slate-500">{program?.name || '—'}</span>
-                  <span className="text-sm text-slate-500 capitalize">{selectedStudent.enrollmentType}</span>
+                <div className="flex items-center gap-3.5 mt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <span className="font-mono text-slate-400">{selectedStudent.id}</span>
+                  <span>&bull;</span>
+                  <span>{program?.name || 'No program selected'}</span>
+                  <span>&bull;</span>
+                  <span className="text-univ-gold">{selectedStudent.enrollmentType}</span>
                 </div>
               </div>
             </div>
-
-            {/* ── Personal Information ────────────────────────────────── */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Personal Information</h3>
-              <div className="grid grid-cols-2 gap-4">
+ 
+            {/* Personal Information */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
+              <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Personal Contact Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <p className="text-xs text-slate-400 mb-1">Email</p>
-                  <p className="text-sm text-slate-700">{selectedStudent.email || '—'}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</p>
+                  <p className="text-xs font-bold text-univ-navy mt-1">{selectedStudent.email || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 mb-1">Phone</p>
-                  <p className="text-sm text-slate-700">{selectedStudent.phone || '—'}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Contact Phone</p>
+                  <p className="text-xs font-bold text-univ-navy mt-1">{selectedStudent.phone || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 mb-1">Birth Date</p>
-                  <p className="text-sm text-slate-700">{formatDate(selectedStudent.birthDate)}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Date of Birth</p>
+                  <p className="text-xs font-bold text-univ-navy mt-1">{formatDate(selectedStudent.birthDate)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 mb-1">Address</p>
-                  <p className="text-sm text-slate-700">{selectedStudent.address || '—'}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Residential Address</p>
+                  <p className="text-xs font-bold text-univ-navy mt-1 leading-relaxed">{selectedStudent.address || '—'}</p>
                 </div>
               </div>
             </div>
-
-            {/* ── Uploaded Documents ──────────────────────────────────── */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Uploaded Documents</h3>
-              <div className="border border-slate-200 rounded-md overflow-hidden">
-                <table className="w-full text-sm">
+ 
+            {/* Uploaded Documents */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
+              <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Submitted Documents Checklist</h3>
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Document Type</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">File Name</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Upload Date</th>
-                      <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                      <th className="px-4 py-3.5">Document Type</th>
+                      <th className="px-4 py-3.5">Filename Link</th>
+                      <th className="px-4 py-3.5">Date Uploaded</th>
+                      <th className="px-4 py-3.5">Verification</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {selectedStudent.documents.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                          No documents uploaded
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">
+                          No document files have been uploaded yet.
                         </td>
                       </tr>
                     ) : (
                       selectedStudent.documents.map((doc) => {
                         const documentUrl = getDocumentUrl(doc);
                         const displayName = doc.originalName || doc.fileName;
-
+ 
                         return (
-                          <tr key={doc.typeId} className="border-b border-slate-100 last:border-b-0">
-                            <td className="px-4 py-3 text-slate-700">
+                          <tr key={doc.typeId} className="hover:bg-slate-50/30">
+                            <td className="px-4 py-3.5 text-slate-700 font-semibold">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
                                 {getDocLabel(doc.typeId)}
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3.5">
                               {documentUrl ? (
                                 <a
                                   href={documentUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="inline-flex max-w-xs items-center gap-1.5 font-mono text-xs text-indigo-600 hover:text-indigo-800 hover:underline"
+                                  className="inline-flex max-w-xs items-center gap-1.5 font-mono text-xs font-bold text-univ-indigo hover:text-univ-blue hover:underline"
                                   title={`Open ${displayName}`}
                                 >
                                   <span className="truncate">{displayName}</span>
@@ -264,8 +280,8 @@ export default function AdmissionView() {
                                 <span className="font-mono text-xs text-slate-400">No file available</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-slate-500 text-xs">{formatDateTime(doc.uploadedAt)}</td>
-                            <td className="px-4 py-3 text-xs">{docStatusIcon(doc.status)}</td>
+                            <td className="px-4 py-3.5 text-slate-500 font-medium">{formatDateTime(doc.uploadedAt)}</td>
+                            <td className="px-4 py-3.5">{docStatusIcon(doc.status)}</td>
                           </tr>
                         );
                       })
@@ -274,28 +290,28 @@ export default function AdmissionView() {
                 </table>
               </div>
             </div>
-
-            {/* ── Review Actions ──────────────────────────────────────── */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Review Actions</h3>
+ 
+            {/* Review Actions */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
+              <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Admissions Evaluation Actions</h3>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add notes for this student..."
+                placeholder="Write evaluation feedback or rejection details here..."
                 rows={3}
-                className="w-full px-4 py-3 text-sm border border-slate-200 rounded-md placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-150 resize-none"
+                className="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white resize-none"
               />
-              <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-3 mt-5">
                 <button
                   onClick={handleApprove}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors duration-150"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm cursor-pointer"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Approve Documents
+                  Approve Application
                 </button>
                 <button
                   onClick={handleReject}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 rounded-md hover:bg-rose-700 transition-colors duration-150"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-all shadow-sm cursor-pointer"
                 >
                   <XCircle className="h-4 w-4" />
                   Request Resubmission

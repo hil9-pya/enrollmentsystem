@@ -92,89 +92,100 @@ export default function FulfillmentStep() {
     text += `Accounting Office — Official System Receipt\n`;
 
     downloadTextFile(`Official_Receipt_${student.id}.txt`, text);
-  };
-
-  return (
+  };  return (
     <div className="space-y-6">
       {!isEnrolled ? (
-        <div className="bg-white border border-slate-200 rounded-md p-8 text-center space-y-4">
-          <Clock className="h-12 w-12 text-amber-500 mx-auto animate-pulse" />
-          <h2 className="text-lg font-semibold text-slate-900">Awaiting Registrar Validation</h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
-            Your simulated payment clearance is complete. Your files have been routed to the <span className="font-semibold text-slate-800">Registrar's Queue</span> for final validation and enrollment confirmation.
+        <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-6 shadow-premium">
+          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto shadow-sm animate-pulse border border-univ-gold/10">
+            <Clock className="h-8 w-8 text-univ-gold" />
+          </div>
+          <h2 className="text-xl font-extrabold text-univ-navy">Awaiting Registrar Validation</h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
+            Your simulated tuition payment is complete. Your files have been routed to the <span className="font-bold text-univ-navy">Registrar's Queue</span> for final validation and enrollment confirmation.
           </p>
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-mono p-3 rounded max-w-sm mx-auto">
+          <div className="bg-amber-50 border border-univ-gold/20 text-univ-gold text-[10px] font-bold font-mono px-4.5 py-2.5 rounded-xl max-w-sm mx-auto shadow-sm tracking-widest">
             CURRENT PIPELINE STATE: VALIDATION_PENDING
           </div>
-          <p className="text-xs text-slate-400">
-            Please select the "Registrar" role in the top header bar to approve this student's records, then switch back to view generated fulfillment packages.
-          </p>
+          <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl max-w-md mx-auto text-center">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Administrative Simulation Action Required</p>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Please click the <span className="font-bold text-univ-navy">"Staff Portal"</span> from the main page, sign in as a <span className="font-bold">Registrar</span>, approve this student record, then return here to retrieve your documents.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Header Banner */}
-          <div className="bg-white border border-slate-200 rounded-md p-8 text-center space-y-4">
-            <CheckCircle className="h-16 w-16 text-emerald-600 mx-auto" />
-            <h2 className="text-xl font-bold text-slate-900">Enrollment Complete!</h2>
-            <p className="text-sm text-slate-500 max-w-lg mx-auto">
-              Congratulations! Your official registration records have been generated. You are now officially enrolled in the system.
+          <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-6 shadow-premium">
+            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto shadow-sm border border-emerald-100/50">
+              <CheckCircle className="h-10 w-10 text-emerald-500 stroke-[2]" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-univ-navy">Enrollment Complete!</h2>
+            <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed font-medium">
+              Congratulations! Your official registration records have been verified by the Registrar. You are now officially enrolled for the upcoming academic semester at NCST.
             </p>
-
-            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-4 py-2 rounded-full font-mono">
+ 
+            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/40 text-emerald-700 text-xs font-bold px-5 py-2.5 rounded-full font-mono shadow-sm tracking-wide">
               <ShieldCheck className="h-4 w-4" /> STUDENT STATUS: ENROLLED
             </div>
           </div>
-
+ 
           {/* Fulfillment Documents list */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Official Generated Documents</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Official Generated Documents</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               {/* Card 1 */}
-              <div className="bg-white border border-slate-200 rounded-md p-5 flex flex-col justify-between h-48">
+              <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
                 <div>
-                  <FileDown className="h-6 w-6 text-indigo-600 mb-3" />
-                  <h4 className="text-sm font-semibold text-slate-900">Class Schedule</h4>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-univ-indigo inline-block mb-3.5 shadow-sm">
+                    <FileDown className="h-6 w-6 stroke-[2]" />
+                  </div>
+                  <h4 className="text-xs font-bold text-univ-navy uppercase tracking-wider">Class Schedule</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed font-medium">
                     Your generated lecture schedule containing room details, schedules, and instructor assignments.
                   </p>
                 </div>
                 <button
                   onClick={handleDownloadSchedule}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-all cursor-pointer"
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" /> Download Schedule
                 </button>
               </div>
-
+ 
               {/* Card 2 */}
-              <div className="bg-white border border-slate-200 rounded-md p-5 flex flex-col justify-between h-48">
+              <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
                 <div>
-                  <FileDown className="h-6 w-6 text-indigo-600 mb-3" />
-                  <h4 className="text-sm font-semibold text-slate-900">Certificate of Registration</h4>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-univ-indigo inline-block mb-3.5 shadow-sm">
+                    <FileDown className="h-6 w-6 stroke-[2]" />
+                  </div>
+                  <h4 className="text-xs font-bold text-univ-navy uppercase tracking-wider">Certificate of Registration</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed font-medium">
                     Official registration document verifying enrollment type, personal records, and program details.
                   </p>
                 </div>
                 <button
                   onClick={handleDownloadRegForm}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-all cursor-pointer"
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" /> Download COA Form
                 </button>
               </div>
-
+ 
               {/* Card 3 */}
-              <div className="bg-white border border-slate-200 rounded-md p-5 flex flex-col justify-between h-48">
+              <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
                 <div>
-                  <FileDown className="h-6 w-6 text-indigo-600 mb-3" />
-                  <h4 className="text-sm font-semibold text-slate-900">Official Payment Receipt</h4>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <div className="p-2.5 rounded-xl bg-indigo-50 text-univ-indigo inline-block mb-3.5 shadow-sm">
+                    <FileDown className="h-6 w-6 stroke-[2]" />
+                  </div>
+                  <h4 className="text-xs font-bold text-univ-navy uppercase tracking-wider">Official Payment Receipt</h4>
+                  <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed font-medium">
                     Receipt from finance ledger verifying payment clearance and itemized fees.
                   </p>
                 </div>
                 <button
                   onClick={handleDownloadReceipt}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-all cursor-pointer"
+                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" /> Download Receipt
                 </button>

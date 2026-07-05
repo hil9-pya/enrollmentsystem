@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { SUBJECTS, MISC_FEES } from '../data/mockData.js';
+import { useAuth } from './AuthContext';
 
 const EnrollmentContext = createContext(null);
 const authFetch = (url, options = {}) => {
@@ -29,6 +30,7 @@ const safeJson = async (res) => {
 
 
 export function EnrollmentProvider({ children }) {
+  const { token } = useAuth();
   const [currentRole, setRole] = useState('student');
   const [students, setStudents] = useState([]);
   const [currentStudentId, setCurrentStudentId] = useState(null);
@@ -49,8 +51,12 @@ export function EnrollmentProvider({ children }) {
   // 1. Fetch initial students array from backend SQLite on mount and poll periodically
   useEffect(() => {
     async function loadStudents() {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
       try {
-        const res = await authFetch('/api/students');
+        const res = await authFetch('/api/admin/students');
         const data = await safeJson(res);
         setStudents(data);
       } catch (err) {
@@ -63,7 +69,31 @@ export function EnrollmentProvider({ children }) {
 
     const interval = setInterval(loadStudents, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
+
+  // 1b. Fetch active student profile from backend when activeStudentId changes (even without admin token)
+  useEffect(() => {
+    async function loadActiveStudent() {
+      if (!activeStudentId) return;
+      try {
+        const res = await fetch(`/api/students/${activeStudentId}`);
+        const data = await safeJson(res);
+        if (data && data.id) {
+          setStudents((prev) => {
+            const exists = prev.some((s) => s.id === data.id);
+            if (exists) {
+              return prev.map((s) => (s.id === data.id ? data : s));
+            } else {
+              return [...prev, data];
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load active student:', err.message || err);
+      }
+    }
+    loadActiveStudent();
+  }, [activeStudentId]);
 
   // 2. Custom Dispatch Interceptor to handle async HTTP calls and synchronize state
   const dispatch = useCallback(async (action) => {
@@ -179,7 +209,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'APPROVE_DOCUMENTS') {
-        const res = await authFetch(`/api/students/${payload.studentId}/approve-admission`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/approve-admission`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notes: payload.notes }),
@@ -188,7 +218,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'REJECT_DOCUMENTS') {
-        const res = await authFetch(`/api/students/${payload.studentId}/reject-admission`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/reject-admission`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notes: payload.notes }),
@@ -197,7 +227,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'APPROVE_ADVISING') {
-        const res = await authFetch(`/api/students/${payload.studentId}/approve-advising`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/approve-advising`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notes: payload.notes }),
@@ -207,7 +237,7 @@ export function EnrollmentProvider({ children }) {
       
       else if (type === 'UPDATE_STUDENT_SUBJECTS') {
         const subjectIds = payload.subjects.map(s => s.subjectId);
-        const res = await authFetch(`/api/students/${payload.studentId}/subjects`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/subjects`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ subjectIds }),
@@ -216,14 +246,14 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'CONFIRM_PAYMENT') {
-        const res = await authFetch(`/api/students/${payload.studentId}/confirm-payment`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/confirm-payment`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);
       } 
       
       else if (type === 'VALIDATE_ENROLLMENT') {
-        const res = await authFetch(`/api/students/${payload.studentId}/validate-enrollment`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/validate-enrollment`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);
