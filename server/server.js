@@ -16,7 +16,6 @@ import enrollmentRoutes from './enrollmentRoutes.js';
 import studentsRoutes from './studentsRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -52,6 +51,14 @@ const startServer = async () => {
 
     if (process.env.USE_MEMORY_DB === 'true') {
       console.log('Initializing in-memory MongoDB server...');
+      let MongoMemoryServer;
+      try {
+        ({ MongoMemoryServer } = await import('mongodb-memory-server'));
+      } catch (importError) {
+        console.error("USE_MEMORY_DB=true but 'mongodb-memory-server' is not installed.");
+        console.error("Install it with: npm install -D mongodb-memory-server (run in the server folder)");
+        throw importError;
+      }
       mongoServerInstance = await MongoMemoryServer.create();
       mongoUri = mongoServerInstance.getUri();
       console.log('In-memory MongoDB server started.');
