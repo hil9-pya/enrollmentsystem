@@ -13,7 +13,7 @@ const STEPS = [
 
 export { STEPS };
 
-export default function StepIndicator({ currentStep, completedSteps = [], onStepClick }) {
+export default function StepIndicator({ currentStep, completedSteps = [], onStepClick, allCompleted = false }) {
   const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
   const canClickSteps = typeof onStepClick === 'function';
 
@@ -25,6 +25,9 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
         const isPast = index < currentIndex;
         const canOpen = canClickSteps && (isCurrent || isPast || isCompleted);
 
+        // When allCompleted (enrolled), every step is completed
+        const isFullyDone = allCompleted || isCompleted;
+
         return (
           <button
             key={step.key}
@@ -33,8 +36,10 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
             disabled={!canOpen}
             aria-current={isCurrent ? 'step' : undefined}
             className={`flex w-full items-center gap-3.5 p-3 rounded-xl border transition-all duration-200 text-left ${
-              isCurrent
+              isCurrent && !allCompleted
                 ? 'bg-white shadow-premium border-slate-200 text-univ-navy ring-1 ring-slate-100'
+                : isCurrent && allCompleted
+                ? 'bg-emerald-50/50 shadow-premium border-emerald-200/60 text-univ-navy ring-1 ring-emerald-100/50'
                 : canOpen
                 ? 'bg-transparent border-transparent hover:bg-slate-100/50 cursor-pointer text-slate-700'
                 : 'bg-transparent border-transparent opacity-45 cursor-not-allowed text-slate-400'
@@ -45,14 +50,16 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
             <div className="flex items-center justify-center shrink-0">
               <div
                 className={`w-7.5 h-7.5 rounded-full flex items-center justify-center border-2 text-xs font-bold transition-all duration-200 ${
-                  isCompleted || isPast
+                  allCompleted
+                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                    : isCompleted || isPast
                     ? 'bg-univ-blue border-univ-blue text-white shadow-sm'
                     : isCurrent
                     ? 'bg-univ-gold border-univ-gold text-univ-navy shadow-sm'
                     : 'border-slate-200 text-slate-400 bg-slate-50'
                 }`}
               >
-                {isCompleted || isPast ? (
+                {allCompleted || isCompleted || isPast ? (
                   <Check className="h-4 w-4 stroke-[3]" />
                 ) : (
                   index + 1
@@ -65,17 +72,20 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
                 className={`text-xs tracking-wide transition-colors ${
                   isCurrent
                     ? 'font-extrabold text-univ-navy'
-                    : isPast || isCompleted
+                    : isPast || isCompleted || allCompleted
                     ? 'font-bold text-slate-700'
                     : 'font-medium text-slate-400'
                 }`}
               >
                 {step.label}
               </span>
-              {isCurrent && (
+              {isCurrent && !allCompleted && (
                 <span className="text-[9px] text-univ-gold font-bold uppercase tracking-wider mt-0.5 animate-pulse">Active Step</span>
               )}
-              {isCompleted && !isCurrent && (
+              {isCurrent && allCompleted && (
+                <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">✓ Completed</span>
+              )}
+              {(isFullyDone || isCompleted) && !isCurrent && (
                 <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">Completed</span>
               )}
             </div>

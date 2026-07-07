@@ -1,13 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { SUBJECTS } from '../../../data/mockData';
-import { Search, AlertTriangle, ArrowLeft, ArrowRight, Trash2, BookOpen } from 'lucide-react';
+import { Search, AlertTriangle, ArrowLeft, ArrowRight, Trash2, BookOpen, Clock } from 'lucide-react';
 import SearchInput from '../../../components/SearchInput';
+import Modal from '../../../components/Modal';
 
 export default function SubjectEnrollmentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch, getSubjectById } = useEnrollment();
   const student = getActiveStudent();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestText, setRequestText] = useState('');
+  const [pendingAction, setPendingAction] = useState(null);
 
   const programId = student?.programId;
   const selectedSubjects = student?.selectedSubjects || [];
@@ -52,11 +56,33 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
   }, [selectedSubjects, getSubjectById]);
 
   const handleAddSubject = (subjectId) => {
-    dispatch({ type: 'ADD_SUBJECT', payload: { subjectId } });
+    const sub = SUBJECTS.find(s => s.id === subjectId);
+    if (!sub || !student) return;
+    const name = `${student.firstName} ${student.lastName}`;
+    setPendingAction({ type: 'add', subject: sub });
+    setRequestText(`${name} wants to make changes and add the following subjects: ${sub.code}`);
+    setShowRequestModal(true);
   };
 
   const handleRemoveSubject = (subjectId) => {
-    dispatch({ type: 'REMOVE_SUBJECT', payload: { subjectId } });
+    const sub = getSubjectById(subjectId);
+    if (!sub || !student) return;
+    const name = `${student.firstName} ${student.lastName}`;
+    setPendingAction({ type: 'drop', subject: sub });
+    setRequestText(`${name} wants to make changes and drop the following subjects: ${sub.code}`);
+    setShowRequestModal(true);
+  };
+
+  const handleSubmitRequest = async () => {
+    try {
+      await dispatch({
+        type: 'UPDATE_ACTIVE_STUDENT',
+        payload: { subjectChangeRequest: requestText },
+      });
+      setShowRequestModal(false);
+    } catch (err) {
+      console.error('Failed to submit subject change request:', err);
+    }
   };
 
   const handleProceedToPayment = async () => {
@@ -89,7 +115,22 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
         <p className="text-xs text-slate-500 mb-8 leading-relaxed font-medium">
           Select courses for the upcoming term. You can enroll in up to 18 units. Please watch for schedule conflicts.
         </p>
- 
+
+        {student?.subjectChangeRequest && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4.5 mb-6 flex gap-3.5 items-start shadow-sm text-left">
+            <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs">
+              <span className="font-extrabold text-amber-900 uppercase tracking-wider block">Subject Modification Request Pending</span>
+              <p className="text-amber-800 leading-relaxed font-mono italic">
+                "{student.subjectChangeRequest}"
+              </p>
+              <p className="text-[10px] text-amber-600 font-medium">
+                Our academic advising staff has been notified and is reviewing your request. Modified subjects will be updated automatically once approved.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Left Panel: Available Subjects (60%) */}
           <div className="lg:col-span-3 space-y-4">
@@ -270,6 +311,48 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
           Proceed to Payment ({selectedSubjects.length} Courses)
         </button>
       </div>
+
+      {/* Request Change Modal */}
+      <Modal
+        isOpen={showRequestModal}
+        onClose={() => setShowRequestModal(false)}
+        title="Request Subject Modification"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4 text-left">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex gap-2.5 items-start text-xs font-semibold text-blue-850">
+            <AlertTriangle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              Academic regulations restrict direct subject additions or drops. Your request will be forwarded to your Academic Adviser for authorization.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+              Advising Request Message
+            </label>
+            <textarea
+              value={requestText}
+              onChange={(e) => setRequestText(e.target.value)}
+              rows={4}
+              className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-white font-mono resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 mt-4">
+            <button
+              onClick={() => setShowRequestModal(false)}
+              className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmitRequest}
+              className="px-4.5 py-2 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all cursor-pointer shadow-sm"
+            >
+              Submit Request to Staff
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

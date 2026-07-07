@@ -214,6 +214,22 @@ export default function AdviserView() {
                   </div>
                 </div>
               </div>
+
+              {/* Student Change Request Alert */}
+              {selectedStudent.subjectChangeRequest && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm space-y-2 text-left">
+                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-[10px] uppercase tracking-wider">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 animate-pulse" />
+                    <span>Enrolled Course Modification Request</span>
+                  </div>
+                  <p className="text-xs text-amber-900 font-mono italic leading-relaxed bg-white/60 p-3 rounded-xl border border-amber-100/60 shadow-inner">
+                    "{selectedStudent.subjectChangeRequest}"
+                  </p>
+                  <p className="text-[10px] text-amber-750 font-medium">
+                    Please use the <strong>Modify Subjects Selection</strong> override button at the bottom of the page to apply these changes.
+                  </p>
+                </div>
+              )}
  
               {/* Academic Profile */}
               <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">

@@ -114,6 +114,7 @@ const updateStudent = asyncHandler(async (req, res) => {
     'paymentMethod',
     'status',
     'submitDocumentsOnCampus',
+    'subjectChangeRequest',
   ];
 
   for (const field of allowedFields) {
@@ -203,6 +204,29 @@ const selectProgram = asyncHandler(async (req, res) => {
   student.programId = programId;
   student.academicTerm = academicTerm;
 
+  // Auto-enroll required subjects depending on programId and enrollmentType (nature)
+  const yearLevel = (student.enrollmentType === 'returning' || student.enrollmentType === 'continuing') ? 2 : 1;
+  let defaultSubjectIds = [];
+  if (programId === 'bscs') {
+    if (yearLevel === 1) defaultSubjectIds = ['cs101', 'cs102'];
+    else if (yearLevel === 2) defaultSubjectIds = ['cs201', 'cs202'];
+  } else if (programId === 'bsba') {
+    if (yearLevel === 1) defaultSubjectIds = ['ba101', 'ba102'];
+    else if (yearLevel === 2) defaultSubjectIds = ['ba201', 'ba202'];
+  } else if (programId === 'bsn') {
+    if (yearLevel === 1) defaultSubjectIds = ['nu101', 'nu102', 'nu103'];
+    else if (yearLevel === 2) defaultSubjectIds = ['nu201', 'nu202'];
+  }
+
+  student.selectedSubjects = defaultSubjectIds.map((subjectId) => ({
+    subjectId,
+    addedAt: new Date(),
+  }));
+
+  const { tuitionBreakdown, totalTuition } = computeTuition(defaultSubjectIds);
+  student.tuitionBreakdown = tuitionBreakdown;
+  student.totalTuition = totalTuition;
+
   // Once the admission office has approved documents and the student has
   // now picked a program, the application enters the adviser's queue.
   if (student.status === 'documents_approved') {
@@ -239,6 +263,9 @@ const setSubjects = asyncHandler(async (req, res) => {
   // } else if (subjectIds.length === 0 && previousStatus === 'payment_pending') {
   //   student.status = 'advising_approved';
   // }
+
+  // Clear any pending subject change requests since staff has actioned it
+  student.subjectChangeRequest = '';
 
   await student.save();
   res.json(student);
@@ -297,6 +324,7 @@ const approveAdvising = asyncHandler(async (req, res) => {
 
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_approved';
+  student.subjectChangeRequest = '';
 
   await student.save();
   res.json(student);

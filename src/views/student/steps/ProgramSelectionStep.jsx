@@ -11,6 +11,26 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
   const selectedProgram = PROGRAMS.find((p) => p.id === selectedProgramId);
 
+  React.useEffect(() => {
+    if (student && student.enrollmentType) {
+      let expectedTerm = '';
+      if (student.enrollmentType === 'new' || student.enrollmentType === 'transfer') {
+        expectedTerm = '1s-2026';
+      } else if (student.enrollmentType === 'returning' || student.enrollmentType === 'continuing') {
+        expectedTerm = '2s-2026';
+      }
+      if (expectedTerm && student.academicTerm !== expectedTerm) {
+        dispatch({
+          type: 'SELECT_PROGRAM',
+          payload: {
+            programId: student.programId || '',
+            academicTerm: expectedTerm,
+          },
+        });
+      }
+    }
+  }, [student?.enrollmentType, student?.academicTerm, student?.programId, dispatch]);
+
   function handleChange(field, value) {
     dispatch({
       type: 'SELECT_PROGRAM',
@@ -21,7 +41,8 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
     });
   }
 
-  const isComplete = selectedProgramId && selectedTerm;
+  // 2nd Semester enrollments must go through Advising (Continue button disabled)
+  const isComplete = selectedProgramId && selectedTerm && selectedTerm !== '2s-2026';
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
@@ -67,6 +88,18 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
               </option>
             ))}
           </select>
+
+          {selectedTerm === '2s-2026' && (
+            <div className="mt-4 p-4.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-850 text-xs font-semibold flex flex-col gap-2 shadow-sm">
+              <span className="text-amber-900 font-extrabold text-xs uppercase tracking-wider">⚠️ Advising Action Required</span>
+              <p className="leading-relaxed text-amber-900">
+                Online self-enrollment is locked for second semester subjects. To enroll for second semesteral subjects, you must contact advising or the enrollment office to confide with and make changes.
+              </p>
+              <p className="text-[10px] text-amber-700">
+                Please contact: <a href="mailto:advising@ncst.edu.ph" className="underline font-bold text-univ-indigo">advising@ncst.edu.ph</a> or visit the Advising Office on campus.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

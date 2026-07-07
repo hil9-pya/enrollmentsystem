@@ -405,10 +405,10 @@ export const INITIAL_STUDENTS = [
       { typeId: 'birth-cert', fileName: 'carlos_birthcert.pdf', uploadedAt: '2026-06-20T09:20:00', status: 'approved' },
       { typeId: '2x2-photo', fileName: 'carlos_photo.jpg', uploadedAt: '2026-06-20T09:25:00', status: 'approved' },
     ],
-    selectedSubjects: [{ subjectId: 'cs101' }, { subjectId: 'cs102' }],
+    selectedSubjects: [{ subjectId: 'cs201' }, { subjectId: 'cs202' }],
     tuitionBreakdown: [
-      { label: 'CS 101 - Intro to Computing', amount: 4500 },
-      { label: 'CS 102 - Programming 1', amount: 4500 },
+      { label: 'CS 201 - Data Structures', amount: 4500 },
+      { label: 'CS 202 - Object-Oriented Programming', amount: 4500 },
       { label: 'Library Fee', amount: 1500 },
       { label: 'Laboratory Fee', amount: 2500 },
       { label: 'Athletic Fee', amount: 800 },

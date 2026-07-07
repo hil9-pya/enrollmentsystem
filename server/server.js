@@ -157,41 +157,66 @@ const startServer = async () => {
     app.use(notFound);
     app.use(errorHandler);
 
-    const server = app.listen(PORT, () => {
-      console.log('=======================================================');
-      console.log(`✅ Backend server is live and running on port ${PORT}`);
-      console.log(`   Ready to accept connections from ${process.env.FRONTEND_URL}`);
-      console.log('=======================================================');
+    const server = await new Promise((resolve, reject) => {
+      const listener = app.listen(PORT, () => {
+        console.log('=======================================================');
+        console.log(`✅ Backend server is live and running on port ${PORT}`);
+        console.log(`   Ready to accept connections from ${process.env.FRONTEND_URL}`);
+        console.log('=======================================================');
+        resolve(listener);
+      });
+
+      listener.on('error', (err) => {
+        reject(err);
+      });
     });
+
     return server; // Return the server instance for graceful shutdown
   } catch (error) {
-    console.error(`\nMongoDB connection failed: ${error.message}`);
-    console.error(`Attempted to connect to: ${process.env.MONGO_URI}`);
-    console.error('Please ensure that MongoDB is running and that the MONGO_URI in your .env file is correct.\n');
+    if (error.code === 'EADDRINUSE') {
+      console.error(`\nFATAL ERROR: Port ${process.env.PORT || 5000} is already in use.`);
+      console.error('Please stop the process using that port, or change PORT in your .env file.');
+    } else {
+      console.error(`\nMongoDB connection failed: ${error.message}`);
+      console.error(`Attempted to connect to: ${process.env.MONGO_URI}`);
+      console.error('Please ensure that MongoDB is running and that the MONGO_URI in your .env file is correct.\n');
+    }
     process.exit(1);
   }
 };
 
 startServer().then(server => {
-  if (!server) return; // Don't set up listeners if server failed to start
+  if (!server) return;
 
   // --- Reliability: Graceful Shutdown ---
   // Ensures the server closes connections cleanly on shutdown signals.
-  const gracefulShutdown = (signal) => {
+  const gracefulShutdown = (signal, callback) => {
     console.log(`\n${signal} received. Shutting down gracefully...`);
-    server.close(() => {
+    server.close(async () => {
       console.log('✅ HTTP server closed.');
-      mongoose.connection.close(false, async () => {
-        console.log('✅ MongoDB connection closed.');
-        if (mongoServerInstance) {
-          await mongoServerInstance.stop();
-          console.log('✅ In-memory MongoDB server stopped.');
-        }
+      await mongoose.connection.close(false);
+      console.log('✅ MongoDB connection closed.');
+      if (mongoServerInstance) {
+        await mongoServerInstance.stop();
+        console.log('✅ In-memory MongoDB server stopped.');
+      }
+      if (callback) {
+        callback();
+      } else {
         process.exit(0);
-      });
+      }
     });
   };
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // For `pm2 stop` or container orchestration
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));   // For Ctrl+C in the terminal
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.once('SIGUSR2', () => {
+    gracefulShutdown('SIGUSR2', () => {
+      process.kill(process.pid, 'SIGUSR2');
+    });
+  });
+}).catch((error) => {
+  console.error('\nServer startup failed.');
+  console.error(error);
+  process.exit(1);
 });

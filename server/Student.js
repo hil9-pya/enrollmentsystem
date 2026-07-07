@@ -62,6 +62,7 @@ const StudentSchema = new mongoose.Schema(
 
     admissionNotes: { type: String, default: '' },
     adviserNotes: { type: String, default: '' },
+    subjectChangeRequest: { type: String, default: '' },
   },
   {
     timestamps: true,

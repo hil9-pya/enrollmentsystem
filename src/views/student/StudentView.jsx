@@ -61,6 +61,9 @@ function getCompletedStepsFromStudent(student) {
   if (rank >= 7) {
     completed.push('payment');
   }
+  if (rank >= 9) {
+    completed.push('fulfillment');
+  }
 
   return completed;
 }
@@ -211,6 +214,10 @@ export default function StudentView() {
         updated.push('payment');
         changed = true;
       }
+      if (rank >= 9 && !updated.includes('fulfillment')) {
+        updated.push('fulfillment');
+        changed = true;
+      }
 
       return changed ? updated : prev;
     });
@@ -272,7 +279,11 @@ export default function StudentView() {
       case 'payment':
         return <PaymentStep onNext={onNext} onBack={onBack} />;
       case 'fulfillment':
-        return <FulfillmentStep />;
+        return <FulfillmentStep onReturnToGateway={() => {
+              setActiveStudent(null);
+              setIsVerified(false);
+              window.location.href = '/';
+            }} />;
       default:
         return <EnrollmentTypeStep onNext={onNext} />;
     }
@@ -301,6 +312,7 @@ export default function StudentView() {
             currentStep={effectiveStep}
             completedSteps={completedSteps}
             onStepClick={handleStepClick}
+            allCompleted={student?.status === 'enrolled'}
           />
         </div>
 
@@ -308,7 +320,11 @@ export default function StudentView() {
         {hasStudentInfo && (
           <div className="p-5 border-t border-slate-100 bg-slate-50/30">
             <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-premium">
-              <span className="px-1.5 py-0.5 text-[8px] font-bold bg-univ-blue/10 text-univ-blue border border-univ-blue/20 rounded uppercase tracking-wider inline-block">Active Applicant</span>
+              <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider inline-block ${
+                student?.status === 'enrolled'
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/40'
+                  : 'bg-univ-blue/10 text-univ-blue border border-univ-blue/20'
+              }`}>{student?.status === 'enrolled' ? '✓ Enrolled Student' : 'Active Applicant'}</span>
               <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
                 {student.firstName} {student.lastName}
               </p>
