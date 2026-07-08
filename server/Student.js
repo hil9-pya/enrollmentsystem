@@ -41,6 +41,11 @@ const StudentSchema = new mongoose.Schema(
     birthDate: { type: String, default: '' },
     address: { type: String, default: '' },
 
+    studentId: { type: String, default: null },
+    schoolEmail: { type: String, default: null },
+    acceptanceLetterSeen: { type: Boolean, default: false },
+
+
     enrollmentType: { type: String, default: null },
     programId: { type: String, default: null },
     academicTerm: { type: String, default: null },
@@ -63,6 +68,8 @@ const StudentSchema = new mongoose.Schema(
     admissionNotes: { type: String, default: '' },
     adviserNotes: { type: String, default: '' },
     subjectChangeRequest: { type: String, default: '' },
+
+    applicantPassword: { type: String, default: null },
   },
   {
     timestamps: true,
@@ -71,6 +78,7 @@ const StudentSchema = new mongoose.Schema(
       transform: (_doc, ret) => {
         ret.id = ret._id;
         delete ret.__v;
+        delete ret.applicantPassword; // Exclude password from API responses
         return ret;
       },
     },
@@ -84,6 +92,22 @@ const StudentSchema = new mongoose.Schema(
     },
   }
 );
+
+import bcrypt from 'bcryptjs';
+
+StudentSchema.pre('save', async function (next) {
+  if (!this.isModified('applicantPassword') || !this.applicantPassword) {
+    return next();
+  }
+  const salt = await bcrypt.genSalt(10);
+  this.applicantPassword = await bcrypt.hash(this.applicantPassword, salt);
+  next();
+});
+
+StudentSchema.methods.compareApplicantPassword = async function (enteredPassword) {
+  if (!this.applicantPassword) return false;
+  return await bcrypt.compare(enteredPassword, this.applicantPassword);
+};
 
 const Student = mongoose.model('Student', StudentSchema);
 export default Student;

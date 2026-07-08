@@ -181,7 +181,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'ADD_SUBJECT' || type === 'REMOVE_SUBJECT') {
-        const currentStudent = students.find(s => s.id === activeStudentId);
+        const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
         let subjectIds = currentStudent?.selectedSubjects?.map(s => s.subjectId) || [];
         
         if (type === 'ADD_SUBJECT') {
@@ -208,7 +208,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'PROCESS_PAYMENT') {
-        const currentStudent = students.find(s => s.id === activeStudentId);
+        const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
         const res = await authFetch(`/api/students/${activeStudentId}/payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -295,12 +295,12 @@ export function EnrollmentProvider({ children }) {
   );
 
   const getStudentById = useCallback(
-    (id) => students.find((s) => s.id === id),
+    (id) => students.find((s) => s.id === id || s.studentId === id),
     [students]
   );
 
   const getActiveStudent = useCallback(
-    () => students.find((s) => s.id === activeStudentId),
+    () => students.find((s) => s.id === activeStudentId || s.studentId === activeStudentId),
     [students, activeStudentId]
   );
 

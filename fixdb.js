@@ -1,0 +1,1 @@
+import mongoose from 'mongoose'; import User from './server/User.js'; mongoose.connect('mongodb://127.0.0.1:27017/enrollment-system').then(async () => { const result = await User.updateOne({ role: 'student' }, { "$set" : { username: 'STU-2026-0000' } }); console.log(result); process.exit(0); });

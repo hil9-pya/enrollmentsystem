@@ -13,13 +13,14 @@ const STEPS = [
 
 export { STEPS };
 
-export default function StepIndicator({ currentStep, completedSteps = [], onStepClick, allCompleted = false }) {
-  const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
+export default function StepIndicator({ currentStep, completedSteps = [], onStepClick, allCompleted = false, steps = STEPS }) {
+  const currentIndex = steps.findIndex((s) => s.key === currentStep);
   const canClickSteps = typeof onStepClick === 'function';
 
   return (
     <nav className="flex flex-col gap-1">
-      {STEPS.map((step, index) => {
+      {steps.map((step, index) => {
+
         const isCompleted = completedSteps.includes(step.key);
         const isCurrent = step.key === currentStep;
         const isPast = index < currentIndex;

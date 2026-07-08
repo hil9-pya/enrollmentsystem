@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ClipboardList, FileText, CheckCircle, XCircle, User, ExternalLink, AlertCircle } from 'lucide-react';
+import { ClipboardList, FileText, CheckCircle, XCircle, User, ExternalLink, AlertCircle, X } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import StatusBadge from '../../components/StatusBadge';
@@ -14,6 +14,7 @@ export default function AdmissionView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [notes, setNotes] = useState('');
   const [flashMessage, setFlashMessage] = useState(null);
+  const [previewDoc, setPreviewDoc] = useState(null); // { url, name }
 
   const queueStudents = getStudentsByStatus('documents_submitted');
 
@@ -276,16 +277,15 @@ export default function AdmissionView() {
                             </td>
                             <td className="px-4 py-3.5">
                               {documentUrl ? (
-                                <a
-                                  href={documentUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex max-w-xs items-center gap-1.5 font-mono text-xs font-bold text-univ-indigo hover:text-univ-blue hover:underline"
-                                  title={`Open ${displayName}`}
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDoc({ url: documentUrl, name: displayName })}
+                                  className="inline-flex max-w-xs items-center gap-1.5 font-mono text-xs font-bold text-univ-indigo hover:text-univ-blue hover:underline cursor-pointer bg-transparent border-none text-left"
+                                  title={`Preview ${displayName}`}
                                 >
                                   <span className="truncate">{displayName}</span>
                                   <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
-                                </a>
+                                </button>
                               ) : (
                                 <span className="font-mono text-xs text-slate-400">No file available</span>
                               )}
@@ -331,6 +331,56 @@ export default function AdmissionView() {
           </div>
         )}
       </div>
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 md:p-10">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-sm font-bold text-univ-navy">{previewDoc.name}</h3>
+                <p className="text-[10px] text-slate-400 font-mono mt-0.5">Document Preview</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <a
+                  href={previewDoc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open in New Tab
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 transition-all cursor-pointer bg-white"
+                  title="Close preview"
+                >
+                  <X className="h-4.5 w-4.5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="flex-1 bg-slate-100 p-4 flex items-center justify-center overflow-auto">
+              {previewDoc.url.toLowerCase().split('?')[0].endsWith('.pdf') ? (
+                <iframe
+                  src={previewDoc.url}
+                  title={previewDoc.name}
+                  className="w-full h-full rounded-lg border border-slate-200 bg-white"
+                />
+              ) : (
+                <img
+                  src={previewDoc.url}
+                  alt={previewDoc.name}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-md border border-slate-200 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

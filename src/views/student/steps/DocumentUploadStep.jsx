@@ -28,7 +28,9 @@ export default function DocumentUploadStep({ onNext, onBack }) {
 
   const documents = student?.documents || [];
   const status = student?.status || 'registration';
+
   const isSubmitted = status === 'documents_submitted' || status === 'documents_approved' || status === 'advising_pending' || status === 'advising_approved' || status === 'enrollment_pending';
+  const isEditable = status === 'registration' || status === 'documents_submitted' || status === 'documents_rejected';
 
   const submitOnCampus = student?.submitDocumentsOnCampus || false;
 
@@ -183,7 +185,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
           <div>
             <p className="text-xs font-bold text-univ-gold uppercase tracking-wider">Documents Submitted</p>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Your files have been successfully submitted for review. They are currently being evaluated by the Admissions office.
+              Your files have been successfully submitted for review. They are currently being evaluated by the Admissions office. You can still update or replace your documents below while review is pending.
             </p>
           </div>
         </div>
@@ -252,7 +254,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
                 onChange={(e) => handleInputChange(doc.id, e)}
-                disabled={isSubmitted || isUploading}
+                disabled={!isEditable || isUploading}
               />
  
               {isUploading ? (
@@ -279,7 +281,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                   </div>
                   <div className="flex items-center gap-2">
                     {renderStatusIcon(uploaded.status)}
-                    {!isSubmitted && (
+                    {isEditable && (
                       <button
                         type="button"
                         onClick={() => handleRemove(doc.id)}
@@ -299,7 +301,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                   onDragOver={(e) => handleDragOver(e, doc.id)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, doc.id)}
-                  disabled={isSubmitted}
+                  disabled={!isEditable}
                   className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
                     isDragOver
                       ? 'border-univ-indigo bg-univ-indigo/[0.01]'
@@ -359,7 +361,12 @@ export default function DocumentUploadStep({ onNext, onBack }) {
             <button
               type="button"
               onClick={onNext}
-              className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue transition-all shadow-sm cursor-pointer"
+              disabled={!allRequiredUploaded}
+              className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
+                allRequiredUploaded
+                  ? 'bg-univ-indigo hover:bg-univ-blue'
+                  : 'bg-slate-300 opacity-55 cursor-not-allowed'
+              }`}
             >
               Continue
             </button>

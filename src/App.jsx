@@ -3,12 +3,14 @@ import { EnrollmentProvider, useEnrollment } from './context/EnrollmentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConfirmationProvider } from './context/ConfirmationContext';
 import LoginView from './views/auth/LoginView';
+import ApplicantView from './views/applicant/ApplicantView';
 import StudentView from './views/student/StudentView';
 import AdmissionView from './views/admission/AdmissionView';
 import AdviserView from './views/adviser/AdviserView';
 import AccountingView from './views/accounting/AccountingView';
 import RegistrarView from './views/registrar/RegistrarView';
 import DashboardView from './views/admin/DashboardView';
+
 import { GraduationCap, Briefcase, LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
@@ -18,10 +20,10 @@ function AppContent() {
   const [viewMode, setViewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const portal = params.get('portal');
-    if (portal === 'student') return 'student';
-    if (portal === 'staff' || portal === 'admin') return portal;
+    if (portal === 'applicant' || portal === 'student' || portal === 'staff' || portal === 'admin') return portal;
     return null;
   });
+
 
   const viewMap = {
     student: StudentView,
@@ -41,8 +43,8 @@ function AppContent() {
     );
   }
 
-  // 1. If user explicitly chose student, show student view
-  if (viewMode === 'student') {
+  // 1. If user explicitly chose applicant, show applicant portal
+  if (viewMode === 'applicant') {
     return (
       <div className="h-screen flex flex-col">
         <div className="bg-univ-navy border-b-2 border-univ-gold px-6 py-4.5 flex justify-between items-center shadow-premium text-white">
@@ -50,7 +52,7 @@ function AppContent() {
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
               <span className="font-bold text-base tracking-wide text-white">National College of Science &amp; Technology</span>
-              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-univ-gold text-univ-navy rounded tracking-wider uppercase">Student Portal</span>
+              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-univ-gold text-univ-navy rounded tracking-wider uppercase">Applicant Portal</span>
             </div>
           </div>
           <button 
@@ -64,13 +66,41 @@ function AppContent() {
           </button>
         </div>
         <main className="flex-1 overflow-hidden">
-          <StudentView key={activeStudentId || 'anonymous'} />
+          <ApplicantView key={activeStudentId || 'anonymous-app'} />
         </main>
       </div>
     );
   }
 
-  // 2. If user is logged in as an admin staff
+  // 2. If user explicitly chose student, show student view BUT only if logged in as student
+  if (viewMode === 'student' && user?.role === 'student') {
+    return (
+      <div className="h-screen flex flex-col">
+        <div className="bg-univ-navy border-b-2 border-univ-gold px-6 py-4.5 flex justify-between items-center shadow-premium text-white">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
+            <div>
+              <span className="font-bold text-base tracking-wide text-white">National College of Science &amp; Technology</span>
+              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-univ-gold text-univ-navy rounded tracking-wider uppercase">Student Portal</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="hidden md:inline-block text-xs text-slate-300 font-medium">{user.email}</span>
+            <button onClick={() => { logout(); setViewMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-univ-navy-light hover:bg-slate-700 border border-slate-700 rounded-lg transition-all cursor-pointer text-slate-200">
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+        <main className="flex-1 overflow-hidden">
+          <StudentView key={user._id} />
+        </main>
+      </div>
+    );
+  }
+
+  // 3. If user is logged in as an admin staff
+
   if (user) {
     const ActiveView = viewMap[user.role] || AdmissionView;
     return (
@@ -101,8 +131,8 @@ function AppContent() {
     );
   }
 
-  // 3. If admin or staff mode selected but not logged in
-  if (viewMode === 'admin' || viewMode === 'staff') {
+  // 4. If admin or staff or student mode selected but not logged in
+  if (viewMode === 'admin' || viewMode === 'staff' || viewMode === 'student') {
     return (
       <div className="relative min-h-screen bg-slate-50">
         <button 
@@ -119,7 +149,8 @@ function AppContent() {
     );
   }
 
-  // 4. Landing Page
+  // 5. Landing Page
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
       {/* Top Banner Navigation */}
@@ -150,18 +181,35 @@ function AppContent() {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
+          {/* Applicant Access card */}
+          <button 
+            onClick={() => setViewMode('applicant')}
+            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-blue hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-72"
+          >
+            <div>
+              <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-univ-blue transition-colors duration-300 shadow-sm">
+                <GraduationCap className="w-7 h-7 text-univ-blue group-hover:text-white transition-colors duration-300" />
+              </div>
+              <h3 className="text-lg font-bold text-univ-navy mb-2 group-hover:text-univ-blue transition-colors duration-300">Applicant Portal</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">Apply for admission, upload required documents, and check your acceptance status.</p>
+            </div>
+            <span className="text-xs font-bold text-univ-blue flex items-center gap-1 mt-4 group-hover:underline">
+              Enter Applicant Portal →
+            </span>
+          </button>
+
           {/* Student Access card */}
           <button 
             onClick={() => setViewMode('student')}
-            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-indigo hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-64"
+            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-indigo hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-72"
           >
             <div>
               <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-univ-indigo transition-colors duration-300 shadow-sm">
                 <GraduationCap className="w-7 h-7 text-univ-indigo group-hover:text-white transition-colors duration-300" />
               </div>
               <h3 className="text-lg font-bold text-univ-navy mb-2 group-hover:text-univ-indigo transition-colors duration-300">Student Portal</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">Register as a new student, upload admission requirements, choose your course program, and track your enrollment status.</p>
+              <p className="text-xs text-slate-500 leading-relaxed">Log in to select courses, enroll in subjects, view tuition, and process payments.</p>
             </div>
             <span className="text-xs font-bold text-univ-indigo flex items-center gap-1 mt-4 group-hover:underline">
               Enter Student Portal →
@@ -171,7 +219,7 @@ function AppContent() {
           {/* Admin Access card */}
           <button 
             onClick={() => setViewMode('staff')}
-            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-gold hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-64"
+            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-gold hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-72"
           >
             <div>
               <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-univ-gold transition-colors duration-300 shadow-sm">
@@ -185,6 +233,7 @@ function AppContent() {
             </span>
           </button>
         </div>
+
       </main>
 
       {/* Footer */}

@@ -91,20 +91,23 @@ export default function LoginView({ portalType }) {
         </div>
         
         {/* Quick Demo Logins */}
-        <div className="bg-slate-50 border-t border-slate-100 p-6">
-          <p className="text-xs font-medium text-slate-500 mb-3 text-center uppercase tracking-wider">Demo Accounts</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {(portalType === 'admin' ? ['admin'] : ['admission', 'adviser', 'accounting', 'registrar']).map((role) => (
-              <button
-                key={role}
-                onClick={() => fillCredentials(role)}
-                className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors capitalize"
-              >
-                {role}
-              </button>
-            ))}
+        {portalType !== 'student' && (
+          <div className="bg-slate-50 border-t border-slate-100 p-6">
+            <p className="text-xs font-medium text-slate-500 mb-3 text-center uppercase tracking-wider">Demo Accounts</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {(portalType === 'admin' ? ['admin'] : ['admission', 'adviser', 'accounting', 'registrar']).map((role) => (
+                <button
+                  key={role}
+                  onClick={() => fillCredentials(role)}
+                  className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors capitalize"
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );

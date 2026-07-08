@@ -4,6 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
+  createDraft,
+  applicantLogin,
   getStudents,
   getStudentById,
   registerStudent,
@@ -57,6 +59,8 @@ const router = express.Router();
 // verification"). Staff (admission/adviser/accounting/registrar/admin)
 // reach the same endpoints from the logged-in Admin Portal.
 
+router.post('/draft', createDraft);
+router.post('/applicant-login', applicantLogin);
 router.post('/register', registerStudent);
 router.get('/:id', getStudentById);
 router.put('/:id', updateStudent);

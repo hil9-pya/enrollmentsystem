@@ -5,6 +5,8 @@ export default function RegistrationStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
   const student = getActiveStudent();
   const [errors, setErrors] = useState({});
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const validate = () => {
     const newErrors = {};
@@ -46,6 +48,14 @@ export default function RegistrationStep({ onNext, onBack }) {
       newErrors.address = "Please enter a complete address.";
     }
 
+    if (!password || password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters.";
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match.";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -59,6 +69,9 @@ export default function RegistrationStep({ onNext, onBack }) {
 
   const handleNext = () => {
     if (validate()) {
+      if (password) {
+        dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { applicantPassword: password } });
+      }
       onNext();
     }
   };
@@ -158,6 +171,42 @@ export default function RegistrationStep({ onNext, onBack }) {
             placeholder="123 Rizal St., Quezon City"
           />
           {errors.address && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.address}</p>}
+        </div>
+
+        {/* Password */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+          <div>
+            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
+              Applicant Portal Password <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+              }}
+              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.password ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
+              placeholder="Create a strong password"
+            />
+            {errors.password && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.password}</p>}
+          </div>
+          <div>
+            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
+              Confirm Password <span className="text-rose-600">*</span>
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
+              }}
+              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.confirmPassword ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
+              placeholder="Re-enter password"
+            />
+            {errors.confirmPassword && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.confirmPassword}</p>}
+          </div>
         </div>
       </div>
 
