@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
-import { CreditCard, ArrowRight, UserPlus, FileText } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function ApplicantPortalAccess({ onVerified }) {
   const { setActiveStudent } = useEnrollment();
@@ -20,7 +20,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
     setError('');
 
     try {
-      const res = await fetch(`http://localhost:5000/api/students/applicant-login`, {
+      const res = await fetch(`/api/students/applicant-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -31,10 +31,11 @@ export default function ApplicantPortalAccess({ onVerified }) {
       }
       
       const data = await res.json();
-      setActiveStudent(data._id);
+      setActiveStudent(data.id);
       onVerified();
     } catch (err) {
-      setError(err.message || 'Application not found. Please check your email and try again.');
+      console.error(err);
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -42,7 +43,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
 
   const handleStartNew = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/students/draft`, { method: 'POST' });
+      const res = await fetch(`/api/students/draft`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         setActiveStudent(data._id);
@@ -53,126 +54,83 @@ export default function ApplicantPortalAccess({ onVerified }) {
     }
   };
 
-
   return (
-    <div className="flex h-screen w-full bg-slate-50 items-center justify-center p-6">
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        {/* Left Col - Info */}
-        <div className="space-y-6">
+    <div className="w-full flex-1 flex flex-col justify-start pt-4 outline-none focus:outline-none">
+        
+        <div className="text-center mb-8 flex flex-col items-center">
+          <h3 className="text-xl font-heading font-bold text-univ-navy">Applicant Portal</h3>
+          <p className="text-sm text-slate-500 mt-1">Resume an application or start a new one</p>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-rose-50 rounded-xl flex items-start gap-3 border border-rose-100 animate-in fade-in">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <p className="text-sm text-rose-700 font-medium">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <img src="/logo.png" alt="NCST Logo" className="h-10 w-auto" />
-              <span className="text-sm font-extrabold text-univ-navy uppercase tracking-widest leading-tight">
-                National College of<br />Science & Technology
-              </span>
-            </div>
-            <h1 className="text-4xl font-extrabold text-univ-navy tracking-tight leading-tight mt-6">
-              Applicant <span className="text-univ-gold">Portal</span>
-            </h1>
-            <p className="text-slate-500 mt-4 max-w-md leading-relaxed text-sm">
-              Welcome to the NCST Applicant Portal. Start a new application for admission or check the status of your existing application.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <UserPlus size={16} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-univ-navy">New Applicant</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Start a fresh admission application for the upcoming term.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <FileText size={16} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-univ-navy">Track Application</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Upload requirements and monitor your admission status.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Col - Access Form */}
-        <div className="bg-white rounded-2xl shadow-premium p-8 border border-slate-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-univ-navy via-univ-gold to-univ-navy"></div>
-          
-          <div className="space-y-8 relative">
-            <div>
-              <h2 className="text-xl font-bold text-univ-navy">Resume Application</h2>
-              <p className="text-sm text-slate-500 mt-1">Enter your email address to check your status or continue uploading documents.</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email Address</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <CreditCard className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-univ-blue focus:border-univ-blue transition-all bg-slate-50/50 hover:bg-white text-sm"
-                    placeholder="name@example.com"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-univ-blue focus:border-univ-blue transition-all bg-slate-50/50 hover:bg-white text-sm"
-                    placeholder="Enter Password"
-                  />
-                </div>
-                {error && <p className="text-rose-500 text-xs mt-1.5 font-medium">{error}</p>}
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-univ-navy hover:bg-univ-navy/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-univ-navy shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-              >
-                {isLoading ? (
-                  'Checking...'
-                ) : (
-                  <span className="flex items-center gap-2">
-                    Access Application
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                  </span>
-                )}
-              </button>
-            </form>
-
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
             <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-slate-400" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white text-slate-400 font-medium text-xs uppercase tracking-widest">Or</span>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <button
-                onClick={handleStartNew}
-                className="w-full inline-flex items-center justify-center px-4 py-3 border-2 border-univ-navy text-sm font-bold text-univ-navy bg-white hover:bg-univ-navy hover:text-white transition-colors rounded-xl group"
-              >
-                Start New Application
-              </button>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-premium pl-10"
+                placeholder="name@example.com"
+              />
             </div>
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-premium pl-10"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full mt-2 flex items-center justify-center py-3 px-4 rounded-xl shadow-premium text-sm font-bold text-white bg-univ-blue hover:bg-univ-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-univ-blue disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {isLoading ? 'Checking...' : 'Resume Application'}
+          </button>
+        </form>
+        
+        <div className="relative my-8">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-100"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-3 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest">Or</span>
+          </div>
         </div>
-      </div>
+
+        <div className="text-center">
+          <button
+            onClick={handleStartNew}
+            className="w-full flex items-center justify-center py-3 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 hover:text-univ-navy focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-200 transition-all"
+          >
+            Start New Application
+          </button>
+        </div>
+        
     </div>
   );
 }

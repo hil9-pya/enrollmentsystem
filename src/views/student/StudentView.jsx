@@ -80,6 +80,7 @@ function getResumeStepFromStudent(student) {
     case 'enrolled':
       return 'fulfillment';
     case 'advising_pending':
+    case 'advising_rejected':
       return 'evaluation';
     case 'advising_approved':
     case 'enrollment_pending':
@@ -266,7 +267,7 @@ export default function StudentView() {
   }
 
   return (
-    <div className="flex h-full bg-slate-50">
+    <div className="flex h-full bg-[#f4f6fb]">
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
         <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">

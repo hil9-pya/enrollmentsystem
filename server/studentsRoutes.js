@@ -21,6 +21,7 @@ import {
   approveAdvising,
   confirmPayment,
   validateEnrollment,
+  proceedToPayment,
 } from './studentsController.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +73,7 @@ router.delete('/:id/documents/:typeId', removeDocument);
 router.post('/:id/select-program', selectProgram);
 router.post('/:id/subjects', setSubjects);
 
+router.post('/:id/proceed-to-payment', proceedToPayment);
 router.post('/:id/payment', processPayment);
 
 // Surface multer errors (bad file type / too large) as normal JSON errors

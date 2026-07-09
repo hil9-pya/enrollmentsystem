@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConfirmationProvider } from './context/ConfirmationContext';
 import LoginView from './views/auth/LoginView';
 import ApplicantView from './views/applicant/ApplicantView';
+import ApplicantPortalAccess from './views/applicant/ApplicantPortalAccess';
 import StudentView from './views/student/StudentView';
 import AdmissionView from './views/admission/AdmissionView';
 import AdviserView from './views/adviser/AdviserView';
@@ -16,7 +17,8 @@ import { Toaster } from 'react-hot-toast';
 
 function AppContent() {
   const { user, logout, isLoading } = useAuth();
-  const { activeStudentId } = useEnrollment();
+  const { state: { activeStudentId } } = useEnrollment();
+  const [isApplicantVerified, setIsApplicantVerified] = useState(false);
   const [viewMode, setViewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const portal = params.get('portal');
@@ -44,23 +46,24 @@ function AppContent() {
   }
 
   // 1. If user explicitly chose applicant, show applicant portal
-  if (viewMode === 'applicant') {
+  if (viewMode === 'applicant' && activeStudentId && isApplicantVerified) {
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-univ-navy border-b-2 border-univ-gold px-6 py-4.5 flex justify-between items-center shadow-premium text-white">
+        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <span className="font-bold text-base tracking-wide text-white">National College of Science &amp; Technology</span>
-              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-univ-gold text-univ-navy rounded tracking-wider uppercase">Applicant Portal</span>
+              <span className="font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
+              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Applicant Portal</span>
             </div>
           </div>
           <button 
             onClick={() => {
               window.history.pushState({}, '', '/');
               setViewMode(null);
+              setIsApplicantVerified(false);
             }} 
-            className="text-xs font-semibold bg-univ-navy-light hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
+            className="text-xs font-bold text-slate-500 hover:text-univ-navy hover:bg-slate-50 px-3.5 py-2 rounded-lg transition-all cursor-pointer"
           >
             Back to Gateway
           </button>
@@ -76,17 +79,17 @@ function AppContent() {
   if (viewMode === 'student' && user?.role === 'student') {
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-univ-navy border-b-2 border-univ-gold px-6 py-4.5 flex justify-between items-center shadow-premium text-white">
+        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <span className="font-bold text-base tracking-wide text-white">National College of Science &amp; Technology</span>
-              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-univ-gold text-univ-navy rounded tracking-wider uppercase">Student Portal</span>
+              <span className="font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
+              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Student Portal</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="hidden md:inline-block text-xs text-slate-300 font-medium">{user.email}</span>
-            <button onClick={() => { logout(); setViewMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-univ-navy-light hover:bg-slate-700 border border-slate-700 rounded-lg transition-all cursor-pointer text-slate-200">
+            <span className="hidden md:inline-block text-xs text-slate-500 font-medium">{user.email}</span>
+            <button onClick={() => { logout(); setViewMode(null); }} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
             </button>
@@ -105,20 +108,20 @@ function AppContent() {
     const ActiveView = viewMap[user.role] || AdmissionView;
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-univ-navy border-b border-univ-navy-light px-6 py-3.5 flex justify-between items-center text-white shadow-premium">
+        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <div className="font-bold text-sm leading-tight tracking-wide text-white">NCST Enrollment Management System</div>
-              <div className="flex items-center gap-2 mt-1.5">
+              <div className="font-heading font-bold text-lg leading-tight tracking-wide text-univ-navy">NCST Enrollment Management System</div>
+              <div className="flex items-center gap-2 mt-1">
                 <span className="text-[10px] text-slate-400 font-medium">Logged in:</span>
-                <span className="px-2 py-0.5 text-[9px] font-bold bg-univ-gold/15 text-univ-gold border border-univ-gold/30 rounded uppercase tracking-wider">{user.role} Portal</span>
+                <span className="px-2 py-0.5 text-[9px] font-bold bg-blue-50 text-univ-blue rounded uppercase tracking-wider">{user.role} Portal</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="hidden md:inline-block text-xs text-slate-300 font-medium">{user.email}</span>
-            <button onClick={logout} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-univ-navy-light hover:bg-slate-700 border border-slate-700 rounded-lg transition-all cursor-pointer text-slate-200">
+            <span className="hidden md:inline-block text-xs text-slate-500 font-medium">{user.email}</span>
+            <button onClick={logout} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
             </button>
@@ -131,122 +134,87 @@ function AppContent() {
     );
   }
 
-  // 4. If admin or staff or student mode selected but not logged in
-  if (viewMode === 'admin' || viewMode === 'staff' || viewMode === 'student') {
-    return (
-      <div className="relative min-h-screen bg-slate-50">
-        <button 
-          onClick={() => {
-            window.history.pushState({}, '', '/');
-            setViewMode(null);
-          }} 
-          className="absolute top-6 left-6 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 shadow-sm text-slate-600 px-3.5 py-1.5 rounded-lg transition-all z-10 cursor-pointer"
-        >
-          ← Back to Gateway
-        </button>
-        <LoginView portalType={viewMode} />
-      </div>
-    );
-  }
-
-  // 5. Landing Page
-
+  // 4. Split-Screen Gateway (Landing & Login)
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
-      {/* Top Banner Navigation */}
-      <header className="bg-univ-navy border-b-4 border-univ-gold text-white px-6 py-4 shadow-sm flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="NCST Logo" className="h-10 w-auto object-contain" />
-          <div>
-            <h1 className="font-extrabold text-sm sm:text-base tracking-wider leading-none uppercase text-white">National College of Science and Technology</h1>
-            <span className="text-[10px] text-univ-gold font-bold tracking-widest uppercase mt-1 block">Online Academic Services</span>
+    <div className="flex h-screen w-full overflow-hidden font-sans bg-[#f4f6fb]">
+      {/* Left side: Premium Image */}
+      <div className="hidden lg:flex w-1/2 relative bg-univ-navy">
+        <img 
+          src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80" 
+          alt="Campus" 
+          className="absolute inset-0 w-full h-full object-cover opacity-50"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-univ-navy-dark via-univ-navy/40 to-transparent"></div>
+        <div className="absolute bottom-16 left-16 right-16 z-10 text-white">
+          <div className="flex items-center gap-5 mb-8">
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 shadow-xl">
+               <img src="/logo.png" alt="NCST Logo" className="h-14 w-14 object-contain" />
+            </div>
+            <div>
+              <h1 className="font-heading font-extrabold text-4xl tracking-tight uppercase leading-tight text-white drop-shadow-md">National College of<br/>Science &amp; Technology</h1>
+            </div>
           </div>
-        </div>
-        <div className="hidden md:flex items-center gap-2 text-xs text-slate-300 font-medium">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-          Enrollment Systems Operational
-        </div>
-      </header>
-
-      {/* Hero Body */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-4xl mx-auto w-full">
-        <div className="text-center mb-10 flex flex-col items-center">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-indigo-500/10 rounded-full blur-xl scale-125"></div>
-            <img src="/logo.png" alt="NCST Crest" className="h-28 w-auto relative object-contain drop-shadow-md hover:scale-105 transition-transform duration-300" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-univ-navy mb-2 tracking-tight">Central Enrollment Gateway</h2>
-          <p className="text-sm text-slate-500 max-w-md font-medium leading-relaxed">
-            Welcome to the NCST Online Enrollment System. Please select your portal access option below to begin.
+          <p className="text-slate-200 font-medium text-base max-w-lg leading-relaxed drop-shadow">
+            Empowering the next generation of innovators and leaders. Access your centralized portal for enrollment, academics, and administration.
           </p>
         </div>
+      </div>
+      
+      {/* Right side: Access Panel */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 sm:p-12 xl:p-24 relative bg-white">
+        {/* Top bar for mobile only */}
+        <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
+           <img src="/logo.png" alt="NCST Logo" className="h-10 w-10 object-contain" />
+           <span className="font-heading font-bold text-univ-navy uppercase text-sm tracking-wider">NCST Gateway</span>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
-          {/* Applicant Access card */}
-          <button 
-            onClick={() => setViewMode('applicant')}
-            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-blue hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-72"
-          >
-            <div>
-              <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-univ-blue transition-colors duration-300 shadow-sm">
-                <GraduationCap className="w-7 h-7 text-univ-blue group-hover:text-white transition-colors duration-300" />
-              </div>
-              <h3 className="text-lg font-bold text-univ-navy mb-2 group-hover:text-univ-blue transition-colors duration-300">Applicant Portal</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">Apply for admission, upload required documents, and check your acceptance status.</p>
-            </div>
-            <span className="text-xs font-bold text-univ-blue flex items-center gap-1 mt-4 group-hover:underline">
-              Enter Applicant Portal →
-            </span>
-          </button>
-
-          {/* Student Access card */}
-          <button 
-            onClick={() => setViewMode('student')}
-            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-indigo hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-72"
-          >
-            <div>
-              <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-univ-indigo transition-colors duration-300 shadow-sm">
-                <GraduationCap className="w-7 h-7 text-univ-indigo group-hover:text-white transition-colors duration-300" />
-              </div>
-              <h3 className="text-lg font-bold text-univ-navy mb-2 group-hover:text-univ-indigo transition-colors duration-300">Student Portal</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">Log in to select courses, enroll in subjects, view tuition, and process payments.</p>
-            </div>
-            <span className="text-xs font-bold text-univ-indigo flex items-center gap-1 mt-4 group-hover:underline">
-              Enter Student Portal →
-            </span>
-          </button>
-
-          {/* Admin Access card */}
-          <button 
-            onClick={() => setViewMode('staff')}
-            className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-univ-gold hover:-translate-y-1 hover:shadow-premium-lg shadow-premium transition-all duration-300 group text-left cursor-pointer flex flex-col justify-between h-72"
-          >
-            <div>
-              <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-univ-gold transition-colors duration-300 shadow-sm">
-                <Briefcase className="w-7 h-7 text-univ-gold group-hover:text-white transition-colors duration-300" />
-              </div>
-              <h3 className="text-lg font-bold text-univ-navy mb-2 group-hover:text-univ-gold transition-colors duration-300">Staff Portal</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">Authorized access for university staff roles including Admissions, Advising, Accounting, Registrar, and Administrators.</p>
-            </div>
-            <span className="text-xs font-bold text-univ-gold flex items-center gap-1 mt-4 group-hover:underline">
-              Enter Staff Portal →
-            </span>
-          </button>
+        <div className="w-full max-w-md">
+           <div className="mb-6 text-center lg:text-left">
+             <h2 className="font-heading text-3xl sm:text-4xl font-extrabold text-univ-navy tracking-tight mb-3">Welcome Back</h2>
+             <p className="text-slate-500 font-medium text-sm">Please select your portal access option below to begin.</p>
+           </div>
+           
+           <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-sm border border-slate-200/60 mb-6">
+              {['applicant', 'student', 'staff'].map((role) => (
+                <button 
+                  key={role}
+                  onClick={() => setViewMode(role)}
+                  className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 outline-none focus:outline-none focus:ring-0 ${viewMode === role || (role === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
+                >
+                  {role}
+                </button>
+              ))}
+           </div>
+           
+           <div className="bg-white rounded-2xl shadow-premium border border-slate-100 p-2 h-[480px] flex flex-col outline-none focus:outline-none">
+             {(viewMode === 'admin' || viewMode === 'staff' || viewMode === 'student') ? (
+               <div className="flex-1 flex flex-col outline-none focus:outline-none p-6 sm:p-8 overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
+                  <LoginView portalType={viewMode} />
+               </div>
+             ) : viewMode === 'applicant' ? (
+               <div className="flex-1 flex flex-col outline-none focus:outline-none p-6 sm:p-8 overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
+                  <ApplicantPortalAccess onVerified={() => setIsApplicantVerified(true)} />
+               </div>
+             ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-100 rounded-xl m-2 bg-slate-50/50">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <Briefcase className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <p className="text-sm text-slate-500 font-medium">Select a portal above.</p>
+                </div>
+             )}
+           </div>
+           
+           {/* Footer right side */}
+           <div className="mt-8 text-center flex flex-col items-center gap-4">
+             <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+               <span className="hover:text-univ-blue cursor-pointer transition-colors">Privacy</span>
+               <span className="hover:text-univ-blue cursor-pointer transition-colors">Support</span>
+               <span className="hover:text-univ-blue cursor-pointer transition-colors">Website</span>
+             </div>
+           </div>
         </div>
-
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 px-6 text-center text-xs">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p>© {new Date().getFullYear()} National College of Science and Technology. All rights reserved.</p>
-          <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider">
-            <span className="text-slate-500 hover:text-slate-300 cursor-pointer">Privacy Policy</span>
-            <span className="text-slate-500 hover:text-slate-300 cursor-pointer">Support Desk</span>
-            <span className="text-slate-500 hover:text-slate-300 cursor-pointer">NCST Website</span>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

@@ -87,10 +87,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
 
   const handleProceedToPayment = async () => {
     try {
-      await dispatch({
-        type: 'UPDATE_ACTIVE_STUDENT',
-        payload: { status: 'payment_pending' },
-      });
+      await dispatch({ type: 'PROCEED_TO_PAYMENT' });
       onNext();
     } catch (err) {
       console.error('Failed to update student status:', err);

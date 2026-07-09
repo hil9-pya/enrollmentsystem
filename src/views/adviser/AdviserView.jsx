@@ -82,6 +82,29 @@ export default function AdviserView() {
     setNotes('');
   }
 
+  async function handleRejectAdvising() {
+    if (!selectedStudent) return;
+    if (!notes.trim()) {
+      showFlash('Please provide evaluation comments/reasons for rejection.', 'error');
+      return;
+    }
+    const isConfirmed = await confirm({
+      title: 'Reject Advising',
+      message: `Are you sure you want to reject the advising evaluation for ${selectedStudent.firstName} ${selectedStudent.lastName}? This will push them back and require them to fix their schedule based on your notes.`,
+      confirmText: 'Reject Advising',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!isConfirmed) return;
+    await dispatch({
+      type: 'REJECT_ADVISING',
+      payload: { studentId: selectedStudent.id, notes },
+    });
+    showFlash(`Advising rejected for ${selectedStudent.firstName} ${selectedStudent.lastName}`, 'success');
+    setSelectedStudentId(null);
+    setNotes('');
+  }
+
   function handleOpenSubjectModal() {
     if (!selectedStudent) return;
     setModalSelectedSubjects(
@@ -351,6 +374,13 @@ export default function AdviserView() {
                 >
                   <CheckCircle className="h-4 w-4" />
                   Approve Eligibility
+                </button>
+                <button
+                  onClick={handleRejectAdvising}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Reject &amp; Return
                 </button>
                 <button
                   onClick={handleOpenSubjectModal}

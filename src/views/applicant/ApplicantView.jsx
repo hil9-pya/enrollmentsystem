@@ -89,7 +89,6 @@ export default function ApplicantView() {
 
   const [currentStep, setCurrentStep] = useState('type');
   const [completedSteps, setCompletedSteps] = useState([]);
-  const [isVerified, setIsVerified] = useState(false);
   const lastInitializedStudentId = useRef(null);
   const lastKnownStatus = useRef(null);
 
@@ -184,10 +183,6 @@ export default function ApplicantView() {
   };
 
   const hasStudentInfo = student && student.firstName && student.lastName;
-
-  if (!isVerified) {
-    return <ApplicantPortalAccess onVerified={() => setIsVerified(true)} />;
-  }
 
   return (
     <div className="flex h-full bg-slate-50">
