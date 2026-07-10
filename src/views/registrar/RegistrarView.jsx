@@ -19,12 +19,7 @@ export default function RegistrarView() {
   const [enrolledCollapsed, setEnrolledCollapsed] = useState(false);
   const [confirmingValidation, setConfirmingValidation] = useState(false);
 
-  const pendingStudents = useMemo(() => {
-    return [
-      ...getStudentsByStatus('validation_pending'),
-      ...getStudentsByStatus('payment_confirmed'),
-    ];
-  }, [state.students, getStudentsByStatus]);
+  const pendingStudents = [];
   const enrolledStudents = getStudentsByStatus('enrolled');
 
   const filteredPending = useMemo(() => {
@@ -151,29 +146,6 @@ export default function RegistrarView() {
         </div>
 
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100 border-t border-slate-100">
-          {/* Pending Validation Section */}
-          <div>
-            <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-200/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
-                  Pending Validation
-                </h3>
-                <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 rounded-full">
-                  {filteredPending.length}
-                </span>
-              </div>
-            </div>
-            {filteredPending.length === 0 ? (
-              <div className="px-6 py-8 text-center text-slate-400">
-                <p className="text-xs font-semibold text-slate-500">No applicants pending validation</p>
-              </div>
-            ) : (
-              filteredPending.map((student) => (
-                <StudentCard key={student.id} student={student} />
-              ))
-            )}
-          </div>
-
           {/* Enrolled Students Section (collapsible) */}
           <div>
             <button
@@ -404,39 +376,6 @@ export default function RegistrarView() {
               </div>
             )}
 
-            {/* Validate Action */}
-            {(selectedStudent.status === 'validation_pending' || selectedStudent.status === 'payment_confirmed') && (
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium pt-6">
-                {confirmingValidation && (
-                  <div className="mb-4.5 px-4.5 py-3.5 bg-amber-50 border border-univ-gold/20 rounded-xl">
-                    <p className="text-xs text-univ-gold font-bold leading-relaxed">
-                      Confirm Final Enrollment Validation for applicant{' '}
-                      <span className="underline">
-                        {selectedStudent.firstName} {selectedStudent.lastName}
-                      </span>
-                      ? This action generates their official Certificate of Registration and class schedules.
-                    </p>
-                  </div>
-                )}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleValidateEnrollment}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
-                  >
-                    <ShieldCheck className="h-4 w-4" />
-                    {confirmingValidation ? 'Confirm & Finalize' : 'Validate & Finalize Enrollment'}
-                  </button>
-                  {confirmingValidation && (
-                    <button
-                      onClick={() => setConfirmingValidation(false)}
-                      className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-350 transition-all cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

@@ -50,7 +50,22 @@ const StudentSchema = new mongoose.Schema(
     programId: { type: String, default: null },
     academicTerm: { type: String, default: null },
 
-    status: { type: String, default: 'registration' },
+    status: { 
+      type: String, 
+      enum: [
+        'registration',
+        'documents_submitted',
+        'documents_approved',
+        'documents_rejected',
+        'advising_pending',
+        'advising_approved',
+        'advising_rejected',
+        'payment_pending',
+        'validation_pending',
+        'enrolled'
+      ],
+      default: 'registration' 
+    },
 
     documents: { type: [DocumentSchema], default: [] },
     selectedSubjects: { type: [SelectedSubjectSchema], default: [] },

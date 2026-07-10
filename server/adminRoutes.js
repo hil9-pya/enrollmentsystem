@@ -3,6 +3,7 @@ import {
   getStudents,
   approveAdmission,
   rejectAdmission,
+  rejectAdvising,
   approveAdvising,
   confirmPayment,
   validateEnrollment,
@@ -22,6 +23,7 @@ router.get('/', authorize('admin', 'admission', 'adviser', 'accounting', 'regist
 router.post('/:id/approve-admission', authorize('admin', 'admission'), approveAdmission);
 router.post('/:id/reject-admission', authorize('admin', 'admission'), rejectAdmission);
 router.post('/:id/approve-advising', authorize('admin', 'adviser'), approveAdvising);
+router.post('/:id/reject-advising', authorize('admin', 'adviser'), rejectAdvising);
 router.post('/:id/subjects', authorize('admin', 'adviser'), setSubjects);
 router.post('/:id/confirm-payment', authorize('admin', 'accounting'), confirmPayment);
 router.post('/:id/validate-enrollment', authorize('admin', 'registrar'), validateEnrollment);

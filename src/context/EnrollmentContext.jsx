@@ -247,6 +247,15 @@ export function EnrollmentProvider({ children }) {
         updatedStudent = await safeJson(res);
       } 
       
+      else if (type === 'REJECT_ADVISING') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/reject-advising`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: payload.notes }),
+        });
+        updatedStudent = await safeJson(res);
+      } 
+      
       else if (type === 'UPDATE_STUDENT_SUBJECTS') {
         const subjectIds = payload.subjects.map(s => s.subjectId);
         const res = await authFetch(`/api/admin/students/${payload.studentId}/subjects`, {
@@ -266,6 +275,13 @@ export function EnrollmentProvider({ children }) {
       
       else if (type === 'VALIDATE_ENROLLMENT') {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/validate-enrollment`, {
+          method: 'POST',
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'PROCEED_TO_PAYMENT') {
+        const res = await authFetch(`/api/students/${activeStudentId}/proceed-to-payment`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);

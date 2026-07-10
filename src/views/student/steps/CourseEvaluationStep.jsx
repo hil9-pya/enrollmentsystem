@@ -13,6 +13,17 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
   const status = student?.status || 'registration';
   const isApproved = ['advising_approved', 'enrollment_pending', 'payment_pending', 'payment_confirmed', 'validation_pending', 'enrolled'].includes(status);
 
+  const handleRequestReevaluation = async () => {
+    try {
+      await dispatch({
+        type: 'UPDATE_ACTIVE_STUDENT',
+        payload: { status: 'advising_pending' },
+      });
+    } catch (err) {
+      console.error('Failed to request re-evaluation:', err);
+    }
+  };
+
   // Helper to format prerequisites list
   const getPrereqsText = (prereqIds) => {
     if (!prereqIds || prereqIds.length === 0) return 'None';
@@ -33,7 +44,23 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
         </p>
  
         {/* Status Indicator */}
-        {!isApproved ? (
+        {status === 'advising_rejected' ? (
+          <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4.5 mb-6">
+            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-xs font-bold text-rose-700 uppercase tracking-wider">Evaluation Returned</h3>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                Your academic evaluation requires changes before proceeding. Please review the notes from your Academic Adviser below.
+              </p>
+              {student.adviserNotes && (
+                <div className="mt-3 text-xs text-rose-800 border-t border-rose-100 pt-3">
+                  <span className="font-bold uppercase tracking-wider block text-[10px] text-rose-700 mb-1">Adviser Notes:</span>
+                  <p className="font-mono bg-white/50 p-2.5 rounded-lg border border-rose-100/50 text-[11px]">{student.adviserNotes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : !isApproved ? (
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-4.5 mb-6">
             <Clock className="h-5 w-5 text-univ-gold shrink-0 mt-0.5" />
             <div>
@@ -141,17 +168,26 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
           Back
         </button>
  
-        <button
-          onClick={onNext}
-          disabled={!isApproved}
-          className={`flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer ${
-            isApproved
-              ? 'bg-univ-indigo text-white hover:bg-univ-blue'
-              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-          }`}
-        >
-          {isApproved ? 'Proceed to Subject Enrollment' : 'Awaiting Adviser Approval'}
-        </button>
+        {status === 'advising_rejected' ? (
+          <button
+            onClick={handleRequestReevaluation}
+            className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer bg-univ-indigo text-white hover:bg-univ-blue"
+          >
+            Request Re-evaluation
+          </button>
+        ) : (
+          <button
+            onClick={onNext}
+            disabled={!isApproved}
+            className={`flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer ${
+              isApproved
+                ? 'bg-univ-indigo text-white hover:bg-univ-blue'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            {isApproved ? 'Proceed to Subject Enrollment' : 'Awaiting Adviser Approval'}
+          </button>
+        )}
       </div>
     </div>
   );

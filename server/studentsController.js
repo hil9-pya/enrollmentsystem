@@ -160,6 +160,13 @@ const registerStudent = asyncHandler(async (req, res) => {
     status: 'registration',
   });
 
+  // FAST-TRACK logic: if returning student, jump to advising_pending
+  if (req.body.enrollmentType === 'returning' || req.body.enrollmentType === 'continuing') {
+    student.enrollmentType = req.body.enrollmentType;
+    student.status = 'advising_pending';
+    await student.save();
+  }
+
   res.status(201).json(student);
 });
 
@@ -177,11 +184,10 @@ const updateStudent = asyncHandler(async (req, res) => {
     'phone',
     'birthDate',
     'address',
-    'paymentMethod',
-    'status',
     'submitDocumentsOnCampus',
     'subjectChangeRequest',
     'applicantPassword',
+    'paymentMethod',
   ];
 
   for (const field of allowedFields) {
@@ -201,6 +207,7 @@ const submitDocuments = asyncHandler(async (req, res) => {
   if (!student) return;
 
   student.status = 'documents_submitted';
+  student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
   res.json(student);
 });
@@ -314,6 +321,11 @@ const setSubjects = asyncHandler(async (req, res) => {
   const subjectIds = Array.isArray(req.body.subjectIds) ? req.body.subjectIds : [];
   const previousStatus = student.status;
 
+  if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
+    res.status(400);
+    throw new Error('Cannot modify subjects after advising approval.');
+  }
+
   student.selectedSubjects = subjectIds.map((subjectId) => ({
     subjectId,
     addedAt: new Date(),
@@ -410,6 +422,19 @@ const rejectAdmission = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Adviser: reject academic evaluation / eligibility
+// @route   POST /api/students/:id/reject-advising   body: { notes }
+const rejectAdvising = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  student.adviserNotes = req.body.notes || '';
+  student.status = 'advising_rejected';
+
+  await student.save();
+  res.json(student);
+});
+
 // @desc    Adviser: approve academic evaluation / eligibility
 // @route   POST /api/students/:id/approve-advising   body: { notes }
 const approveAdvising = asyncHandler(async (req, res) => {
@@ -431,8 +456,28 @@ const confirmPayment = asyncHandler(async (req, res) => {
   if (!student) return;
 
   student.paymentStatus = 'paid';
-  student.status = 'validation_pending';
+  // Automate Registrar workflow: auto-enroll on payment confirmation
+  student.status = 'enrolled';
+  student.scheduleGenerated = true;
+  student.registrationFormGenerated = true;
+  student.receiptGenerated = true;
 
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Proceed to Payment
+// @route   POST /api/students/:id/proceed-to-payment
+const proceedToPayment = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'advising_approved') {
+    res.status(400);
+    throw new Error('Not cleared for payment. Must be advising_approved.');
+  }
+
+  student.status = 'payment_pending';
   await student.save();
   res.json(student);
 });
@@ -470,4 +515,6 @@ export {
   approveAdvising,
   confirmPayment,
   validateEnrollment,
+  proceedToPayment,
+  rejectAdvising,
 };
