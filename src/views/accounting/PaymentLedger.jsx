@@ -86,8 +86,7 @@ export default function PaymentLedger({ students, initialFilter, onViewDetails }
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-slate-400 mr-1" />
+          <div className="flex items-center rounded-md border border-slate-200 overflow-hidden shadow-sm bg-white">
             {[
               { id: 'all', label: 'All' },
               { id: 'pending', label: 'Pending' },
@@ -96,10 +95,10 @@ export default function PaymentLedger({ students, initialFilter, onViewDetails }
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id)}
-                className={`text-[10px] font-bold px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
+                className={`text-xs font-semibold px-3 py-1.5 transition-colors cursor-pointer border-r last:border-r-0 border-slate-200 ${
                   filter === f.id
-                    ? 'bg-univ-navy text-white shadow-sm'
-                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-univ-navy'
+                    ? 'bg-slate-100 text-slate-900 shadow-inner'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 {f.label}
@@ -110,16 +109,16 @@ export default function PaymentLedger({ students, initialFilter, onViewDetails }
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 pt-6">
-        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-premium bg-white">
+        <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
-                <th className="px-5 py-3.5">Student</th>
-                <th className="px-5 py-3.5">Program</th>
-                <th className="px-5 py-3.5">Total Tuition</th>
-                <th className="px-5 py-3.5">Payment Mode</th>
-                <th className="px-5 py-3.5">Status</th>
-                <th className="px-5 py-3.5">Actions</th>
+                <th className="px-4 py-3">Student</th>
+                <th className="px-4 py-3">Program</th>
+                <th className="px-4 py-3">Total Tuition</th>
+                <th className="px-4 py-3">Payment Mode</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -133,7 +132,7 @@ export default function PaymentLedger({ students, initialFilter, onViewDetails }
               ) : (
                 filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 text-emerald-700 font-bold text-sm">
                           {student.firstName[0]}{student.lastName[0]}
@@ -144,19 +143,19 @@ export default function PaymentLedger({ students, initialFilter, onViewDetails }
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <p className="font-semibold text-slate-600 truncate max-w-[200px]">{getProgramName(student.programId)}</p>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <span className="font-extrabold text-univ-navy">{formatPeso(student.totalTuition)}</span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <span className="font-semibold text-slate-500 capitalize">{student.paymentMethod || '—'}</span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <PaymentStatusBadge status={student.paymentStatus} />
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2.5">
                       <button
                         onClick={() => onViewDetails(student.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"

@@ -37,7 +37,7 @@ export default function RegistrarSidebar({ activeTab, onTabChange, pendingCount 
         <h2 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest leading-relaxed">
           Office of Registrar
         </h2>
-        <span className="text-[10px] font-bold text-univ-blue uppercase tracking-wider">Staff Access</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Staff Access</span>
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
@@ -54,7 +54,7 @@ export default function RegistrarSidebar({ activeTab, onTabChange, pendingCount 
                   <li key={item.id}>
                     <button
                       onClick={() => onTabChange(item.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                         isActive
                           ? 'bg-univ-blue/10 text-univ-blue shadow-sm'
                           : 'text-slate-500 hover:bg-slate-50 hover:text-univ-navy'

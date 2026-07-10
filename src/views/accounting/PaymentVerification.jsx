@@ -108,20 +108,20 @@ export default function PaymentVerification({ studentId, onBack }) {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Tuition Breakdown */}
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
+            <div className="bg-white border border-slate-200/80 rounded-lg p-6 shadow-sm">
               <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4 flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-slate-400" />
                 Tuition &amp; Fees Assessment
               </h3>
               
               {student.tuitionBreakdown && student.tuitionBreakdown.length > 0 ? (
-                <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+                <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
                   <table className="w-full text-left text-xs divide-y divide-slate-100">
                     <tbody className="divide-y divide-slate-100">
                       {student.tuitionBreakdown.map((item, idx) => (
                         <tr key={idx} className="bg-white">
-                          <td className="px-4 py-3.5 text-slate-600 font-semibold">{item.label}</td>
-                          <td className="px-4 py-3.5 text-right text-univ-navy font-bold">
+                          <td className="px-4 py-2.5 text-slate-600 font-semibold">{item.label}</td>
+                          <td className="px-4 py-2.5 text-right text-univ-navy font-bold">
                             {formatPeso(item.amount)}
                           </td>
                         </tr>
@@ -142,7 +142,7 @@ export default function PaymentVerification({ studentId, onBack }) {
 
             {/* Action Section */}
             <div className="space-y-6">
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
+              <div className="bg-white border border-slate-200/80 rounded-lg p-6 shadow-sm">
                 <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Settlement Details</h3>
                 
                 <div className="space-y-5">

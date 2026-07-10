@@ -40,7 +40,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
         </div>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-premium flex flex-col md:flex-row items-center gap-4 shrink-0">
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4 shrink-0">
         <div className="relative flex-1 w-full">
           <SearchInput
             value={searchQuery}
@@ -64,15 +64,15 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-premium overflow-x-auto flex-1">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto flex-1">
         <table className="w-full text-left text-xs min-w-[800px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
-              <th className="px-5 py-4">Applicant</th>
-              <th className="px-5 py-4">Course Program</th>
-              <th className="px-5 py-4">Type</th>
-              <th className="px-5 py-4">Status</th>
-              <th className="px-5 py-4 text-center">Action</th>
+              <th className="px-4 py-3">Applicant</th>
+              <th className="px-4 py-3">Course Program</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -86,8 +86,8 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
               filteredStudents.map((stud) => {
                 const progName = PROGRAMS.find(p => p.id === stud.programId)?.name || 'Not Selected';
                 return (
-                  <tr key={stud.id} className="hover:bg-slate-50/20">
-                    <td className="px-5 py-4">
+                  <tr key={stud.id} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-univ-indigo/10 text-univ-indigo flex items-center justify-center font-bold text-xs uppercase">
                           {stud.firstName ? stud.firstName[0] : 'A'}{stud.lastName ? stud.lastName[0] : ''}
@@ -98,17 +98,17 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2">
                       <p className="font-semibold text-slate-700">{stud.programId ? stud.programId.toUpperCase() : '—'}</p>
                       <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate max-w-[150px]" title={progName}>{progName}</p>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2">
                       <span className="text-[10px] font-bold text-slate-500 capitalize">{stud.enrollmentType || '—'}</span>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-2">
                       <StatusBadge status={stud.status} />
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-4 py-2 text-center">
                       <button
                         type="button"
                         onClick={() => onViewDetails(stud.id)}

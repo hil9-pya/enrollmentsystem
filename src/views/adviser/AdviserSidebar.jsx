@@ -31,7 +31,7 @@ export default function AdviserSidebar({ activeTab, onTabChange, pendingCount })
         <h2 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest leading-relaxed">
           Adviser Portal
         </h2>
-        <span className="text-[10px] font-bold text-univ-gold uppercase tracking-wider">Staff Access</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Staff Access</span>
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">

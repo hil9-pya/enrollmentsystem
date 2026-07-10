@@ -113,10 +113,7 @@ function AppContent() {
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
               <div className="font-heading font-bold text-lg leading-tight tracking-wide text-univ-navy">NCST Enrollment Management System</div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] text-slate-400 font-medium">Logged in:</span>
-                <span className="px-2 py-0.5 text-[9px] font-bold bg-blue-50 text-univ-blue rounded uppercase tracking-wider">{user.role} Portal</span>
-              </div>
+
             </div>
           </div>
           <div className="flex items-center gap-4">
