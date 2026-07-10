@@ -1,0 +1,78 @@
+import React from 'react';
+import { LayoutDashboard, Receipt, DollarSign, CheckCircle, Clock, Settings, FileText } from 'lucide-react';
+
+export default function AccountingSidebar({ activeTab, onTabChange, pendingCount }) {
+  const tabs = [
+    {
+      group: 'Dashboard',
+      items: [
+        { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      ],
+    },
+    {
+      group: 'Financial Assessment',
+      items: [
+        { id: 'pending', label: 'Pending Payments', icon: Clock, badge: pendingCount },
+        { id: 'ledger', label: 'Payment Ledger', icon: Receipt },
+        { id: 'paid', label: 'Confirmed Payments', icon: CheckCircle },
+      ],
+    },
+    {
+      group: 'Settings',
+      items: [
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ],
+    },
+  ];
+
+  return (
+    <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm z-10">
+      <div className="p-6 border-b border-slate-100 flex flex-col gap-2 bg-slate-50/50">
+        <h2 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest leading-relaxed">
+          Accounting Office
+        </h2>
+        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Staff Access</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto py-4">
+        {tabs.map((group, index) => (
+          <div key={index} className="mb-6 px-4">
+            <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 px-3">
+              {group.group}
+            </h3>
+            <ul className="space-y-1">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => onTabChange(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-emerald-500/10 text-emerald-700 shadow-sm'
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-univ-navy'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                        {item.label}
+                      </div>
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className={`px-2 py-0.5 text-[10px] rounded-full font-extrabold ${
+                          isActive ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
