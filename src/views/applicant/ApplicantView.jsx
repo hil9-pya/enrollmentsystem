@@ -3,12 +3,14 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import StepIndicator from '../../components/StepIndicator';
 import ApplicantPortalAccess from './ApplicantPortalAccess';
 import EnrollmentTypeStep from '../student/steps/EnrollmentTypeStep';
+import ProgramSelectionStep from '../student/steps/ProgramSelectionStep';
 import RegistrationStep from '../student/steps/RegistrationStep';
 import DocumentUploadStep from '../student/steps/DocumentUploadStep';
 import AcceptanceLetterStep from './steps/AcceptanceLetterStep';
 
 export const APPLICANT_STEPS = [
   { key: 'type', label: 'Enrollment Type' },
+  { key: 'program', label: 'Program Selection' },
   { key: 'registration', label: 'Application Form' },
   { key: 'documents', label: 'Submit Documents' },
   { key: 'acceptance', label: 'Acceptance Letter' },
@@ -37,6 +39,7 @@ function getCompletedStepsFromApplicant(student) {
   const completed = [];
 
   if (student.enrollmentType) completed.push('type');
+  if (student.programId) completed.push('program');
   if (
     student.firstName?.trim() &&
     student.lastName?.trim() &&
@@ -59,6 +62,7 @@ function getResumeStepFromApplicant(student) {
   const status = student.status || 'registration';
 
   if (!student.enrollmentType) return 'type';
+  if (!student.programId) return 'program';
   if (!student.firstName || !student.lastName || !student.email) return 'registration';
 
   switch (status) {
@@ -171,6 +175,8 @@ export default function ApplicantView() {
     switch (effectiveStep) {
       case 'type':
         return <EnrollmentTypeStep onNext={onNext} />;
+      case 'program':
+        return <ProgramSelectionStep onNext={onNext} onBack={onBack} />;
       case 'registration':
         return <RegistrationStep onNext={onNext} onBack={onBack} />;
       case 'documents':

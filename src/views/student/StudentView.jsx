@@ -3,14 +3,14 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import { useAuth } from '../../context/AuthContext';
 import StepIndicator from '../../components/StepIndicator';
 import StudentPortalAccess from './StudentPortalAccess';
-import ProgramSelectionStep from './steps/ProgramSelectionStep';
+import ContinuingEnrollmentStep from './steps/ContinuingEnrollmentStep';
 import CourseEvaluationStep from './steps/CourseEvaluationStep';
 import SubjectEnrollmentStep from './steps/SubjectEnrollmentStep';
 import PaymentStep from './steps/PaymentStep';
 import FulfillmentStep from './steps/FulfillmentStep';
 
 export const STUDENT_STEPS = [
-  { key: 'program', label: 'Program Selection' },
+  { key: 'continuing', label: 'Continuing Enrollment' },
   { key: 'evaluation', label: 'Course Evaluation' },
   { key: 'enrollment', label: 'Subject Enrollment' },
   { key: 'payment', label: 'Payment' },
@@ -47,7 +47,7 @@ function getCompletedStepsFromStudent(student) {
   const completed = [];
 
   if (student.programId) {
-    completed.push('program');
+    completed.push('continuing');
   }
   if (rank >= 4 || student.adviserNotes || hasSelectedSubjects) {
     completed.push('evaluation');
@@ -87,8 +87,8 @@ function getResumeStepFromStudent(student) {
       return 'enrollment';
     default:
       if (hasSelectedSubjects) return 'payment';
-      if (student.programId) return 'evaluation';
-      return 'program';
+      if (student.programId && student.academicTerm) return 'evaluation';
+      return 'continuing';
   }
 }
 
@@ -107,7 +107,7 @@ export default function StudentView() {
   const { user } = useAuth();
   const student = getActiveStudent();
 
-  const [currentStep, setCurrentStep] = useState('program');
+  const [currentStep, setCurrentStep] = useState('continuing');
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isVerified, setIsVerified] = useState(() => {
     return user?.role === 'student';
@@ -178,8 +178,8 @@ export default function StudentView() {
       let updated = [...prev];
       let changed = false;
 
-      if (student.programId && !updated.includes('program')) {
-        updated.push('program');
+      if (student.programId && !updated.includes('continuing')) {
+        updated.push('continuing');
         changed = true;
       }
       if ((rank >= 4 || student.adviserNotes || student.selectedSubjects?.length > 0) && !updated.includes('evaluation')) {
@@ -240,8 +240,8 @@ export default function StudentView() {
 
   const renderStep = () => {
     switch (effectiveStep) {
-      case 'program':
-        return <ProgramSelectionStep onNext={onNext} onBack={onBack} />;
+      case 'continuing':
+        return <ContinuingEnrollmentStep onNext={onNext} onBack={onBack} />;
       case 'evaluation':
         return <CourseEvaluationStep onNext={onNext} onBack={onBack} />;
       case 'enrollment':
@@ -255,7 +255,7 @@ export default function StudentView() {
               window.location.href = '/';
             }} />;
       default:
-        return <ProgramSelectionStep onNext={onNext} onBack={onBack} />;
+        return <ContinuingEnrollmentStep onNext={onNext} onBack={onBack} />;
     }
   };
 
