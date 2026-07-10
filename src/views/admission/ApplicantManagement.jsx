@@ -4,9 +4,9 @@ import StatusBadge from '../../components/StatusBadge';
 import SearchInput from '../../components/SearchInput';
 import { ExternalLink } from 'lucide-react';
 
-export default function ApplicantManagement({ students, initialFilter, onViewDetails }) {
+export default function ApplicantManagement({ students, initialFilter, onViewDetails, onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState(initialFilter || '');
+  const statusFilter = initialFilter || '';
 
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
@@ -52,7 +52,16 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') {
+                onNavigate('management');
+              } else if (val === 'documents_submitted') {
+                onNavigate('verification');
+              } else {
+                onNavigate(val);
+              }
+            }}
             className="flex-1 md:flex-none border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-univ-indigo cursor-pointer"
           >
             <option value="">All Applicants</option>

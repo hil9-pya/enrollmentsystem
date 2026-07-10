@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
-import ValidationQueue from './ValidationQueue';
 import EnrollmentValidation from './EnrollmentValidation';
 
 export default function RegistrarView() {
@@ -39,27 +38,27 @@ export default function RegistrarView() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <RegistrarDashboard students={students} onNavigate={handleTabChange} />;
-      
-      case 'pending':
-        return <ValidationQueue students={students} initialFilter="pending" onViewDetails={handleViewDetails} key="pending" />;
-      
-      case 'enrolled':
-        return <ValidationQueue students={students} initialFilter="enrolled" onViewDetails={handleViewDetails} key="enrolled" />;
+        return <RegistrarDashboard students={students} initialFilter="all" showOverview={true} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="dashboard" />;
       
       case 'records':
-        return <ValidationQueue students={students} initialFilter="all" onViewDetails={handleViewDetails} key="records" />;
+        return <RegistrarDashboard students={students} initialFilter="all" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="records" />;
+      
+      case 'pending':
+        return <RegistrarDashboard students={students} initialFilter="pending" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="pending" />;
+      
+      case 'enrolled':
+        return <RegistrarDashboard students={students} initialFilter="enrolled" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="enrolled" />;
       
       case 'export':
         return (
           <div className="p-8 flex flex-col items-center justify-center h-full">
             <h1 className="text-xl font-extrabold text-univ-navy">Export Records</h1>
-            <p className="text-slate-500 font-medium mt-2">Export functionality is available from the Validation Queue views.</p>
+            <p className="text-slate-500 font-medium mt-2">Export functionality is available from the Data Grid.</p>
             <button 
               onClick={() => handleTabChange('records')}
-              className="mt-4 px-4 py-2 bg-univ-blue text-white font-bold rounded-lg"
+              className="mt-4 px-4 py-2 bg-univ-blue text-white font-bold rounded-lg cursor-pointer"
             >
-              Go to Student Records
+              Go to Data Grid
             </button>
           </div>
         );
@@ -73,7 +72,7 @@ export default function RegistrarView() {
         );
 
       default:
-        return <RegistrarDashboard students={students} onNavigate={handleTabChange} />;
+        return <RegistrarDashboard students={students} initialFilter="all" showOverview={true} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="default" />;
     }
   };
 

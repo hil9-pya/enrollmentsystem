@@ -3,10 +3,9 @@ import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare, MoreH
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 
-export default function RegistrarDashboard({ students, onNavigate }) {
+export default function RegistrarDashboard({ students, onNavigate, initialFilter, onViewDetails, showOverview = true }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRows, setSelectedRows] = useState(new Set());
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'enrolled'
 
   const metrics = useMemo(() => {
     const relevantStudents = students.filter(s => 
@@ -19,8 +18,8 @@ export default function RegistrarDashboard({ students, onNavigate }) {
 
     const tableData = [...relevantStudents]
       .filter(s => {
-        if (statusFilter === 'pending' && s.status === 'enrolled') return false;
-        if (statusFilter === 'enrolled' && s.status !== 'enrolled') return false;
+        if (initialFilter === 'pending' && s.status === 'enrolled') return false;
+        if (initialFilter === 'enrolled' && s.status !== 'enrolled') return false;
         
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -29,7 +28,7 @@ export default function RegistrarDashboard({ students, onNavigate }) {
       .sort((a, b) => b.id.localeCompare(a.id));
 
     return { totalStudents, pending, enrolled, tableData };
-  }, [students, searchQuery, statusFilter]);
+  }, [students, searchQuery, initialFilter]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -53,6 +52,7 @@ export default function RegistrarDashboard({ students, onNavigate }) {
     <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
       
       {/* Header Area */}
+      {showOverview && (
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
           <div>
@@ -104,6 +104,7 @@ export default function RegistrarDashboard({ students, onNavigate }) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Main Data Grid */}
       <div className="flex-1 flex flex-col min-h-0 bg-white">
@@ -113,16 +114,22 @@ export default function RegistrarDashboard({ students, onNavigate }) {
           <div className="flex items-center gap-2">
             <div className="flex bg-white rounded-md border border-slate-200 p-1 shadow-sm">
               <button 
-                onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1.5 text-xs font-bold rounded ${statusFilter === 'all' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => onNavigate('records')}
+                className={`px-3 py-1.5 text-xs font-bold rounded cursor-pointer ${initialFilter === 'all' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 All Records
               </button>
               <button 
-                onClick={() => setStatusFilter('pending')}
-                className={`px-3 py-1.5 text-xs font-bold rounded ${statusFilter === 'pending' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => onNavigate('pending')}
+                className={`px-3 py-1.5 text-xs font-bold rounded cursor-pointer ${initialFilter === 'pending' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Pending Only
+              </button>
+              <button 
+                onClick={() => onNavigate('enrolled')}
+                className={`px-3 py-1.5 text-xs font-bold rounded cursor-pointer ${initialFilter === 'enrolled' ? 'bg-slate-100 text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Officially Enrolled
               </button>
             </div>
           </div>
@@ -209,8 +216,8 @@ export default function RegistrarDashboard({ students, onNavigate }) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => onNavigate(student.status === 'enrolled' ? 'records' : 'validation')} 
-                        className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                        onClick={() => onViewDetails(student.id)} 
+                        className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer ${
                           student.status === 'enrolled' 
                             ? 'text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm'
                             : 'text-univ-blue bg-blue-50 hover:bg-univ-blue hover:text-white'

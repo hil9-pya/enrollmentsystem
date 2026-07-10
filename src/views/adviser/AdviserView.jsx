@@ -3,49 +3,33 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import AdviserSidebar from './AdviserSidebar';
 import AdviserDashboard from './AdviserDashboard';
 import AdvisingQueue from './AdvisingQueue';
-import AdvisingEvaluation from './AdvisingEvaluation';
 
 export default function AdviserView() {
   const { state } = useEnrollment();
   const { students } = state;
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [selectedStudentId, setSelectedStudentId] = useState(null);
 
   // Compute notification badges
   const pendingCount = students.filter(s => s.status === 'advising_pending').length;
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
-    setSelectedStudentId(null);
-  }
-
-  function handleViewDetails(studentId) {
-    setSelectedStudentId(studentId);
   }
 
   const renderContent = () => {
-    if (selectedStudentId) {
-      return (
-        <AdvisingEvaluation 
-          studentId={selectedStudentId} 
-          onBack={() => setSelectedStudentId(null)} 
-        />
-      );
-    }
-
     switch (activeTab) {
       case 'dashboard':
         return <AdviserDashboard students={students} onNavigate={handleTabChange} />;
       
       case 'pending':
-        return <AdvisingQueue students={students} initialFilter="pending" onViewDetails={handleViewDetails} key="pending" />;
+        return <AdvisingQueue students={students} initialFilter="pending" onNavigate={handleTabChange} key="pending" />;
       
       case 'approved':
-        return <AdvisingQueue students={students} initialFilter="approved" onViewDetails={handleViewDetails} key="approved" />;
+        return <AdvisingQueue students={students} initialFilter="approved" onNavigate={handleTabChange} key="approved" />;
       
       case 'rejected':
-        return <AdvisingQueue students={students} initialFilter="rejected" onViewDetails={handleViewDetails} key="rejected" />;
+        return <AdvisingQueue students={students} initialFilter="rejected" onNavigate={handleTabChange} key="rejected" />;
       
       case 'settings':
         return (
