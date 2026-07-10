@@ -1,10 +1,13 @@
-import React, { useMemo } from 'react';
-import { Users, Clock, CheckCircle, ArrowRight, Activity } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare, MoreHorizontal } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
-import MiniStat from '../../components/MiniStat';
 
 export default function RegistrarDashboard({ students, onNavigate }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRows, setSelectedRows] = useState(new Set());
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'enrolled'
+
   const metrics = useMemo(() => {
     const relevantStudents = students.filter(s => 
       ['payment_confirmed', 'enrolled'].includes(s.status) || s.paymentStatus === 'paid'
@@ -14,162 +17,226 @@ export default function RegistrarDashboard({ students, onNavigate }) {
     const pending = relevantStudents.filter(s => s.status !== 'enrolled').length;
     const enrolled = relevantStudents.filter(s => s.status === 'enrolled').length;
 
-    const actionRequired = [...relevantStudents]
-      .filter(s => s.status !== 'enrolled')
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .slice(0, 10);
+    const tableData = [...relevantStudents]
+      .filter(s => {
+        if (statusFilter === 'pending' && s.status === 'enrolled') return false;
+        if (statusFilter === 'enrolled' && s.status !== 'enrolled') return false;
+        
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return s.firstName?.toLowerCase().includes(q) || s.lastName?.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
+      })
+      .sort((a, b) => b.id.localeCompare(a.id));
 
-    const recentActivity = [...relevantStudents]
-      .filter(s => s.status === 'enrolled')
-      .sort((a, b) => b.id.localeCompare(a.id))
-      .slice(0, 8);
+    return { totalStudents, pending, enrolled, tableData };
+  }, [students, searchQuery, statusFilter]);
 
-    return { totalStudents, pending, enrolled, actionRequired, recentActivity };
-  }, [students]);
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedRows(new Set(metrics.tableData.map(s => s.id)));
+    } else {
+      setSelectedRows(new Set());
+    }
+  };
+
+  const handleSelectRow = (id) => {
+    const newSet = new Set(selectedRows);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedRows(newSet);
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Registrar Workspace</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage enrollment validations and official student records.</p>
+      {/* Header Area */}
+      <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Registrar Workspace</h1>
+            <p className="text-sm font-medium text-slate-500 mt-1">Manage enrollment validations and official student records.</p>
+          </div>
+          <div className="flex items-center gap-3">
+             <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
+               <Download className="w-4 h-4" /> Export CSV
+             </button>
+             {selectedRows.size > 0 && (
+               <button className="flex items-center gap-2 px-4 py-2 bg-univ-blue text-white rounded-md text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm animate-in zoom-in-95 duration-200">
+                 <CheckSquare className="w-4 h-4" /> Officially Enroll ({selectedRows.size})
+               </button>
+             )}
+          </div>
+        </div>
+
+        {/* Compact Metrics */}
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+              <Users className="w-5 h-5 text-slate-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Records</p>
+              <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{metrics.totalStudents}</p>
+            </div>
+          </div>
+          <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pending Validation</p>
+              <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{metrics.pending}</p>
+            </div>
+          </div>
+          <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
+              <CheckCircle className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Officially Enrolled</p>
+              <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{metrics.enrolled}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Mini Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MiniStat 
-          title="Total Processed" 
-          value={metrics.totalStudents} 
-          icon={<Users className="w-4 h-4" />} 
-          colorClass="text-slate-600 bg-slate-100"
-          onClick={() => onNavigate('records')}
-        />
-        <MiniStat 
-          title="Pending Validation" 
-          value={metrics.pending} 
-          icon={<Clock className="w-4 h-4" />} 
-          colorClass="text-amber-600 bg-amber-50"
-          onClick={() => onNavigate('pending')}
-        />
-        <MiniStat 
-          title="Officially Enrolled" 
-          value={metrics.enrolled} 
-          icon={<CheckCircle className="w-4 h-4" />} 
-          colorClass="text-emerald-600 bg-emerald-50"
-          onClick={() => onNavigate('enrolled')}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Main Data Grid */}
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
         
-        {/* Left Column: Action Required Queue */}
-        <div className="xl:col-span-2">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col h-[500px]">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900">Action Required: Pending Validations</h2>
+        {/* Toolbar */}
+        <div className="shrink-0 p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <div className="flex bg-white rounded-md border border-slate-200 p-1 shadow-sm">
               <button 
-                onClick={() => onNavigate('pending')}
-                className="text-xs font-semibold text-univ-indigo hover:text-indigo-700 transition-colors"
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 text-xs font-bold rounded ${statusFilter === 'all' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                View Full Queue
+                All Records
+              </button>
+              <button 
+                onClick={() => setStatusFilter('pending')}
+                className={`px-3 py-1.5 text-xs font-bold rounded ${statusFilter === 'pending' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pending Only
               </button>
             </div>
-            
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 sticky top-0 z-10">
-                  <tr className="border-b border-slate-200 text-slate-500 font-semibold">
-                    <th className="px-4 py-2 font-semibold">Student</th>
-                    <th className="px-4 py-2 font-semibold">Program</th>
-                    <th className="px-4 py-2 font-semibold">Type</th>
-                    <th className="px-4 py-2 text-right font-semibold">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {metrics.actionRequired.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-12 text-center text-slate-500 font-medium">
-                        No pending validations in the queue.
-                      </td>
-                    </tr>
-                  ) : (
-                    metrics.actionRequired.map(student => (
-                      <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-900">{student.firstName} {student.lastName}</span>
-                            <span className="text-[10px] font-mono text-slate-500">{student.id}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="text-slate-600 truncate max-w-[150px] inline-block" title={PROGRAMS.find(p => p.id === student.programId)?.name}>
-                            {PROGRAMS.find(p => p.id === student.programId)?.name || '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="text-slate-500 capitalize">{student.enrollmentType}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => onNavigate('validation')} // Assuming validation is the eval route
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-univ-indigo bg-indigo-50 hover:bg-univ-indigo hover:text-white rounded-md transition-colors"
-                          >
-                            Validate
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text" 
+                placeholder="Search by name, ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-md py-2 pl-9 pr-3 text-sm font-medium focus:outline-none focus:border-univ-blue focus:ring-1 focus:ring-univ-blue shadow-sm transition-all"
+              />
             </div>
+            <button className="px-3 py-2 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-bold shadow-sm">
+              <Filter className="w-4 h-4" /> Filter
+            </button>
           </div>
         </div>
 
-        {/* Right Column: Recent Activity */}
-        <div className="h-[500px]">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col h-full">
-            <div className="p-4 border-b border-slate-200">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-slate-400" /> Recently Enrolled
-              </h2>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-2">
-              {metrics.recentActivity.length > 0 ? (
-                <div className="divide-y divide-slate-100">
-                  {metrics.recentActivity.map(student => (
-                    <div 
-                      key={student.id} 
-                      className="flex items-center justify-between gap-3 p-2 hover:bg-slate-50 rounded-md transition-colors" 
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-900 truncate">
-                          {student.firstName || 'Anonymous'} {student.lastName || 'Applicant'}
-                        </p>
-                        <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
-                          {student.id}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <StatusBadge status={student.status} />
-                      </div>
+        {/* Table Container */}
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-slate-50 sticky top-0 z-10 shadow-[0_1px_0_0_#e2e8f0]">
+              <tr className="text-slate-500 font-semibold text-xs uppercase tracking-wider">
+                <th className="px-6 py-4 w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded border-slate-300 text-univ-blue focus:ring-univ-blue cursor-pointer"
+                    checked={metrics.tableData.length > 0 && selectedRows.size === metrics.tableData.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
+                <th className="px-6 py-4">Student ID</th>
+                <th className="px-6 py-4">Student Name</th>
+                <th className="px-6 py-4">Program</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {metrics.tableData.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-500 font-medium">
+                    <div className="flex flex-col items-center justify-center">
+                      <Search className="w-8 h-8 text-slate-300 mb-3" />
+                      <p>No records found matching your criteria.</p>
                     </div>
-                  ))}
-                </div>
+                  </td>
+                </tr>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm py-8">
-                  No recent enrollments.
-                </div>
+                metrics.tableData.map(student => (
+                  <tr 
+                    key={student.id} 
+                    className={`transition-colors group ${selectedRows.has(student.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                  >
+                    <td className="px-6 py-4 text-center">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 rounded border-slate-300 text-univ-blue focus:ring-univ-blue cursor-pointer"
+                        checked={selectedRows.has(student.id)}
+                        onChange={() => handleSelectRow(student.id)}
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-mono text-slate-500 font-medium">{student.id}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-bold text-slate-900">{student.firstName} {student.lastName}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-medium text-slate-600">
+                        {PROGRAMS.find(p => p.id === student.programId)?.name || '—'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
+                        {student.enrollmentType}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <StatusBadge status={student.status} />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => onNavigate(student.status === 'enrolled' ? 'records' : 'validation')} 
+                        className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                          student.status === 'enrolled' 
+                            ? 'text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm'
+                            : 'text-univ-blue bg-blue-50 hover:bg-univ-blue hover:text-white'
+                        }`}
+                      >
+                        {student.status === 'enrolled' ? 'View Record' : 'Validate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))
               )}
-            </div>
-          </div>
+            </tbody>
+          </table>
         </div>
         
+        {/* Pagination Footer */}
+        <div className="shrink-0 p-4 border-t border-slate-200 bg-white flex items-center justify-between text-xs font-medium text-slate-500">
+          <div>
+            Showing <span className="font-bold text-slate-900">{metrics.tableData.length}</span> records
+          </div>
+          <div className="flex gap-2">
+            <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-slate-400 cursor-not-allowed">Previous</button>
+            <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-slate-400 cursor-not-allowed">Next</button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
