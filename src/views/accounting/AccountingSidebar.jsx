@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Users, FileText, Settings, PieChart, Inbox, FileWarning, FolderCheck } from 'lucide-react';
+import { LayoutDashboard, Receipt, DollarSign, CheckCircle, Clock, Settings, FileText } from 'lucide-react';
 
-export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount, incompleteCount }) {
+export default function AccountingSidebar({ activeTab, onTabChange, pendingCount }) {
   const tabs = [
     {
       group: 'Dashboard',
@@ -10,26 +10,13 @@ export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount,
       ],
     },
     {
-      group: 'Applications',
+      group: 'Financial Assessment',
       items: [
-        { id: 'pending', label: 'Pending Applications', icon: Inbox, badge: pendingCount },
-        { id: 'approved', label: 'Approved Applications', icon: FolderCheck },
-        { id: 'rejected', label: 'Rejected Applications', icon: FileWarning },
+        { id: 'pending', label: 'Pending Payments', icon: Clock, badge: pendingCount },
+        { id: 'ledger', label: 'Payment Ledger', icon: Receipt },
+        { id: 'paid', label: 'Confirmed Payments', icon: CheckCircle },
       ],
     },
-    {
-      group: 'Applicant Management',
-      items: [
-        { id: 'management', label: 'All Applicants', icon: Users },
-      ],
-    },
-    {
-      group: 'Documents',
-      items: [
-        { id: 'verification', label: 'Document Verification', icon: FileText, badge: incompleteCount },
-      ],
-    },
-
     {
       group: 'Settings',
       items: [
@@ -42,7 +29,7 @@ export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount,
     <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm z-10">
       <div className="p-6 border-b border-slate-100 flex flex-col gap-2 bg-slate-50/50">
         <h2 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest leading-relaxed">
-          Admission Portal
+          Accounting Office
         </h2>
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Staff Access</span>
       </div>
@@ -73,7 +60,7 @@ export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount,
                       </div>
                       {item.badge !== undefined && item.badge > 0 && (
                         <span className={`px-2 py-0.5 text-[10px] rounded-full font-extrabold ${
-                          isActive ? 'bg-univ-indigo text-white' : 'bg-rose-100 text-rose-600'
+                          isActive ? 'bg-univ-indigo text-white' : 'bg-amber-100 text-amber-700'
                         }`}>
                           {item.badge}
                         </span>
