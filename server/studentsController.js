@@ -3,25 +3,43 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Student from './Student.js';
+import User from './User.js';
 import { computeTuition } from './subjectsCatalog.js';
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
-// Generates the next sequential STU-YYYY-NNNN id, continuing from whatever
-// the highest existing id for the current year already is.
-async function generateNextStudentId() {
+// Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
+async function generateNextId(prefixBase) {
   const year = new Date().getFullYear();
-  const prefix = `STU-${year}-`;
+  const prefix = `${prefixBase}${year}-`;
 
-  const existing = await Student.find({ _id: { $regex: `^${prefix}` } })
-    .select('_id')
-    .lean();
+  const existing = await Student.find({
+    $or: [
+      { _id: { $regex: `^${prefix}` } },
+      { studentId: { $regex: `^${prefix}` } }
+    ]
+  }).select('_id studentId').lean();
 
   let maxSeq = 0;
   for (const doc of existing) {
-    const seq = parseInt(doc._id.slice(prefix.length), 10);
-    if (!Number.isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    const idToCheck = doc.studentId?.startsWith(prefix) ? doc.studentId : doc._id;
+    if (idToCheck && idToCheck.startsWith(prefix)) {
+      const seq = parseInt(idToCheck.slice(prefix.length), 10);
+      if (!Number.isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
+  }
+
+  const existingUsers = await User.find({
+    username: { $regex: `^${prefix}` }
+  }).select('username').lean();
+
+  for (const doc of existingUsers) {
+    if (doc.username && doc.username.startsWith(prefix)) {
+      const seq = parseInt(doc.username.slice(prefix.length), 10);
+      if (!Number.isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
   }
 
   const nextSeq = String(maxSeq + 1).padStart(4, '0');
@@ -29,7 +47,12 @@ async function generateNextStudentId() {
 }
 
 async function findStudentOr404(res, id) {
-  const student = await Student.findById(id);
+  const student = await Student.findOne({
+    $or: [
+      { _id: id },
+      { studentId: id }
+    ]
+  });
   if (!student) {
     res.status(404).json({ error: 'Student not found' });
     return null;
@@ -53,7 +76,12 @@ const getStudentById = asyncHandler(async (req, res) => {
   if (idOrEmail.includes('@')) {
     student = await Student.findOne({ email: idOrEmail.toLowerCase().trim() });
   } else {
-    student = await Student.findById(idOrEmail);
+    student = await Student.findOne({
+      $or: [
+        { _id: idOrEmail },
+        { studentId: idOrEmail }
+      ]
+    });
     if (!student) {
       student = await Student.findOne({ email: idOrEmail.toLowerCase().trim() });
     }
@@ -63,6 +91,43 @@ const getStudentById = asyncHandler(async (req, res) => {
     res.status(404).json({ error: 'Student not found' });
     return;
   }
+  res.json(student);
+});
+
+// @desc    Generate a blank draft applicant with a unique ID
+// @route   POST /api/students/draft
+const createDraft = asyncHandler(async (req, res) => {
+  const id = await generateNextId('APP-');
+  const student = await Student.create({
+    _id: id,
+    status: 'registration',
+  });
+  res.status(201).json(student);
+});
+
+// @desc    Applicant Gateway login
+// @route   POST /api/students/applicant-login
+const applicantLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    res.status(400);
+    throw new Error('Please provide email and password');
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const student = await Student.findOne({ email: normalizedEmail });
+
+  if (!student) {
+    res.status(401);
+    throw new Error('Application not found');
+  }
+
+  const isMatch = await student.compareApplicantPassword(password);
+  if (!isMatch) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
   res.json(student);
 });
 
@@ -83,7 +148,8 @@ const registerStudent = asyncHandler(async (req, res) => {
     return;
   }
 
-  const id = await generateNextStudentId();
+  const id = await generateNextId('APP-');
+
 
   const student = await Student.create({
     _id: id,
@@ -93,6 +159,13 @@ const registerStudent = asyncHandler(async (req, res) => {
     phone: phone.trim(),
     status: 'registration',
   });
+
+  // FAST-TRACK logic: if returning student, jump to advising_pending
+  if (req.body.enrollmentType === 'returning' || req.body.enrollmentType === 'continuing') {
+    student.enrollmentType = req.body.enrollmentType;
+    student.status = 'advising_pending';
+    await student.save();
+  }
 
   res.status(201).json(student);
 });
@@ -111,10 +184,10 @@ const updateStudent = asyncHandler(async (req, res) => {
     'phone',
     'birthDate',
     'address',
-    'paymentMethod',
-    'status',
     'submitDocumentsOnCampus',
     'subjectChangeRequest',
+    'applicantPassword',
+    'paymentMethod',
   ];
 
   for (const field of allowedFields) {
@@ -134,6 +207,7 @@ const submitDocuments = asyncHandler(async (req, res) => {
   if (!student) return;
 
   student.status = 'documents_submitted';
+  student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
   res.json(student);
 });
@@ -247,6 +321,11 @@ const setSubjects = asyncHandler(async (req, res) => {
   const subjectIds = Array.isArray(req.body.subjectIds) ? req.body.subjectIds : [];
   const previousStatus = student.status;
 
+  if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
+    res.status(400);
+    throw new Error('Cannot modify subjects after advising approval.');
+  }
+
   student.selectedSubjects = subjectIds.map((subjectId) => ({
     subjectId,
     addedAt: new Date(),
@@ -293,6 +372,32 @@ const approveAdmission = asyncHandler(async (req, res) => {
 
   student.admissionNotes = req.body.notes || '';
   
+  if (!student.studentId) {
+    student.studentId = await generateNextId('STU-');
+    const safeFirst = student.firstName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const safeLast = student.lastName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    let emailBase = `${safeFirst}.${safeLast}@ncst.edu`;
+    
+    // Ensure unique email
+    let emailIdx = 1;
+    let finalEmail = emailBase;
+    while (await User.findOne({ email: finalEmail })) {
+      finalEmail = `${safeFirst}.${safeLast}${emailIdx}@ncst.edu`;
+      emailIdx++;
+    }
+    student.schoolEmail = finalEmail;
+    
+    // Create user account
+    await User.create({
+      username: student.studentId,
+      email: finalEmail,
+      password: 'NCST2026!', // Default password for demo
+      firstName: student.firstName,
+      lastName: student.lastName,
+      role: 'student'
+    });
+  }
+
   if (student.programId) {
     student.status = 'advising_pending';
   } else {
@@ -303,6 +408,7 @@ const approveAdmission = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+
 // @desc    Admission: reject submitted documents, ask for resubmission
 // @route   POST /api/students/:id/reject-admission   body: { notes }
 const rejectAdmission = asyncHandler(async (req, res) => {
@@ -311,6 +417,19 @@ const rejectAdmission = asyncHandler(async (req, res) => {
 
   student.admissionNotes = req.body.notes || '';
   student.status = 'documents_rejected';
+
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Adviser: reject academic evaluation / eligibility
+// @route   POST /api/students/:id/reject-advising   body: { notes }
+const rejectAdvising = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  student.adviserNotes = req.body.notes || '';
+  student.status = 'advising_rejected';
 
   await student.save();
   res.json(student);
@@ -337,8 +456,28 @@ const confirmPayment = asyncHandler(async (req, res) => {
   if (!student) return;
 
   student.paymentStatus = 'paid';
-  student.status = 'validation_pending';
+  // Automate Registrar workflow: auto-enroll on payment confirmation
+  student.status = 'enrolled';
+  student.scheduleGenerated = true;
+  student.registrationFormGenerated = true;
+  student.receiptGenerated = true;
 
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Proceed to Payment
+// @route   POST /api/students/:id/proceed-to-payment
+const proceedToPayment = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'advising_approved') {
+    res.status(400);
+    throw new Error('Not cleared for payment. Must be advising_approved.');
+  }
+
+  student.status = 'payment_pending';
   await student.save();
   res.json(student);
 });
@@ -359,6 +498,8 @@ const validateEnrollment = asyncHandler(async (req, res) => {
 });
 
 export {
+  createDraft,
+  applicantLogin,
   getStudents,
   getStudentById,
   registerStudent,
@@ -374,4 +515,6 @@ export {
   approveAdvising,
   confirmPayment,
   validateEnrollment,
+  proceedToPayment,
+  rejectAdvising,
 };

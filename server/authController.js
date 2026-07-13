@@ -15,7 +15,9 @@ const toSafeUser = (user) => ({
   firstName: user.firstName,
   lastName: user.lastName,
   role: user.role,
+  studentId: user.role === 'student' ? user.username : null,
 });
+
 
 // @desc    Register a new staff/user account
 // @route   POST /api/auth/register

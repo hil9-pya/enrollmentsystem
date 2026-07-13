@@ -1,18 +1,24 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useAuth } from '../../context/AuthContext';
-import StepIndicator, { STEPS } from '../../components/StepIndicator';
+import StepIndicator from '../../components/StepIndicator';
 import StudentPortalAccess from './StudentPortalAccess';
-import EnrollmentTypeStep from './steps/EnrollmentTypeStep';
-import RegistrationStep from './steps/RegistrationStep';
-import DocumentUploadStep from './steps/DocumentUploadStep';
-import ProgramSelectionStep from './steps/ProgramSelectionStep';
+import ContinuingEnrollmentStep from './steps/ContinuingEnrollmentStep';
 import CourseEvaluationStep from './steps/CourseEvaluationStep';
 import SubjectEnrollmentStep from './steps/SubjectEnrollmentStep';
 import PaymentStep from './steps/PaymentStep';
 import FulfillmentStep from './steps/FulfillmentStep';
 
-const STEP_KEYS = STEPS.map((s) => s.key);
+export const STUDENT_STEPS = [
+  { key: 'continuing', label: 'Continuing Enrollment' },
+  { key: 'evaluation', label: 'Course Evaluation' },
+  { key: 'enrollment', label: 'Subject Enrollment' },
+  { key: 'payment', label: 'Payment' },
+  { key: 'fulfillment', label: 'Fulfillment' },
+];
+
+const STEP_KEYS = STUDENT_STEPS.map((s) => s.key);
+
 
 const STATUS_RANK = {
   registration: 0,
@@ -35,22 +41,13 @@ function getStatusRank(status) {
 function getCompletedStepsFromStudent(student) {
   if (!student) return [];
 
-  const status = student.status || 'registration';
+  const status = student.status || 'documents_approved';
   const rank = getStatusRank(status);
   const hasSelectedSubjects = student.selectedSubjects?.length > 0;
   const completed = [];
 
-  if (student.enrollmentType) {
-    completed.push('type');
-  }
-  if (student.firstName && student.lastName) {
-    completed.push('registration');
-  }
-  if (rank >= 1) {
-    completed.push('documents');
-  }
   if (student.programId) {
-    completed.push('program');
+    completed.push('continuing');
   }
   if (rank >= 4 || student.adviserNotes || hasSelectedSubjects) {
     completed.push('evaluation');
@@ -68,14 +65,12 @@ function getCompletedStepsFromStudent(student) {
   return completed;
 }
 
+
 function getResumeStepFromStudent(student) {
-  if (!student) return 'type';
+  if (!student) return 'program';
 
-  const status = student.status || 'registration';
+  const status = student.status || 'documents_approved';
   const hasSelectedSubjects = student.selectedSubjects?.length > 0;
-
-  if (!student.enrollmentType) return 'type';
-  if (!student.firstName || !student.lastName || !student.email) return 'registration';
 
   switch (status) {
     case 'payment_pending':
@@ -85,24 +80,18 @@ function getResumeStepFromStudent(student) {
     case 'enrolled':
       return 'fulfillment';
     case 'advising_pending':
+    case 'advising_rejected':
       return 'evaluation';
     case 'advising_approved':
     case 'enrollment_pending':
       return 'enrollment';
-    case 'documents_submitted':
-      if (hasSelectedSubjects) return 'payment';
-      return 'documents';
-    case 'documents_rejected':
-      return 'documents';
-    case 'documents_approved':
-      return student.programId ? 'evaluation' : 'program';
     default:
       if (hasSelectedSubjects) return 'payment';
-      if (student.programId) return 'evaluation';
-      if (student.documents?.length > 0) return 'documents';
-      return 'registration';
+      if (student.programId && student.academicTerm) return 'evaluation';
+      return 'continuing';
   }
 }
+
 
 function getFurthestStep(storedStep, resumeStep) {
   const storedIndex = STEP_KEYS.indexOf(storedStep);
@@ -110,7 +99,7 @@ function getFurthestStep(storedStep, resumeStep) {
 
   if (storedIndex < 0) return resumeStep;
   if (resumeIndex < 0) return storedStep;
-  return STEP_KEYS[Math.max(storedIndex, resumeIndex)];
+  return STEP_KEYS[Math.min(storedIndex, resumeIndex)];
 }
 
 export default function StudentView() {
@@ -118,7 +107,7 @@ export default function StudentView() {
   const { user } = useAuth();
   const student = getActiveStudent();
 
-  const [currentStep, setCurrentStep] = useState('type');
+  const [currentStep, setCurrentStep] = useState('continuing');
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isVerified, setIsVerified] = useState(() => {
     return user?.role === 'student';
@@ -130,8 +119,11 @@ export default function StudentView() {
   useEffect(() => {
     if (user?.role === 'student') {
       setIsVerified(true);
+      if (user.studentId) {
+        setActiveStudent(user.studentId);
+      }
     }
-  }, [user]);
+  }, [user, setActiveStudent]);
 
   // Initialize resume state on student switch, then let users navigate manually.
   useEffect(() => {
@@ -186,20 +178,8 @@ export default function StudentView() {
       let updated = [...prev];
       let changed = false;
 
-      if (student.enrollmentType && !updated.includes('type')) {
-        updated.push('type');
-        changed = true;
-      }
-      if (student.firstName && student.lastName && !updated.includes('registration')) {
-        updated.push('registration');
-        changed = true;
-      }
-      if (rank >= 1 && !updated.includes('documents')) {
-        updated.push('documents');
-        changed = true;
-      }
-      if (student.programId && !updated.includes('program')) {
-        updated.push('program');
+      if (student.programId && !updated.includes('continuing')) {
+        updated.push('continuing');
         changed = true;
       }
       if ((rank >= 4 || student.adviserNotes || student.selectedSubjects?.length > 0) && !updated.includes('evaluation')) {
@@ -224,18 +204,14 @@ export default function StudentView() {
 
   }, [student]);
 
+
   const onNext = useCallback(() => {
     const idx = STEP_KEYS.indexOf(currentStep);
     if (idx < 0 || idx >= STEP_KEYS.length - 1) return;
 
-    const status = student?.status || 'registration';
+    const status = student?.status || 'documents_approved';
     const rank = getStatusRank(status);
 
-    // Block advancing past 'documents' if documents haven't been submitted
-    if (currentStep === 'documents' && rank < 1) return;
-
-    // Block advancing past 'program' if documents aren't at least submitted
-    if (currentStep === 'program' && rank < 1) return;
 
     setCompletedSteps((prev) =>
       prev.includes(currentStep) ? prev : [...prev, currentStep]
@@ -264,14 +240,8 @@ export default function StudentView() {
 
   const renderStep = () => {
     switch (effectiveStep) {
-      case 'type':
-        return <EnrollmentTypeStep onNext={onNext} />;
-      case 'registration':
-        return <RegistrationStep onNext={onNext} onBack={onBack} />;
-      case 'documents':
-        return <DocumentUploadStep onNext={onNext} onBack={onBack} />;
-      case 'program':
-        return <ProgramSelectionStep onNext={onNext} onBack={onBack} />;
+      case 'continuing':
+        return <ContinuingEnrollmentStep onNext={onNext} onBack={onBack} />;
       case 'evaluation':
         return <CourseEvaluationStep onNext={onNext} onBack={onBack} />;
       case 'enrollment':
@@ -285,9 +255,10 @@ export default function StudentView() {
               window.location.href = '/';
             }} />;
       default:
-        return <EnrollmentTypeStep onNext={onNext} />;
+        return <ContinuingEnrollmentStep onNext={onNext} onBack={onBack} />;
     }
   };
+
 
   const hasStudentInfo = student && student.firstName && student.lastName;
 
@@ -296,7 +267,7 @@ export default function StudentView() {
   }
 
   return (
-    <div className="flex h-full bg-slate-50">
+    <div className="flex h-full bg-[#f4f6fb]">
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
         <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
@@ -312,8 +283,10 @@ export default function StudentView() {
             currentStep={effectiveStep}
             completedSteps={completedSteps}
             onStepClick={handleStepClick}
+            steps={STUDENT_STEPS}
             allCompleted={student?.status === 'enrolled'}
           />
+
         </div>
 
         {/* ── Student Info Footer ─────────────────────────────── */}

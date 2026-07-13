@@ -181,7 +181,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'ADD_SUBJECT' || type === 'REMOVE_SUBJECT') {
-        const currentStudent = students.find(s => s.id === activeStudentId);
+        const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
         let subjectIds = currentStudent?.selectedSubjects?.map(s => s.subjectId) || [];
         
         if (type === 'ADD_SUBJECT') {
@@ -208,7 +208,7 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'PROCESS_PAYMENT') {
-        const currentStudent = students.find(s => s.id === activeStudentId);
+        const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
         const res = await authFetch(`/api/students/${activeStudentId}/payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -247,6 +247,15 @@ export function EnrollmentProvider({ children }) {
         updatedStudent = await safeJson(res);
       } 
       
+      else if (type === 'REJECT_ADVISING') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/reject-advising`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: payload.notes }),
+        });
+        updatedStudent = await safeJson(res);
+      } 
+      
       else if (type === 'UPDATE_STUDENT_SUBJECTS') {
         const subjectIds = payload.subjects.map(s => s.subjectId);
         const res = await authFetch(`/api/admin/students/${payload.studentId}/subjects`, {
@@ -266,6 +275,13 @@ export function EnrollmentProvider({ children }) {
       
       else if (type === 'VALIDATE_ENROLLMENT') {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/validate-enrollment`, {
+          method: 'POST',
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'PROCEED_TO_PAYMENT') {
+        const res = await authFetch(`/api/students/${activeStudentId}/proceed-to-payment`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);
@@ -295,12 +311,12 @@ export function EnrollmentProvider({ children }) {
   );
 
   const getStudentById = useCallback(
-    (id) => students.find((s) => s.id === id),
+    (id) => students.find((s) => s.id === id || s.studentId === id),
     [students]
   );
 
   const getActiveStudent = useCallback(
-    () => students.find((s) => s.id === activeStudentId),
+    () => students.find((s) => s.id === activeStudentId || s.studentId === activeStudentId),
     [students, activeStudentId]
   );
 
