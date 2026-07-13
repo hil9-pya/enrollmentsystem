@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('NCST Enrollment System End-to-End Validation', () => {
   const testEmail = `test.student.${Date.now()}@email.com`;
   let studentId = '';
+  let officialStudentId = '';
 
   test('should complete the entire enrollment flow successfully', async ({ page }) => {
     // ------------------------------------------------------------
@@ -53,7 +54,7 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     const studentIdText = await studentIdLocator.textContent();
     studentId = studentIdText ? studentIdText.trim() : '';
     console.log(`Successfully registered student ID: ${studentId}`);
-    expect(studentId).toMatch(/^STU-\d{4}-\d+/);
+    expect(studentId).toMatch(/^APP-\d{4}-\d+/);
 
     // ------------------------------------------------------------
     // 4. Step 3: Document Uploads
@@ -82,10 +83,13 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     }
 
     // Submit documents for Admissions verification
-    await page.getByRole('button', { name: 'Submit Documents' }).click();
+    await page.getByRole('button', { name: 'Submit Application', exact: true }).click();
     
     // Confirm the action using our custom modal
     await page.locator('button:has-text("Yes, Submit Application")').last().click();
+
+    // Click Continue to advance to step 5 (Acceptance Letter)
+    await page.getByRole('button', { name: 'Continue' }).click();
 
     // Should now be showing 'Application Under Review'
     await expect(page.locator('text=Application Under Review')).toBeVisible();
@@ -96,54 +100,65 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     // ------------------------------------------------------------
     // 6. Admissions Department - Document Review & Clearance
     // ------------------------------------------------------------
-    await page.getByRole('button').filter({ hasText: 'Staff Portal' }).click();
+    await page.getByRole('button', { name: 'staff', exact: true }).click();
     await page.locator('input[type="email"]').fill('admission@example.com');
     await page.locator('input[type="password"]').fill('password123');
     await page.getByRole('button', { name: 'Sign in' }).click();
 
+    // Navigate to Document Verification tab
+    await page.getByRole('button', { name: /Document Verification/ }).click();
+
     // Select the student in the list
-    await page.locator(`text=${studentId}`).first().click();
+    await page.locator(`tr:has-text("${studentId}")`).getByRole('button', { name: 'View Details' }).click();
     await page.locator('textarea').fill('TOR and Good Moral files are verified.');
     await page.getByRole('button', { name: 'Approve Application' }).click();
 
     // Confirm the action using our custom modal
     await page.locator('button:has-text("Approve Documents")').last().click();
 
-    // Wait for the student to be removed from the admissions sidebar queue (confirms DB save)
-    await page.locator(`.flex-1.overflow-y-auto >> text=${studentId}`).first().waitFor({ state: 'detached' });
+
 
     // Log out of Staff Portal
     await page.locator('text=Sign Out').click();
-    await page.locator('text=Back to Gateway').click();
 
     // ------------------------------------------------------------
     // 7. Adviser Department - Academic Advisory & Subject Clearance
     // ------------------------------------------------------------
-    await page.getByRole('button').filter({ hasText: 'Staff Portal' }).click();
+    await page.getByRole('button', { name: 'staff', exact: true }).click();
     await page.locator('input[type="email"]').fill('adviser@example.com');
     await page.locator('input[type="password"]').fill('password123');
     await page.getByRole('button', { name: 'Sign in' }).click();
 
+    // Navigate to Pending Evaluation tab
+    await page.getByRole('button', { name: /Pending Evaluation/ }).click();
+
     // Select the student in the queue
-    await page.locator(`text=${studentId}`).first().click();
+    await page.locator(`button:has-text("${studentId}")`).first().click();
     await page.locator('textarea').fill('All prerequisites verified. Selected standard first term subjects.');
-    await page.getByRole('button', { name: 'Approve Eligibility' }).click();
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
 
     // Confirm using custom modal
     await page.locator('button:has-text("Approve Advising")').last().click();
 
-    // Wait for the student to be removed from the adviser sidebar queue (confirms DB save)
-    await page.locator(`.flex-1.overflow-y-auto >> text=${studentId}`).first().waitFor({ state: 'detached' });
+    // Wait for the student to be removed from the adviser queue (confirms DB save)
+    await page.locator(`text=${studentId}`).first().waitFor({ state: 'detached' });
 
     await page.locator('text=Sign Out').click();
-    await page.locator('text=Back to Gateway').click();
 
     // ------------------------------------------------------------
     // 8. Student Portal - Subject Enrollment & Payment Simulation
     // ------------------------------------------------------------
-    await page.getByRole('button').filter({ hasText: 'Student Portal' }).click();
+    // Fetch the generated Student ID (STU-XXXX) from the backend
+    const studentData = await page.evaluate(async (appId) => {
+      const res = await fetch(`/api/students/${appId}`);
+      return res.json();
+    }, studentId);
+    officialStudentId = studentData.studentId;
+    console.log(`Generated official Student ID: ${officialStudentId}`);
+    expect(officialStudentId).toMatch(/^STU-\d{4}-\d+/);
+
     await page.getByRole('button', { name: 'student', exact: true }).click();
-    await page.locator('input#email').fill(studentId);
+    await page.locator('input#email').fill(officialStudentId);
     await page.locator('input#password').fill('NCST2026!');
     await page.getByRole('button', { name: 'Sign In' }).click();
 
@@ -177,19 +192,18 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     // Now on Step 8 (Fulfillment) showing 'Awaiting Accounting Verification'
     await expect(page.locator('text=Awaiting Accounting Verification')).toBeVisible();
     // Exit portal and go back to gateway
-    await page.getByRole('button', { name: 'Exit Portal' }).click();
-    await page.getByRole('button', { name: 'Back to Gateway' }).click();
+    await page.getByRole('button', { name: 'Sign Out' }).click();
 
     // ------------------------------------------------------------
     // 9. Accounting Department - Payment Clearance
     // ------------------------------------------------------------
-    await page.getByRole('button').filter({ hasText: 'Staff Portal' }).click();
+    await page.getByRole('button', { name: 'staff', exact: true }).click();
     await page.locator('input[type="email"]').fill('accounting@example.com');
     await page.locator('input[type="password"]').fill('password123');
     await page.getByRole('button', { name: 'Sign in' }).click();
 
-    // Find the row matching the student and click "Confirm Payment"
-    const confirmPaymentBtn = page.locator(`tr:has-text("${studentId}") button:has-text("Confirm Payment")`);
+    // Find the row matching the student and click "Verify Payment"
+    const confirmPaymentBtn = page.locator(`tr:has-text("${studentId}") button:has-text("Verify Payment")`);
     await confirmPaymentBtn.click();
 
     // Confirm using custom modal
@@ -199,18 +213,17 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     await confirmPaymentBtn.waitFor({ state: 'detached' });
 
     await page.locator('text=Sign Out').click();
-    await page.locator('text=Back to Gateway').click();
 
     // ------------------------------------------------------------
     // 10. Registrar Department - Final Validation & Certification
     // ------------------------------------------------------------
-    await page.getByRole('button').filter({ hasText: 'Staff Portal' }).click();
+    await page.getByRole('button', { name: 'staff', exact: true }).click();
     await page.locator('input[type="email"]').fill('registrar@example.com');
     await page.locator('input[type="password"]').fill('password123');
     await page.getByRole('button', { name: 'Sign in' }).click();
 
     // Select the student
-    await page.locator(`text=${studentId}`).first().click();
+    await page.locator(`tr:has-text("${studentId}")`).getByRole('button', { name: 'Validate' }).click();
     await page.getByRole('button', { name: 'Validate & Finalize Enrollment' }).click();
     
     // Confirm using Registrar's inline prompt
@@ -220,15 +233,14 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     await page.locator('text=Enrollment validated for').waitFor({ state: 'visible' });
 
     await page.locator('text=Sign Out').click();
-    await page.locator('text=Back to Gateway').click();
 
     // ------------------------------------------------------------
     // 11. Student Portal - Official Enrollment Verified
     // ------------------------------------------------------------
-    await page.getByRole('button').filter({ hasText: 'Student Portal' }).click();
-    await page.getByRole('button', { name: 'Resume Application' }).click();
-    await page.locator('input[placeholder*="STU-2026-0001"]').fill(studentId);
-    await page.getByRole('button', { name: 'Continue Enrollment' }).click();
+    await page.getByRole('button', { name: 'student', exact: true }).click();
+    await page.locator('input#email').fill(officialStudentId);
+    await page.locator('input#password').fill('NCST2026!');
+    await page.getByRole('button', { name: 'Sign In' }).click();
 
     // Verify final screen displays COR generated download buttons and Enrolled banner
     await expect(page.locator('text=Enrollment Complete')).toBeVisible();

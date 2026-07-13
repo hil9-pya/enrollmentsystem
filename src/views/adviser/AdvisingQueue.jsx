@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Search, ArrowRight, Clock, CheckCircle, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import { useEnrollment } from '../../context/EnrollmentContext';
+import { useConfirm } from '../../context/ConfirmationContext';
 export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,6 +40,46 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const selectedStudent = useMemo(() => {
     return students.find(s => s.id === selectedStudentId) || null;
   }, [students, selectedStudentId]);
+
+  const { dispatch } = useEnrollment();
+  const { confirm } = useConfirm();
+  const [notes, setNotes] = useState('');
+
+  async function handleApprove() {
+    if (!selectedStudent) return;
+    const isConfirmed = await confirm({
+      title: 'Approve Advising',
+      message: `Are you sure you want to approve academic advising for ${selectedStudent.firstName} ${selectedStudent.lastName}?`,
+      confirmText: 'Approve Advising',
+      cancelText: 'Cancel',
+      type: 'success',
+    });
+    if (!isConfirmed) return;
+    await dispatch({
+      type: 'APPROVE_ADVISING',
+      payload: { studentId: selectedStudent.id, notes }
+    });
+    setNotes('');
+    setSelectedStudentId(null);
+  }
+
+  async function handleReject() {
+    if (!selectedStudent) return;
+    const isConfirmed = await confirm({
+      title: 'Return to Student',
+      message: `Are you sure you want to return the application of ${selectedStudent.firstName} ${selectedStudent.lastName} for revision?`,
+      confirmText: 'Return Application',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+    await dispatch({
+      type: 'REJECT_ADVISING',
+      payload: { studentId: selectedStudent.id, notes }
+    });
+    setNotes('');
+    setSelectedStudentId(null);
+  }
 
   return (
     <div className="h-full flex overflow-hidden bg-slate-50">
@@ -188,6 +230,8 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                         </p>
                         <p className="text-xs text-amber-700/80 mb-3 font-medium">Add remarks regarding prerequisite credits or overrides before final approval.</p>
                         <textarea 
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
                           className="w-full text-sm font-medium text-slate-700 p-3 border border-amber-300/50 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-white placeholder-slate-400 transition-shadow" 
                           rows="3"
                           placeholder="Type evaluation remarks here..."
@@ -214,11 +258,17 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     >
                       Back
                     </button>
-                    <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-rose-100 text-rose-600 rounded-lg text-sm font-bold hover:bg-rose-50 hover:border-rose-200 transition-colors">
+                    <button 
+                      onClick={handleReject}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-rose-100 text-rose-600 rounded-lg text-sm font-bold hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                    >
                       <X className="w-4 h-4" />
                       Return
                     </button>
-                    <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm">
+                    <button 
+                      onClick={handleApprove}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
                       <Check className="w-4 h-4" />
                       Approve
                     </button>
