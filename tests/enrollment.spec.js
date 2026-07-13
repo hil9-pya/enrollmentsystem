@@ -16,15 +16,36 @@ test.describe('NCST Enrollment System End-to-End Validation', () => {
     // Click "Start New Application"
     await page.getByRole('button', { name: 'Start New Application' }).click();
     
-    // Fill personal info
-   await page.locator('input[placeholder="Juan"]').fill('Jeremiah');
-await page.locator('input[placeholder="Dela Cruz"]').fill('Atayde');
-await page.locator('input[placeholder="juan@email.com"]').fill(`jeremiah.atayde-${Date.now()}@example.com`);
-await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
+    // ------------------------------------------------------------
+    // Step 1: Enrollment Type Selection
+    // ------------------------------------------------------------
+    await page.locator('text=New Student').first().click();
+    await page.getByRole('button', { name: 'Continue Enrollment' }).click();
+
+    // ------------------------------------------------------------
+    // Step 2: Program Selection
+    // ------------------------------------------------------------
+    await page.locator('select').first().selectOption({ label: 'BS Computer Science (College of Computing)' });
+    await page.locator('select').nth(1).selectOption('1st Semester 2026-2027');
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    // ------------------------------------------------------------
+    // Step 3: Registration Details (Application Form)
+    // ------------------------------------------------------------
+    await page.locator('input[placeholder="Juan"]').fill('Jeremiah');
+    await page.locator('input[placeholder="Dela Cruz"]').fill('Atayde');
+    await page.locator('input[placeholder="juan@email.com"]').fill(`jeremiah.atayde-${Date.now()}@example.com`);
+    await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
+    await page.locator('input[type="date"]').fill('2000-01-01');
+    await page.locator('input[placeholder="123 Rizal St., Quezon City"]').fill('123 Rizal St., Quezon City, Cavite');
     
-    // Submit registration
-    await page.getByRole('button', { name: 'Start Application' }).click();
-    
+    // Fill password standard fields
+    await page.locator('input[placeholder="Create a strong password"]').fill('P@ssword123');
+    await page.locator('input[placeholder="Re-enter password"]').fill('P@ssword123');
+
+    // Submit registration (Click Continue)
+    await page.getByRole('button', { name: 'Continue' }).click();
+
     // Wait for the stepper container to load and extract the student ID from the bottom left applicant card
     await page.locator('text=Active Applicant').waitFor();
     const studentIdLocator = page.locator('p.font-mono').first();
@@ -33,19 +54,6 @@ await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
     studentId = studentIdText ? studentIdText.trim() : '';
     console.log(`Successfully registered student ID: ${studentId}`);
     expect(studentId).toMatch(/^STU-\d{4}-\d+/);
-
-    // ------------------------------------------------------------
-    // 2. Step 1: Enrollment Type Selection
-    // ------------------------------------------------------------
-    await page.locator('text=New Student').first().click();
-    await page.getByRole('button', { name: 'Continue Enrollment' }).click();
-
-    // ------------------------------------------------------------
-    // 3. Step 2: Registration Details
-    // ------------------------------------------------------------
-    await page.locator('input[type="date"]').fill('2000-01-01');
-    await page.locator('textarea').fill('123 Rizal St., Quezon City, Cavite');
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
     // ------------------------------------------------------------
     // 4. Step 3: Document Uploads
@@ -76,22 +84,13 @@ await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
     // Submit documents for Admissions verification
     await page.getByRole('button', { name: 'Submit Documents' }).click();
     
-    // Auto-advance step to Program Selection via Continue button
-    await page.getByRole('button', { name: 'Continue' }).click();
+    // Confirm the action using our custom modal
+    await page.locator('button:has-text("Yes, Submit Application")').last().click();
 
-    // ------------------------------------------------------------
-    // 5. Step 4: Program Selection
-    // ------------------------------------------------------------
-    // Select Computer Science and Academic Term
-    await page.locator('select').first().selectOption({ label: 'BS Computer Science (College of Computing)' });
-    await page.locator('select').nth(1).selectOption('1st Semester 2026-2027');
-    await page.getByRole('button', { name: 'Continue' }).click();
-
-    // Should now be on step 5 (Course Evaluation) - showing 'Evaluation Pending'
-    await expect(page.locator('text=Evaluation Pending')).toBeVisible();
+    // Should now be showing 'Application Under Review'
+    await expect(page.locator('text=Application Under Review')).toBeVisible();
 
     // Exit portal and go back to gateway
-    await page.getByRole('button', { name: 'Exit Portal' }).click();
     await page.getByRole('button', { name: 'Back to Gateway' }).click();
 
     // ------------------------------------------------------------
@@ -143,9 +142,10 @@ await page.locator('input[placeholder="0917-123-4567"]').fill('0918-987-6543');
     // 8. Student Portal - Subject Enrollment & Payment Simulation
     // ------------------------------------------------------------
     await page.getByRole('button').filter({ hasText: 'Student Portal' }).click();
-    await page.getByRole('button', { name: 'Resume Application' }).click();
-    await page.locator('input[placeholder*="STU-2026-0001"]').fill(studentId);
-    await page.getByRole('button', { name: 'Continue Enrollment' }).click();
+    await page.getByRole('button', { name: 'student', exact: true }).click();
+    await page.locator('input#email').fill(studentId);
+    await page.locator('input#password').fill('NCST2026!');
+    await page.getByRole('button', { name: 'Sign In' }).click();
 
     // Since advising is approved, the portal resumes directly on step 6 (Subject Enrollment)
     await expect(page.locator('text=Subject Enrollment Matrix')).toBeVisible();

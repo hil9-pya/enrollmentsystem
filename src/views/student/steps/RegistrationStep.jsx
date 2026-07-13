@@ -14,11 +14,16 @@ export default function RegistrationStep({ onNext, onBack }) {
     const newErrors = {};
     const today = new Date();
 
+    const nameValidationRegex = /^[a-zA-Z\s]+$/;
     if (!student?.firstName?.trim() || student.firstName.trim().length < 2) {
       newErrors.firstName = "First name must be at least 2 characters.";
+    } else if (!nameValidationRegex.test(student.firstName.trim())) {
+      newErrors.firstName = "First name must contain letters and spaces only.";
     }
     if (!student?.lastName?.trim() || student.lastName.trim().length < 2) {
       newErrors.lastName = "Last name must be at least 2 characters.";
+    } else if (!nameValidationRegex.test(student.lastName.trim())) {
+      newErrors.lastName = "Last name must contain letters and spaces only.";
     }
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,8 +55,14 @@ export default function RegistrationStep({ onNext, onBack }) {
       newErrors.address = "Please enter a complete address.";
     }
 
+    const hasUppercase = /[A-Z]/.test(password || '');
+    const hasNumber = /[0-9]/.test(password || '');
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(password || '');
+
     if (!password || password.length < 6) {
       newErrors.password = "Password must be at least 6 characters.";
+    } else if (!hasUppercase || !hasNumber || !hasSpecialChar) {
+      newErrors.password = "Password must include at least one uppercase letter, one number, and one special character.";
     }
 
     if (password !== confirmPassword) {
@@ -93,7 +104,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="firstName"
             icon={User}
             value={student?.firstName || ''}
-            onChange={(e) => handleChange('firstName', e.target.value)}
+            onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
             error={errors.firstName}
             required
             placeholder="Juan"
@@ -103,7 +114,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="lastName"
             icon={User}
             value={student?.lastName || ''}
-            onChange={(e) => handleChange('lastName', e.target.value)}
+            onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
             error={errors.lastName}
             required
             placeholder="Dela Cruz"
@@ -128,7 +139,7 @@ export default function RegistrationStep({ onNext, onBack }) {
           type="tel"
           icon={Phone}
           value={student?.phone || ''}
-          onChange={(e) => handleChange('phone', e.target.value)}
+          onChange={(e) => handleChange('phone', e.target.value.replace(/[^0-9-\s]/g, ''))}
           error={errors.phone}
           required
           placeholder="0917-123-4567"
