@@ -41,19 +41,19 @@ export default function AdmissionView() {
         return <DashboardOverview students={students} onNavigate={handleTabChange} />;
       
       case 'pending':
-        return <ApplicantManagement students={students} initialFilter="pending" onViewDetails={handleViewDetails} key="pending" />;
+        return <ApplicantManagement students={students} initialFilter="pending" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="pending" />;
       
       case 'approved':
-        return <ApplicantManagement students={students} initialFilter="approved" onViewDetails={handleViewDetails} key="approved" />;
+        return <ApplicantManagement students={students} initialFilter="approved" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="approved" />;
       
       case 'rejected':
-        return <ApplicantManagement students={students} initialFilter="rejected" onViewDetails={handleViewDetails} key="rejected" />;
+        return <ApplicantManagement students={students} initialFilter="rejected" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="rejected" />;
       
       case 'management':
-        return <ApplicantManagement students={students} initialFilter="" onViewDetails={handleViewDetails} key="management" />;
+        return <ApplicantManagement students={students} initialFilter="" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="management" />;
       
       case 'verification':
-        return <ApplicantManagement students={students} initialFilter="documents_submitted" onViewDetails={handleViewDetails} key="verification" />;
+        return <ApplicantManagement students={students} initialFilter="documents_submitted" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="verification" />;
       
       case 'settings':
         return (

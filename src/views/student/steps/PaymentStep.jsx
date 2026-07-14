@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { useConfirm } from '../../../context/ConfirmationContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
-import { Banknote, Building2, CreditCard, Smartphone, ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2, Clock, X } from 'lucide-react';
+import { Banknote, Building2, CreditCard, Smartphone, ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
+import FloatingInput from '../../../components/FloatingInput';
 
 export default function PaymentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
@@ -174,97 +175,78 @@ export default function PaymentStep({ onNext, onBack }) {
       case 'card':
         return (
           <div className="space-y-4">
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Cardholder Name</label>
-              <input
-                type="text"
-                placeholder="Cardholder Name"
-                value={formValues.cardholderName}
-                onChange={(e) => setFormValues({ ...formValues, cardholderName: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.cardholderName ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.cardholderName && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cardholderName}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Card Number</label>
-              <input
-                type="text"
-                maxLength="19"
-                placeholder="1111 2222 3333 4444"
-                value={formValues.cardNumber}
+            <FloatingInput
+              label="Cardholder Name"
+              id="cardholderName"
+              icon={User}
+              value={formValues.cardholderName}
+              onChange={(e) => setFormValues({ ...formValues, cardholderName: e.target.value })}
+              error={errors.cardholderName}
+              placeholder="Name on card"
+            />
+            <FloatingInput
+              label="Card Number"
+              id="cardNumber"
+              icon={CreditCard}
+              value={formValues.cardNumber}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').match(/.{1,4}/g)?.join(' ') || '';
+                setFormValues({ ...formValues, cardNumber: val });
+              }}
+              error={errors.cardNumber}
+              placeholder="1111 2222 3333 4444"
+              maxLength="19"
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FloatingInput
+                label="Expiration Date (MM/YY)"
+                id="cardExpiry"
+                icon={Calendar}
+                value={formValues.cardExpiry}
                 onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').match(/.{1,4}/g)?.join(' ') || '';
-                  setFormValues({ ...formValues, cardNumber: val });
+                  let val = e.target.value.replace(/\D/g, '');
+                  if (val.length > 2) {
+                    val = val.substring(0, 2) + '/' + val.substring(2, 4);
+                  }
+                  setFormValues({ ...formValues, cardExpiry: val });
                 }}
-                className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.cardNumber ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
+                error={errors.cardExpiry}
+                placeholder="MM/YY"
+                maxLength="5"
               />
-              {errors.cardNumber && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cardNumber}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-3.5">
-              <div>
-                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Expiration Date</label>
-                <input
-                  type="text"
-                  maxLength="5"
-                  placeholder="MM/YY"
-                  value={formValues.cardExpiry}
-                  onChange={(e) => {
-                    let val = e.target.value.replace(/\D/g, '');
-                    if (val.length > 2) {
-                      val = val.substring(0, 2) + '/' + val.substring(2, 4);
-                    }
-                    setFormValues({ ...formValues, cardExpiry: val });
-                  }}
-                  className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                    errors.cardExpiry ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                  }`}
-                />
-                {errors.cardExpiry && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cardExpiry}</p>}
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">CVV / CVN</label>
-                <input
-                  type="password"
-                  maxLength="3"
-                  placeholder="123"
-                  value={formValues.cardCvv}
-                  onChange={(e) => setFormValues({ ...formValues, cardCvv: e.target.value.replace(/\D/g, '') })}
-                  className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                    errors.cardCvv ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                  }`}
-                />
-                {errors.cardCvv && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cardCvv}</p>}
-              </div>
+              <FloatingInput
+                label="CVV / CVN"
+                id="cardCvv"
+                type="password"
+                icon={ShieldCheck}
+                value={formValues.cardCvv}
+                onChange={(e) => setFormValues({ ...formValues, cardCvv: e.target.value.replace(/\D/g, '') })}
+                error={errors.cardCvv}
+                placeholder="123"
+                maxLength="3"
+              />
             </div>
           </div>
         );
       case 'bank':
         return (
           <div className="space-y-4">
+            <FloatingInput
+              label="Sender Account Name"
+              id="bankAccountName"
+              icon={User}
+              value={formValues.bankAccountName}
+              onChange={(e) => setFormValues({ ...formValues, bankAccountName: e.target.value })}
+              error={errors.bankAccountName}
+              placeholder="Account Name"
+            />
             <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Sender Account Name</label>
-              <input
-                type="text"
-                placeholder="Account Name"
-                value={formValues.bankAccountName}
-                onChange={(e) => setFormValues({ ...formValues, bankAccountName: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.bankAccountName ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.bankAccountName && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.bankAccountName}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Bank Name</label>
+              <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block mb-2">Bank Name</label>
               <select
                 value={formValues.bankName}
                 onChange={(e) => setFormValues({ ...formValues, bankName: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.bankName ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
+                className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
+                  errors.bankName ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200 focus:ring-univ-blue/50'
                 }`}
               >
                 <option value="">Select Bank</option>
@@ -274,113 +256,85 @@ export default function PaymentStep({ onNext, onBack }) {
                 <option value="Landbank">Landbank of the Philippines</option>
                 <option value="SecurityBank">Security Bank</option>
               </select>
-              {errors.bankName && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.bankName}</p>}
+              {errors.bankName && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.bankName}</p>}
             </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Transaction Reference Number</label>
-              <input
-                type="text"
-                maxLength="10"
-                placeholder="10-digit Reference Code"
-                value={formValues.bankRef}
-                onChange={(e) => setFormValues({ ...formValues, bankRef: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.bankRef ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.bankRef && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.bankRef}</p>}
-            </div>
+            <FloatingInput
+              label="Transaction Reference Number"
+              id="bankRef"
+              icon={Hash}
+              value={formValues.bankRef}
+              onChange={(e) => setFormValues({ ...formValues, bankRef: e.target.value })}
+              error={errors.bankRef}
+              placeholder="10-digit Reference Code"
+              maxLength="10"
+            />
           </div>
         );
       case 'gcash':
         return (
           <div className="space-y-4">
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">GCash Account Name</label>
-              <input
-                type="text"
-                placeholder="Account Name"
-                value={formValues.gcashName}
-                onChange={(e) => setFormValues({ ...formValues, gcashName: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.gcashName ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.gcashName && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.gcashName}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">GCash Registered Number</label>
-              <input
-                type="text"
-                maxLength="11"
-                placeholder="09171234567"
-                value={formValues.gcashNumber}
-                onChange={(e) => setFormValues({ ...formValues, gcashNumber: e.target.value.replace(/\D/g, '') })}
-                className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.gcashNumber ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.gcashNumber && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.gcashNumber}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">GCash Reference ID</label>
-              <input
-                type="text"
-                maxLength="13"
-                placeholder="10 or 13 digit number"
-                value={formValues.gcashRef}
-                onChange={(e) => setFormValues({ ...formValues, gcashRef: e.target.value.replace(/\D/g, '') })}
-                className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.gcashRef ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.gcashRef && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.gcashRef}</p>}
-            </div>
+            <FloatingInput
+              label="GCash Account Name"
+              id="gcashName"
+              icon={User}
+              value={formValues.gcashName}
+              onChange={(e) => setFormValues({ ...formValues, gcashName: e.target.value })}
+              error={errors.gcashName}
+              placeholder="Account Name"
+            />
+            <FloatingInput
+              label="GCash Registered Number"
+              id="gcashNumber"
+              icon={Smartphone}
+              value={formValues.gcashNumber}
+              onChange={(e) => setFormValues({ ...formValues, gcashNumber: e.target.value.replace(/\D/g, '') })}
+              error={errors.gcashNumber}
+              placeholder="09171234567"
+              maxLength="11"
+            />
+            <FloatingInput
+              label="GCash Reference ID"
+              id="gcashRef"
+              icon={Hash}
+              value={formValues.gcashRef}
+              onChange={(e) => setFormValues({ ...formValues, gcashRef: e.target.value.replace(/\D/g, '') })}
+              error={errors.gcashRef}
+              placeholder="10 or 13 digit number"
+              maxLength="13"
+            />
           </div>
         );
       case 'cash':
         return (
           <div className="space-y-4">
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Depositor / Student Name</label>
-              <input
-                type="text"
-                placeholder="Depositor Name"
-                value={formValues.cashDepositor}
-                onChange={(e) => setFormValues({ ...formValues, cashDepositor: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.cashDepositor ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.cashDepositor && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cashDepositor}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Payment Branch Location</label>
-              <input
-                type="text"
-                placeholder="NCST Main / Bank Branch Name"
-                value={formValues.cashBranch}
-                onChange={(e) => setFormValues({ ...formValues, cashBranch: e.target.value })}
-                className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.cashBranch ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.cashBranch && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cashBranch}</p>}
-            </div>
-            <div>
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Receipt Reference Code</label>
-              <input
-                type="text"
-                maxLength="6"
-                placeholder="6-digit receipt number"
-                value={formValues.cashRef}
-                onChange={(e) => setFormValues({ ...formValues, cashRef: e.target.value.replace(/\D/g, '') })}
-                className={`w-full px-3.5 py-2.5 text-xs font-mono border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
-                  errors.cashRef ? 'border-rose-200 focus:ring-rose-200/50' : 'border-slate-200 focus:ring-univ-indigo/50'
-                }`}
-              />
-              {errors.cashRef && <p className="text-[10px] text-rose-600 font-bold mt-1">{errors.cashRef}</p>}
-            </div>
+            <FloatingInput
+              label="Depositor / Student Name"
+              id="cashDepositor"
+              icon={User}
+              value={formValues.cashDepositor}
+              onChange={(e) => setFormValues({ ...formValues, cashDepositor: e.target.value })}
+              error={errors.cashDepositor}
+              placeholder="Depositor Name"
+            />
+            <FloatingInput
+              label="Payment Branch Location"
+              id="cashBranch"
+              icon={MapPin}
+              value={formValues.cashBranch}
+              onChange={(e) => setFormValues({ ...formValues, cashBranch: e.target.value })}
+              error={errors.cashBranch}
+              placeholder="NCST Main / Bank Branch Name"
+            />
+            <FloatingInput
+              label="Receipt Reference Code"
+              id="cashRef"
+              icon={Hash}
+              value={formValues.cashRef}
+              onChange={(e) => setFormValues({ ...formValues, cashRef: e.target.value.replace(/\D/g, '') })}
+              error={errors.cashRef}
+              placeholder="6-digit receipt number"
+              maxLength="6"
+            />
           </div>
         );
       default:
@@ -393,32 +347,32 @@ export default function PaymentStep({ onNext, onBack }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-premium">
-        <h2 className="text-xl font-extrabold text-univ-navy mb-1.5">Tuition Assessment &amp; Payment Portal</h2>
-        <p className="text-xs text-slate-500 mb-8 leading-relaxed font-medium">
+      <div className="bg-white border border-slate-200/60 rounded-3xl p-8 shadow-premium">
+        <h2 className="text-2xl font-heading font-extrabold text-univ-navy mb-1.5">Tuition Assessment &amp; Payment</h2>
+        <p className="text-sm text-slate-500 mb-8 leading-relaxed font-medium">
           Review your assessed tuition fees and authorize your payment to proceed with enrollment verification.
         </p>
 
         {/* 1. Tuition Ledger Breakdown */}
-        <div className="border border-slate-200/85 rounded-xl overflow-hidden mb-8 shadow-sm">
-          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+        <div className="border border-slate-200/80 rounded-xl overflow-hidden mb-8 shadow-sm">
+          <div className="bg-slate-50 px-5 py-4 border-b border-slate-200 text-xs font-extrabold text-slate-500 uppercase tracking-widest">
             Assessment Ledger Breakdown
           </div>
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-sm">
             <tbody className="divide-y divide-slate-100 bg-white">
               {student?.tuitionBreakdown && student.tuitionBreakdown.map((item, index) => (
-                <tr key={index} className="hover:bg-slate-50/30">
-                  <td className="px-4 py-3.5 text-slate-600 font-semibold">{item.label}</td>
-                  <td className="px-4 py-3.5 text-right font-mono font-bold text-univ-navy">
+                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-5 py-4 text-slate-600 font-medium">{item.label}</td>
+                  <td className="px-5 py-4 text-right font-mono font-bold text-univ-navy">
                     ₱{item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-100/60 border-t border-slate-200 font-extrabold">
-                <td className="px-4 py-4 text-[10px] text-slate-500 uppercase tracking-wider">Total Assessed Tuition &amp; Fees</td>
-                <td className="px-4 py-4 text-right font-mono text-univ-navy text-base">
+              <tr className="bg-slate-50/80 border-t border-slate-200 font-extrabold">
+                <td className="px-5 py-5 text-xs text-slate-500 uppercase tracking-wider">Total Assessed Tuition &amp; Fees</td>
+                <td className="px-5 py-5 text-right font-mono text-univ-navy text-xl">
                   ₱{student?.totalTuition ? student.totalTuition.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                 </td>
               </tr>
@@ -428,8 +382,8 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* 2. Payment Method Selector */}
         <div className="mb-8">
-          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Select Payment Method</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+          <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4">Select Payment Method</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {PAYMENT_METHODS.map((method) => {
               const IconComp = iconMap[method.icon] || Banknote;
               const isSelected = selectedMethodId === method.id;
@@ -438,16 +392,16 @@ export default function PaymentStep({ onNext, onBack }) {
                 <div
                   key={method.id}
                   onClick={() => handleSelectMethod(method.id)}
-                  className={`border rounded-xl p-4.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 shadow-sm ${
-                    isPaid ? 'opacity-55 cursor-not-allowed' : 'hover:border-slate-300 hover:shadow-premium'
+                  className={`border rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 shadow-sm ${
+                    isPaid ? 'opacity-50 cursor-not-allowed' : 'hover:border-univ-blue/30 hover:shadow-md'
                   } ${
                     isSelected
-                      ? 'border-univ-indigo bg-univ-indigo/[0.02] ring-2 ring-univ-indigo/10'
+                      ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/20'
                       : 'border-slate-100 bg-white'
                   }`}
                 >
-                  <IconComp className={`h-6 w-6 mb-2.5 transition-colors ${isSelected ? 'text-univ-indigo' : 'text-slate-400'}`} />
-                  <span className={`text-[10px] font-extrabold uppercase tracking-wide transition-colors ${isSelected ? 'text-univ-navy' : 'text-slate-500'}`}>
+                  <IconComp className={`h-8 w-8 mb-3 transition-colors ${isSelected ? 'text-univ-blue' : 'text-slate-400'}`} />
+                  <span className={`text-xs font-extrabold uppercase tracking-wide transition-colors ${isSelected ? 'text-univ-navy' : 'text-slate-500'}`}>
                     {method.label}
                   </span>
                 </div>
@@ -458,18 +412,18 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* 3. Transaction Feedback Banners */}
         {isProcessing && (
-          <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-6 mb-4">
-            <Loader2 className="h-5 w-5 animate-spin text-univ-indigo" />
+          <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-6 mb-4 shadow-sm">
+            <Loader2 className="h-5 w-5 animate-spin text-univ-blue" />
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Verifying transaction details... Please wait.</span>
           </div>
         )}
 
         {paymentStatus === 'processing' && (
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-4.5 mb-4">
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-5 mb-4 shadow-sm">
             <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
             <div>
-              <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wider">Payment Verification Pending</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              <h4 className="text-xs font-extrabold text-amber-700 uppercase tracking-wider">Payment Verification Pending</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
                 Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been submitted. The Office of the Accounting department is currently reviewing and verifying your transaction.
               </p>
             </div>
@@ -477,11 +431,11 @@ export default function PaymentStep({ onNext, onBack }) {
         )}
 
         {(paymentStatus === 'paid' || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status)) && (
-          <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200/50 rounded-xl p-4.5 mb-4">
+          <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200/50 rounded-xl p-5 mb-4 shadow-sm">
             <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Payment Verified</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              <h4 className="text-xs font-extrabold text-emerald-700 uppercase tracking-wider">Payment Verified</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
                 Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified and cleared by the Accounting department.
               </p>
             </div>
@@ -489,11 +443,11 @@ export default function PaymentStep({ onNext, onBack }) {
         )}
 
         {paymentStatus === 'failed' && !isProcessing && (
-          <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4.5 mb-4">
+          <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-5 mb-4 shadow-sm">
             <XCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-bold text-rose-700 uppercase tracking-wider">Transaction Declined</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              <h4 className="text-xs font-extrabold text-rose-700 uppercase tracking-wider">Transaction Declined</h4>
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
                 The transaction could not be authorized. Please try again or select a different payment channel.
               </p>
             </div>
@@ -502,13 +456,13 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* Action Button for Process Payment */}
         {!isPaid && !isProcessing && (
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end mt-6">
             <button
               onClick={handleProcessPayment}
               disabled={!selectedMethodId}
-              className={`px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer ${
+              className={`px-8 py-3 text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer ${
                 selectedMethodId
-                  ? 'bg-univ-indigo text-white hover:bg-univ-blue'
+                  ? 'bg-univ-blue text-white hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
@@ -523,7 +477,7 @@ export default function PaymentStep({ onNext, onBack }) {
         <button
           onClick={onBack}
           disabled={isProcessing}
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
@@ -531,22 +485,23 @@ export default function PaymentStep({ onNext, onBack }) {
         <button
           onClick={onNext}
           disabled={!isPaid}
-          className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
+          className={`px-8 py-3 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer ${
             isPaid
-              ? 'bg-univ-indigo hover:bg-univ-blue'
+              ? 'bg-univ-blue hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
               : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >
           Proceed to Verification
         </button>
       </div>
+
       {/* Secure Payment Validation Modal */}
       {showValidationModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-premium-lg max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-premium-lg max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 text-[9px] font-bold bg-univ-indigo/10 text-univ-indigo border border-univ-indigo/20 rounded uppercase tracking-wider">Secure Payment</span>
+                <span className="px-2 py-0.5 text-[9px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded uppercase tracking-wider">Secure Payment</span>
                 <h3 className="text-sm font-extrabold text-univ-navy">Enter Payment Details</h3>
               </div>
               <button 
@@ -555,15 +510,15 @@ export default function PaymentStep({ onNext, onBack }) {
                   setShowValidationModal(false);
                   setErrors({});
                 }} 
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all cursor-pointer"
+                className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-all cursor-pointer"
               >
-                <X className="h-4.5 w-4.5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             
             <form onSubmit={handleValidationSubmit}>
               <div className="p-6 overflow-y-auto max-h-[450px]">
-                <p className="text-[11px] text-slate-500 mb-5 leading-relaxed font-medium">
+                <p className="text-[11px] text-slate-500 mb-6 leading-relaxed font-medium">
                   Please enter your payment authorization details below. All fields are checked according to secure transaction standards.
                 </p>
                 {renderValidationFields()}
@@ -576,14 +531,15 @@ export default function PaymentStep({ onNext, onBack }) {
                     setShowValidationModal(false);
                     setErrors({});
                   }}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-150 rounded-lg transition-all cursor-pointer"
+                  className="px-6 py-2.5 text-xs font-extrabold text-slate-600 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="px-8 py-2.5 text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex items-center gap-2"
                 >
+                  <ShieldCheck className="w-4 h-4" />
                   Authorize Payment
                 </button>
               </div>

@@ -1,7 +1,8 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
+import { useConfirm } from '../../../context/ConfirmationContext';
 import { REQUIRED_DOCUMENTS } from '../../../data/mockData';
-import { Upload, FileText, Check, Clock, X, AlertCircle, Loader2, Image } from 'lucide-react';
+import { Upload, FileText, Check, Clock, X, AlertCircle, Loader2, Image, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -24,6 +25,7 @@ function getFileIcon(fileName) {
 
 export default function DocumentUploadStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
+  const { confirm } = useConfirm();
   const student = getActiveStudent();
 
   const documents = student?.documents || [];
@@ -106,8 +108,18 @@ export default function DocumentUploadStep({ onNext, onBack }) {
     dispatch({ type: 'REMOVE_DOCUMENT', payload: { typeId } });
   }
 
-  function handleSubmit() {
-    dispatch({ type: 'SUBMIT_DOCUMENTS' });
+  async function handleSubmit() {
+    const isConfirmed = await confirm({
+      title: 'Submit Application',
+      message: 'Are you sure you want to submit your application and documents for review? You may not be able to edit some details once submitted.',
+      confirmText: 'Yes, Submit Application',
+      cancelText: 'Cancel',
+      type: 'success'
+    });
+
+    if (isConfirmed) {
+      dispatch({ type: 'SUBMIT_DOCUMENTS' });
+    }
   }
 
   // Drag-and-drop handlers
@@ -158,33 +170,33 @@ export default function DocumentUploadStep({ onNext, onBack }) {
   function renderStatusLabel(docStatus) {
     switch (docStatus) {
       case 'approved':
-        return <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Approved</span>;
+        return <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200">Approved</span>;
       case 'pending':
-        return <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">Pending Review</span>;
+        return <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">Pending Review</span>;
       case 'rejected':
-        return <span className="text-xs font-medium text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">Rejected</span>;
+        return <span className="text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-rose-200">Rejected</span>;
       default:
         return null;
     }
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
-      <h1 className="text-xl font-extrabold text-univ-navy">Upload Documents</h1>
-      <p className="text-xs text-slate-500 mt-1 mb-2 leading-relaxed font-medium">
+    <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-premium">
+      <h1 className="text-2xl font-heading font-extrabold text-univ-navy mb-2">Upload Documents</h1>
+      <p className="text-sm text-slate-500 mb-2 leading-relaxed font-medium">
         Please upload the required files for your NCST admission evaluation.
       </p>
-      <p className="text-[10px] text-slate-400 mb-6 font-semibold">
+      <p className="text-[10px] text-slate-400 mb-6 font-extrabold uppercase tracking-widest">
         Accepted formats: PDF, JPEG, PNG — Max size: 5MB per file
       </p>
  
       {/* Submitted banner */}
       {isSubmitted && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-4 mb-6">
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-4 mb-6 shadow-sm">
           <AlertCircle className="h-5 w-5 text-univ-gold shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-bold text-univ-gold uppercase tracking-wider">Documents Submitted</p>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            <p className="text-xs font-extrabold text-univ-gold uppercase tracking-wider">Documents Submitted</p>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
               Your files have been successfully submitted for review. They are currently being evaluated by the Admissions office. You can still update or replace your documents below while review is pending.
             </p>
           </div>
@@ -193,11 +205,11 @@ export default function DocumentUploadStep({ onNext, onBack }) {
  
       {/* Rejected banner */}
       {status === 'documents_rejected' && (
-        <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4 mb-6">
+        <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4 mb-6 shadow-sm">
           <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Resubmission Required</p>
-            <p className="text-xs text-rose-600 mt-1 leading-relaxed">
+            <p className="text-xs font-extrabold text-rose-700 uppercase tracking-wider">Resubmission Required</p>
+            <p className="text-xs text-rose-600 mt-1 leading-relaxed font-medium">
               Some of your documents were not approved. Please review the feedback, upload corrected copies, and submit again.
             </p>
           </div>
@@ -212,7 +224,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
             id="submit-on-campus"
             checked={submitOnCampus}
             onChange={(e) => handleToggleCampusSubmission(e.target.checked)}
-            className="mt-1 h-4.5 w-4.5 text-univ-indigo border-slate-300 rounded focus:ring-univ-indigo cursor-pointer transition-all"
+            className="mt-1 h-4.5 w-4.5 text-univ-blue border-slate-300 rounded focus:ring-univ-blue cursor-pointer transition-all"
           />
           <label htmlFor="submit-on-campus" className="cursor-pointer select-none">
             <span className="text-xs font-extrabold text-univ-navy block uppercase tracking-wide">Submit remaining documents on-campus</span>
@@ -230,7 +242,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
           const isDragOver = dragOverType === doc.id;
  
           return (
-            <div key={doc.id} className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm hover:border-slate-200 transition-all duration-200">
+            <div key={doc.id} className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-univ-blue/30 transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-univ-navy uppercase tracking-wide">{doc.label}</span>
@@ -238,7 +250,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                     doc.id === 'form-138' ? (
                       <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
                     ) : submitOnCampus ? (
-                      <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">On-Campus Submission</span>
+                      <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">On-Campus</span>
                     ) : (
                       <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
                     )
@@ -259,9 +271,9 @@ export default function DocumentUploadStep({ onNext, onBack }) {
  
               {isUploading ? (
                 /* Uploading state */
-                <div className="w-full border-2 border-dashed border-univ-indigo/30 bg-univ-indigo/5 rounded-xl p-6 flex flex-col items-center gap-2">
-                  <Loader2 className="h-5 w-5 text-univ-indigo animate-spin" />
-                  <span className="text-xs text-univ-indigo font-bold">Uploading file to server...</span>
+                <div className="w-full border-2 border-dashed border-univ-blue/30 bg-univ-blue/5 rounded-xl p-6 flex flex-col items-center gap-2">
+                  <Loader2 className="h-5 w-5 text-univ-blue animate-spin" />
+                  <span className="text-xs text-univ-blue font-bold">Uploading file to server...</span>
                 </div>
               ) : uploaded ? (
                 /* Uploaded file display */
@@ -304,12 +316,12 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                   disabled={!isEditable}
                   className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
                     isDragOver
-                      ? 'border-univ-indigo bg-univ-indigo/[0.01]'
-                      : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50 hover:border-univ-indigo/50'
+                      ? 'border-univ-blue bg-univ-blue/[0.02]'
+                      : 'border-slate-200 bg-slate-50 hover:bg-blue-50/50 hover:border-univ-blue/30'
                   }`}
                 >
-                  <Upload className={`h-5 w-5 ${isDragOver ? 'text-univ-indigo' : 'text-slate-400'}`} />
-                  <span className={`text-xs ${isDragOver ? 'text-univ-indigo font-bold' : 'text-slate-500 font-semibold'}`}>
+                  <Upload className={`h-5 w-5 ${isDragOver ? 'text-univ-blue' : 'text-slate-400'}`} />
+                  <span className={`text-xs ${isDragOver ? 'text-univ-blue font-bold' : 'text-slate-500 font-semibold'}`}>
                     {isDragOver ? 'Drop file here' : 'Click to select or drag and drop here'}
                   </span>
                   <span className="text-[10px] text-slate-400 font-medium">PDF, JPEG, or PNG up to 5MB</span>
@@ -324,11 +336,11 @@ export default function DocumentUploadStep({ onNext, onBack }) {
       <div className="mt-6 flex items-center gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
         <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden shadow-inner">
           <div
-            className="bg-univ-indigo h-full rounded-full transition-all duration-300 shadow-sm"
+            className="bg-univ-blue h-full rounded-full transition-all duration-300 shadow-sm"
             style={{ width: `${(documents.length / REQUIRED_DOCUMENTS.length) * 100}%` }}
           />
         </div>
-        <span className="text-xs text-slate-500 font-bold whitespace-nowrap">
+        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-extrabold whitespace-nowrap">
           {documents.length} of {REQUIRED_DOCUMENTS.length} uploaded
         </span>
       </div>
@@ -338,7 +350,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer"
+          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm"
         >
           Back
         </button>
@@ -348,13 +360,14 @@ export default function DocumentUploadStep({ onNext, onBack }) {
               type="button"
               onClick={handleSubmit}
               disabled={!allRequiredUploaded}
-              className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
+              className={`flex items-center gap-2 px-8 py-3 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer ${
                 allRequiredUploaded
-                  ? 'bg-univ-indigo hover:bg-univ-blue'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 hover:shadow-lg hover:-translate-y-0.5'
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
-              Submit Documents
+              <ShieldCheck className="w-4 h-4" />
+              Submit Application
             </button>
           )}
           {isSubmitted && (
@@ -362,9 +375,9 @@ export default function DocumentUploadStep({ onNext, onBack }) {
               type="button"
               onClick={onNext}
               disabled={!allRequiredUploaded}
-              className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
+              className={`px-8 py-3 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer ${
                 allRequiredUploaded
-                  ? 'bg-univ-indigo hover:bg-univ-blue'
+                  ? 'bg-univ-blue hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
                   : 'bg-slate-300 opacity-55 cursor-not-allowed'
               }`}
             >
