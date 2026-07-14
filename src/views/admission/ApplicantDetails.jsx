@@ -136,7 +136,6 @@ export default function ApplicantDetails({ studentId, onBack }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-6">
-      <div className="flex-1 overflow-y-auto p-8 space-y-6">
 
         <div className="flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl p-5 shadow-premium">
           <div className="flex items-center gap-4">
