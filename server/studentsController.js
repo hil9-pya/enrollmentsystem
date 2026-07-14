@@ -370,6 +370,11 @@ const approveAdmission = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'documents_submitted') {
+    res.status(400);
+    throw new Error('Invalid action: Applicant is not in a pending review state.');
+  }
+
   student.admissionNotes = req.body.notes || '';
   
   if (!student.studentId) {
@@ -404,6 +409,12 @@ const approveAdmission = asyncHandler(async (req, res) => {
     student.status = 'documents_approved';
   }
 
+  student.auditLogs.push({
+    action: 'Approved Documents',
+    user: req.user ? req.user.username : 'Admissions Officer',
+    date: new Date()
+  });
+
   await student.save();
   res.json(student);
 });
@@ -415,8 +426,19 @@ const rejectAdmission = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'documents_submitted') {
+    res.status(400);
+    throw new Error('Invalid action: Applicant is not in a pending review state.');
+  }
+
   student.admissionNotes = req.body.notes || '';
   student.status = 'documents_rejected';
+
+  student.auditLogs.push({
+    action: 'Rejected Documents',
+    user: req.user ? req.user.username : 'Admissions Officer',
+    date: new Date()
+  });
 
   await student.save();
   res.json(student);

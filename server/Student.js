@@ -27,6 +27,15 @@ const TuitionLineSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const AuditLogSchema = new mongoose.Schema(
+  {
+    action: { type: String, required: true },
+    user: { type: String, required: true },
+    date: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const StudentSchema = new mongoose.Schema(
   {
     // Human-readable student number (e.g. STU-2026-0001) doubles as the
@@ -85,6 +94,7 @@ const StudentSchema = new mongoose.Schema(
     subjectChangeRequest: { type: String, default: '' },
 
     applicantPassword: { type: String, default: null },
+    auditLogs: { type: [AuditLogSchema], default: [] },
   },
   {
     timestamps: true,

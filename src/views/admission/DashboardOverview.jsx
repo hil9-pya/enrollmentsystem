@@ -9,7 +9,14 @@ export default function DashboardOverview({ students, onNavigate }) {
     const totalApplicants = students.length;
     const pendingReview = students.filter(s => s.status === 'documents_submitted');
     const justRegistered = students.filter(s => s.status === 'registration');
-    const approved = students.filter(s => s.status === 'documents_approved' || s.status === 'enrolled');
+    const approved = students.filter(s => [
+      'documents_approved',
+      'advising_pending',
+      'advising_approved',
+      'payment_pending',
+      'validation_pending',
+      'enrolled'
+    ].includes(s.status));
 
     const recentSubmissions = [...students]
       .filter(s => s.status !== 'registration')
