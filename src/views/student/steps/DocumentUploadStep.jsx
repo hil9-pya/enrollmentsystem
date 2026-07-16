@@ -146,13 +146,26 @@ export default function DocumentUploadStep({ onNext, onBack }) {
     }
   }
 
-  const requiredDocs = REQUIRED_DOCUMENTS.filter((d) => {
+  const enrollmentType = student?.enrollmentType || 'new';
+
+  const applicableDocs = REQUIRED_DOCUMENTS.filter(d => 
+    (d.requiredFor && d.requiredFor.includes(enrollmentType)) || 
+    (d.optionalFor && d.optionalFor.includes(enrollmentType))
+  );
+
+  const requiredDocs = applicableDocs.filter((d) => d.requiredFor && d.requiredFor.includes(enrollmentType));
+
+  const docsToUploadOnline = requiredDocs.filter((d) => {
     if (submitOnCampus) {
-      return d.id === 'form-138';
+      if (enrollmentType === 'new') return d.id === 'form-138';
+      if (enrollmentType === 'transfer') return d.id === 'transfer-credentials';
+      if (enrollmentType === 'returning') return d.id === 'readmission-form';
+      return false;
     }
-    return d.required;
+    return true;
   });
-  const allRequiredUploaded = requiredDocs.every((d) => getDocByTypeId(d.id));
+
+  const allRequiredUploaded = docsToUploadOnline.length === 0 || docsToUploadOnline.every((d) => getDocByTypeId(d.id));
 
   function renderStatusIcon(docStatus) {
     switch (docStatus) {
@@ -229,14 +242,14 @@ export default function DocumentUploadStep({ onNext, onBack }) {
           <label htmlFor="submit-on-campus" className="cursor-pointer select-none">
             <span className="text-xs font-extrabold text-univ-navy block uppercase tracking-wide">Submit remaining documents on-campus</span>
             <span className="text-[11px] text-slate-500 mt-1 block leading-relaxed font-medium">
-              Check this option if you prefer to submit your Form 137 and PSA Birth Certificate physically at the Office of the Registrar. **Form 138 (Report Card) must still be uploaded online** to proceed with academic evaluation.
+              Check this option if you prefer to submit your supporting documents physically at the Office of the Registrar. **Your primary credential ({enrollmentType === 'transfer' ? 'Transfer Credentials' : enrollmentType === 'returning' ? 'Re-admission Form' : 'Form 138 / Report Card'}) must still be uploaded online** to proceed with academic evaluation.
             </span>
           </label>
         </div>
       )}
 
       <div className="space-y-4">
-        {REQUIRED_DOCUMENTS.map((doc) => {
+        {applicableDocs.map((doc) => {
           const uploaded = getDocByTypeId(doc.id);
           const isUploading = uploadingTypes.has(doc.id);
           const isDragOver = dragOverType === doc.id;
@@ -246,13 +259,11 @@ export default function DocumentUploadStep({ onNext, onBack }) {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-univ-navy uppercase tracking-wide">{doc.label}</span>
-                  {doc.required && (
-                    doc.id === 'form-138' ? (
+                  {doc.requiredFor && doc.requiredFor.includes(enrollmentType) && (
+                    docsToUploadOnline.some(d => d.id === doc.id) ? (
                       <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
-                    ) : submitOnCampus ? (
-                      <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">On-Campus</span>
                     ) : (
-                      <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+                      <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">On-Campus</span>
                     )
                   )}
                 </div>
@@ -333,17 +344,25 @@ export default function DocumentUploadStep({ onNext, onBack }) {
       </div>
  
       {/* Progress indicator */}
-      <div className="mt-6 flex items-center gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-        <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden shadow-inner">
-          <div
-            className="bg-univ-blue h-full rounded-full transition-all duration-300 shadow-sm"
-            style={{ width: `${(documents.length / REQUIRED_DOCUMENTS.length) * 100}%` }}
-          />
+      {applicableDocs.length > 0 && (
+        <div className="mt-6 flex items-center gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden shadow-inner">
+            <div
+              className="bg-univ-blue h-full rounded-full transition-all duration-300 shadow-sm"
+              style={{ width: `${(documents.length / applicableDocs.length) * 100}%` }}
+            />
+          </div>
+          <span className="text-[10px] uppercase tracking-widest text-slate-500 font-extrabold whitespace-nowrap">
+            {documents.length} of {applicableDocs.length} uploaded
+          </span>
         </div>
-        <span className="text-[10px] uppercase tracking-widest text-slate-500 font-extrabold whitespace-nowrap">
-          {documents.length} of {REQUIRED_DOCUMENTS.length} uploaded
-        </span>
-      </div>
+      )}
+
+      {applicableDocs.length === 0 && (
+         <div className="mt-6 p-5 bg-slate-50/50 rounded-xl border border-slate-100 text-center">
+            <span className="text-xs font-bold text-slate-500">No documents are required for your enrollment type. You may proceed.</span>
+         </div>
+      )}
  
       {/* Actions */}
       <div className="flex items-center justify-between mt-8 border-t border-slate-100 pt-6">

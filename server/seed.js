@@ -2,10 +2,7 @@ import bcrypt from 'bcryptjs';
 import Student from './Student.js';
 import User from './User.js';
 
-// Mirrors src/data/mockData.js -> INITIAL_STUDENTS, plus one blank
-// "STU-2026-0006" template record. The frontend (EnrollmentContext.jsx)
-// defaults a fresh visitor's activeStudentId to 'STU-2026-0006', so that
-// record must always exist for the student portal's demo flow to work.
+// Mirrors src/data/mockData.js plus mock students for demo purposes
 const INITIAL_STUDENTS = [
   // Blank template record — the Student Portal defaults a first-time,
   // not-yet-registered visitor's active student id to this record.
@@ -59,38 +56,146 @@ const INITIAL_STUDENTS = [
     admissionNotes: '',
     adviserNotes: '',
   },
+  {
+    _id: 'STU-2026-0001',
+    studentId: 'STU-2026-0001',
+    firstName: 'Maria',
+    lastName: 'Santos',
+    email: 'maria@example.com',
+    phone: '0917-111-1111',
+    birthDate: '2002-05-15',
+    address: '456 Oak St, Manila',
+    enrollmentType: 'new',
+    programId: null,
+    academicTerm: null,
+    status: 'documents_submitted',
+    documents: [
+      { typeId: 'form-138', fileName: 'form-138-maria.pdf', originalName: 'Form_138_Santos.pdf', status: 'pending' },
+      { typeId: 'birth-cert', fileName: 'birth-cert-maria.pdf', originalName: 'PSA_Birth_Cert.pdf', status: 'pending' }
+    ],
+    selectedSubjects: [],
+    tuitionBreakdown: [],
+    totalTuition: 0,
+    paymentMethod: null,
+    paymentStatus: 'unpaid',
+    scheduleGenerated: false,
+    registrationFormGenerated: false,
+    receiptGenerated: false,
+    admissionNotes: '',
+    adviserNotes: '',
+  },
+  {
+    _id: 'STU-2026-0002',
+    studentId: 'STU-2026-0002',
+    firstName: 'Carlos',
+    lastName: 'Reyes',
+    email: 'carlos@example.com',
+    phone: '0917-222-2222',
+    birthDate: '2001-08-20',
+    address: '789 Pine St, Quezon City',
+    enrollmentType: 'new',
+    programId: 'bscs',
+    academicTerm: '1s-2026',
+    status: 'advising_pending',
+    documents: [
+      { typeId: 'form-138', fileName: 'form-138-carlos.pdf', originalName: 'Form_138_Reyes.pdf', status: 'approved' },
+      { typeId: 'birth-cert', fileName: 'birth-cert-carlos.pdf', originalName: 'PSA_Birth_Cert.pdf', status: 'approved' }
+    ],
+    selectedSubjects: [
+      { subjectId: 'cs101' },
+      { subjectId: 'cs102' }
+    ],
+    tuitionBreakdown: [
+      { label: 'CS 101 - Intro to Computing (3 units)', amount: 4500 },
+      { label: 'CS 102 - Programming 1 (3 units)', amount: 4500 }
+    ],
+    totalTuition: 9000,
+    paymentMethod: null,
+    paymentStatus: 'unpaid',
+    scheduleGenerated: false,
+    registrationFormGenerated: false,
+    receiptGenerated: false,
+    admissionNotes: 'Documents verified on-site.',
+    adviserNotes: '',
+  },
+  {
+    _id: 'STU-2026-0003',
+    studentId: 'STU-2026-0003',
+    firstName: 'Ana',
+    lastName: 'Torres',
+    email: 'ana@example.com',
+    phone: '0917-333-3333',
+    birthDate: '2003-12-01',
+    address: '101 Maple St, Makati',
+    enrollmentType: 'new',
+    programId: 'bscs',
+    academicTerm: '1s-2026',
+    status: 'payment_pending',
+    documents: [
+      { typeId: 'form-138', fileName: 'form-138-ana.pdf', originalName: 'Form_138_Torres.pdf', status: 'approved' },
+      { typeId: 'birth-cert', fileName: 'birth-cert-ana.pdf', originalName: 'PSA_Birth_Cert.pdf', status: 'approved' }
+    ],
+    selectedSubjects: [
+      { subjectId: 'cs101' },
+      { subjectId: 'cs102' }
+    ],
+    tuitionBreakdown: [
+      { label: 'CS 101 - Intro to Computing (3 units)', amount: 4500 },
+      { label: 'CS 102 - Programming 1 (3 units)', amount: 4500 }
+    ],
+    totalTuition: 9000,
+    paymentMethod: 'gcash',
+    paymentStatus: 'unpaid',
+    scheduleGenerated: false,
+    registrationFormGenerated: false,
+    receiptGenerated: false,
+    admissionNotes: 'Documents verified.',
+    adviserNotes: 'Approved for 1st Year CS subjects.',
+  }
 ];
-
 
 const DEFAULT_STAFF_ROLES = ['student', 'admission', 'adviser', 'accounting', 'registrar', 'admin'];
 
 export async function seedStudents() {
-  const count = await Student.countDocuments();
-  if (count > 0) return;
-  
-  console.log('Cleared existing student records. Seeding initial applicant records...');
-  await Student.insertMany(INITIAL_STUDENTS);
-  console.log(`Seeded ${INITIAL_STUDENTS.length} student records.`);
+  console.log('Verifying initial applicant records...');
+  for (const studentData of INITIAL_STUDENTS) {
+    const exists = await Student.exists({ _id: studentData._id });
+    if (!exists) {
+      await Student.create(studentData);
+      console.log(`Seeded student: ${studentData._id}`);
+    }
+  }
 }
 
 export async function seedUsers() {
-  const count = await User.countDocuments();
-  if (count > 0) return;
-
-  console.log('Users collection empty. Seeding default demo accounts...');
+  console.log('Verifying demo accounts...');
   const passwordHash = await bcrypt.hash('password123', 10);
 
-  const users = DEFAULT_STAFF_ROLES.map((role) => ({
-    username: role === 'student' ? 'STU-2026-0000' : role,
-    email: `${role}@example.com`,
-    // Insert the hash directly (bypassing the pre-save hook) since it's
-    // already hashed — the same technique the original migration.js used.
-    password: passwordHash,
-    firstName: role.charAt(0).toUpperCase() + role.slice(1),
-    lastName: 'Account',
-    role,
-  }));
+  const studentIds = ['STU-2026-0000', 'STU-2026-0001', 'STU-2026-0002', 'STU-2026-0003'];
+  const usersToSeed = [
+    ...DEFAULT_STAFF_ROLES.filter(r => r !== 'student').map((role) => ({
+      username: role,
+      email: `${role}@example.com`,
+      password: passwordHash,
+      firstName: role.charAt(0).toUpperCase() + role.slice(1),
+      lastName: 'Account',
+      role,
+    })),
+    ...studentIds.map((sid, idx) => ({
+      username: sid,
+      email: sid === 'STU-2026-0000' ? 'student@example.com' : `student${idx}@example.com`,
+      password: passwordHash,
+      firstName: idx === 0 ? 'Demo' : (idx === 1 ? 'Maria' : (idx === 2 ? 'Carlos' : 'Ana')),
+      lastName: idx === 0 ? 'Student' : (idx === 1 ? 'Santos' : (idx === 2 ? 'Reyes' : 'Torres')),
+      role: 'student',
+    }))
+  ];
 
-  await User.collection.insertMany(users);
-  console.log(`Seeded ${users.length} demo accounts (password: password123).`);
+  for (const userData of usersToSeed) {
+    const exists = await User.exists({ username: userData.username });
+    if (!exists) {
+      await User.collection.insertOne(userData);
+      console.log(`Seeded user account: ${userData.username}`);
+    }
+  }
 }

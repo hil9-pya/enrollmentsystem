@@ -160,10 +160,13 @@ const registerStudent = asyncHandler(async (req, res) => {
     status: 'registration',
   });
 
-  // FAST-TRACK logic: if returning student, jump to advising_pending
-  if (req.body.enrollmentType === 'returning' || req.body.enrollmentType === 'continuing') {
+  // FAST-TRACK logic: continuing students do not need document review
+  if (req.body.enrollmentType === 'continuing') {
     student.enrollmentType = req.body.enrollmentType;
     student.status = 'advising_pending';
+    await student.save();
+  } else if (req.body.enrollmentType) {
+    student.enrollmentType = req.body.enrollmentType;
     await student.save();
   }
 
@@ -206,7 +209,11 @@ const submitDocuments = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  student.status = 'documents_submitted';
+  if (student.enrollmentType === 'continuing') {
+    student.status = 'advising_pending';
+  } else {
+    student.status = 'documents_submitted';
+  }
   student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
   res.json(student);

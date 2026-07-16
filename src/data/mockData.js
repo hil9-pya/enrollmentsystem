@@ -290,12 +290,14 @@ export const SUBJECTS = [
 // 4. REQUIRED DOCUMENTS
 // ---------------------------------------------------------------------------
 export const REQUIRED_DOCUMENTS = [
-  { id: 'form-138', label: 'Form 138 (Report Card)', required: true },
-  { id: 'form-137', label: 'Form 137 / Transcript of Records', required: true },
-  { id: 'birth-cert', label: 'PSA Birth Certificate', required: true },
-  { id: 'good-moral', label: 'Certificate of Good Moral Character', required: false },
-  { id: '2x2-photo', label: '2x2 ID Photo', required: false },
-  { id: 'med-cert', label: 'Medical Certificate', required: false },
+  { id: 'form-138', label: 'Form 138 (Report Card)', requiredFor: ['new'] },
+  { id: 'form-137', label: 'Form 137 / Transcript of Records', requiredFor: ['new', 'transfer'] },
+  { id: 'birth-cert', label: 'PSA Birth Certificate', requiredFor: ['new', 'transfer'] },
+  { id: 'transfer-credentials', label: 'Certificate of Transfer Credentials', requiredFor: ['transfer'] },
+  { id: 'readmission-form', label: 'Re-admission Form', requiredFor: ['returning'] },
+  { id: 'good-moral', label: 'Certificate of Good Moral Character', optionalFor: ['new', 'transfer'] },
+  { id: '2x2-photo', label: '2x2 ID Photo', optionalFor: ['new', 'transfer', 'returning'] },
+  { id: 'med-cert', label: 'Medical Certificate', optionalFor: ['new', 'transfer', 'returning'] },
 ];
 
 // ---------------------------------------------------------------------------
