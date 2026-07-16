@@ -1,11 +1,20 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, ArrowRight, Clock, CheckCircle, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
-import { PROGRAMS } from '../../data/mockData';
+import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import { useEnrollment } from '../../context/EnrollmentContext';
+import { toast } from 'react-hot-toast';
+
 export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
+  const { dispatch } = useEnrollment();
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const filter = initialFilter || 'all';
+
+  // Evaluation States
+  const [completedSubjects, setCompletedSubjects] = useState([]);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [adviserNotes, setAdviserNotes] = useState('');
 
   const relevantStudents = useMemo(() => {
     return students.filter(s => 
@@ -15,29 +24,86 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
 
   const filteredStudents = useMemo(() => {
     let result = relevantStudents;
-
-    if (filter === 'pending') {
-      result = result.filter(s => s.status === 'advising_pending');
-    } else if (filter === 'approved') {
-      result = result.filter(s => ['advising_approved', 'payment_pending', 'enrolled'].includes(s.status));
-    } else if (filter === 'rejected') {
-      result = result.filter(s => s.status === 'advising_rejected');
-    }
+    if (filter === 'pending') result = result.filter(s => s.status === 'advising_pending');
+    else if (filter === 'approved') result = result.filter(s => ['advising_approved', 'payment_pending', 'enrolled'].includes(s.status));
+    else if (filter === 'rejected') result = result.filter(s => s.status === 'advising_rejected');
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(s => 
-        `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-        s.id.toLowerCase().includes(q)
-      );
+      result = result.filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
     }
-
     return result.sort((a, b) => a.id.localeCompare(b.id));
   }, [relevantStudents, filter, searchQuery]);
 
-  const selectedStudent = useMemo(() => {
-    return students.find(s => s.id === selectedStudentId) || null;
-  }, [students, selectedStudentId]);
+  const selectedStudent = useMemo(() => students.find(s => s.id === selectedStudentId) || null, [students, selectedStudentId]);
+
+  // Sync Evaluation State
+  useEffect(() => {
+    if (selectedStudent) {
+      setCompletedSubjects(selectedStudent.completedSubjects || []);
+      setSelectedSubjects(selectedStudent.selectedSubjects?.map(s => s.subjectId) || []);
+      setAdviserNotes(selectedStudent.adviserNotes || '');
+    }
+  }, [selectedStudent]);
+
+  // Compute Eligible Subjects
+  const programPrefix = selectedStudent?.programId === 'bscs' ? 'cs' : selectedStudent?.programId === 'bsba' ? 'ba' : 'nu';
+  
+  const eligibleSubjects = useMemo(() => {
+    if (!selectedStudent || !programPrefix) return [];
+    return SUBJECTS.filter(sub => {
+      if (!sub.id.startsWith(programPrefix)) return false;
+      if (completedSubjects.includes(sub.id)) return false;
+      if (!sub.prerequisites || sub.prerequisites.length === 0) return true;
+      return sub.prerequisites.every(prereq => completedSubjects.includes(prereq));
+    });
+  }, [selectedStudent, programPrefix, completedSubjects]);
+
+  const toggleCompleted = (id) => {
+    setCompletedSubjects(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  };
+
+  const toggleSelected = (id) => {
+    setSelectedSubjects(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  };
+
+  const handleApprove = async () => {
+    try {
+      if (selectedStudent.enrollmentType === 'transfer' || selectedStudent.enrollmentType === 'returning' || selectedStudent.enrollmentType === 'continuing') {
+        const maxYear = eligibleSubjects.length > 0 ? Math.max(...eligibleSubjects.map(s => s.yearLevel || 1)) : 1;
+        await dispatch({
+          type: 'UPDATE_STUDENT_SUBJECTS',
+          payload: {
+            studentId: selectedStudent.id,
+            subjects: selectedSubjects.map(id => ({ subjectId: id })),
+            completedSubjects,
+            yearLevel: maxYear
+          }
+        });
+      }
+      await dispatch({
+        type: 'APPROVE_ADVISING',
+        payload: { studentId: selectedStudent.id, notes: adviserNotes }
+      });
+      toast.success('Evaluation Approved!');
+      setSelectedStudentId(null);
+    } catch (err) {
+       console.error("Failed to approve", err);
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await dispatch({
+        type: 'REJECT_ADVISING',
+        payload: { studentId: selectedStudent.id, notes: adviserNotes }
+      });
+      toast.success('Evaluation Returned!');
+      setSelectedStudentId(null);
+    } catch (err) {
+       console.error("Failed to reject", err);
+    }
+  };
 
   return (
     <div className="h-full flex overflow-hidden bg-slate-50">
@@ -128,9 +194,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
         {selectedStudent ? (
           <>
             <div className="flex-1 overflow-y-auto p-4 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
-              
               <div className="max-w-3xl mx-auto">
-                {/* Header Profile */}
                 <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
                     <h1 className="text-2xl font-extrabold text-slate-900 mb-1 tracking-tight">
@@ -145,62 +209,87 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                   <StatusBadge status={selectedStudent.status} />
                 </div>
                 
-                {/* Simulated Document / Curriculum View */}
-                <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">
-                  <div className="border-b border-slate-200 bg-slate-50/80 p-4 flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-univ-indigo" />
-                      Curriculum Evaluation Form
-                    </h3>
-                    <span className="text-[10px] font-bold text-univ-indigo bg-indigo-50 px-2.5 py-1 rounded tracking-wider uppercase">Semester 1, 2026</span>
-                  </div>
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      {/* Placeholder data mimicking a document */}
-                      <div className="flex justify-between items-center py-2.5 border-b border-slate-100">
-                        <div>
-                          <p className="text-sm font-bold text-slate-700">ENG101 - Purposive Communication</p>
-                          <p className="text-xs font-semibold text-slate-400 mt-0.5">3 Units • Lecture</p>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded">Validated</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2.5 border-b border-slate-100">
-                        <div>
-                          <p className="text-sm font-bold text-slate-700">MATH101 - Mathematics in the Modern World</p>
-                          <p className="text-xs font-semibold text-slate-400 mt-0.5">3 Units • Lecture</p>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded">Validated</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2.5 border-b border-slate-100">
-                        <div>
-                          <p className="text-sm font-bold text-slate-700">STS101 - Science, Technology and Society</p>
-                          <p className="text-xs font-semibold text-slate-400 mt-0.5">3 Units • Lecture</p>
-                        </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded">Validated</span>
-                      </div>
+                {selectedStudent.status === 'advising_pending' && (selectedStudent.enrollmentType === 'transfer' || selectedStudent.enrollmentType === 'returning' || selectedStudent.enrollmentType === 'continuing') && (
+                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">
+                    <div className="border-b border-slate-200 bg-slate-50/80 p-4">
+                      <h3 className="text-sm font-bold text-slate-900">Step 1: Credited Subjects</h3>
+                      <p className="text-xs text-slate-500">Check off the subjects this student has already passed.</p>
                     </div>
-                    
-                    {selectedStudent.status === 'advising_pending' && (
-                      <div className="mt-8 p-5 bg-amber-50/50 border border-amber-200/60 rounded-lg">
-                        <p className="text-xs font-bold text-amber-900 mb-1 flex items-center gap-2">
-                          <FileWarning className="w-4 h-4 text-amber-500" />
-                          Adviser Notes
-                        </p>
-                        <p className="text-xs text-amber-700/80 mb-3 font-medium">Add remarks regarding prerequisite credits or overrides before final approval.</p>
-                        <textarea 
-                          className="w-full text-sm font-medium text-slate-700 p-3 border border-amber-300/50 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-white placeholder-slate-400 transition-shadow" 
-                          rows="3"
-                          placeholder="Type evaluation remarks here..."
-                        ></textarea>
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+                       {SUBJECTS.filter(s => s.id.startsWith(programPrefix)).map(sub => (
+                         <label key={sub.id} className="flex items-center gap-2 text-sm p-2 bg-slate-50 rounded border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                           <input type="checkbox" checked={completedSubjects.includes(sub.id)} onChange={() => toggleCompleted(sub.id)} className="rounded text-univ-indigo focus:ring-univ-indigo" />
+                           <span className="font-semibold text-slate-700">{sub.code}</span>
+                           <span className="text-xs text-slate-500 truncate">{sub.name}</span>
+                         </label>
+                       ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">
+                  <div className="border-b border-slate-200 bg-slate-50/80 p-4">
+                    <h3 className="text-sm font-bold text-slate-900">{selectedStudent.status === 'advising_pending' ? 'Step 2: Assign Eligible Subjects' : 'Assigned Subjects'}</h3>
+                  </div>
+                  <div className="p-4">
+                    {selectedStudent.status === 'advising_pending' ? (
+                      eligibleSubjects.length > 0 ? (
+                        <div className="space-y-2">
+                           {eligibleSubjects.map(sub => (
+                             <label key={sub.id} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-univ-indigo transition-colors">
+                               <div className="flex items-center gap-3">
+                                 <input type="checkbox" checked={selectedSubjects.includes(sub.id)} onChange={() => toggleSelected(sub.id)} className="w-5 h-5 rounded text-univ-indigo focus:ring-univ-indigo" />
+                                 <div>
+                                   <p className="text-sm font-bold text-slate-800">{sub.code} - {sub.name}</p>
+                                   <p className="text-xs text-slate-500">Year {sub.yearLevel || 1} • {sub.units || 3} Units</p>
+                                 </div>
+                               </div>
+                               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-1 rounded">Eligible</span>
+                             </label>
+                           ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">No eligible subjects found based on prerequisites.</p>
+                      )
+                    ) : (
+                      <div className="space-y-2">
+                         {selectedSubjects.map(id => {
+                            const sub = SUBJECTS.find(s => s.id === id);
+                            if (!sub) return null;
+                            return (
+                              <div key={id} className="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0">
+                                <div>
+                                  <p className="text-sm font-bold text-slate-700">{sub.code} - {sub.name}</p>
+                                  <p className="text-xs font-semibold text-slate-400 mt-0.5">{sub.units || 3} Units</p>
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded">Assigned</span>
+                              </div>
+                            );
+                         })}
                       </div>
                     )}
                   </div>
+                  
+                  {selectedStudent.status === 'advising_pending' && (
+                    <div className="p-5 bg-amber-50/50 border-t border-amber-200/60">
+                      <p className="text-xs font-bold text-amber-900 mb-1 flex items-center gap-2">
+                        <FileWarning className="w-4 h-4 text-amber-500" />
+                        Adviser Notes
+                      </p>
+                      <textarea 
+                        value={adviserNotes}
+                        onChange={(e) => setAdviserNotes(e.target.value)}
+                        className="w-full text-sm font-medium text-slate-700 p-3 mt-2 border border-amber-300/50 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-white placeholder-slate-400 transition-shadow" 
+                        rows="3"
+                        placeholder="Type evaluation remarks here..."
+                      ></textarea>
+                    </div>
+                  )}
                 </div>
               </div>
-              
             </div>
             
-            {/* Sticky Action Footer - Only show if pending */}
+            {/* Sticky Action Footer */}
             {selectedStudent.status === 'advising_pending' && (
               <div className="border-t border-slate-200 bg-white p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.03)] z-20 shrink-0">
                 <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -208,19 +297,16 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     Ensure all subjects are properly credited before approving.
                   </p>
                   <div className="flex gap-3 w-full sm:w-auto">
-                    <button 
-                      onClick={() => setSelectedStudentId(null)}
-                      className="sm:hidden flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold transition-colors"
-                    >
+                    <button onClick={() => setSelectedStudentId(null)} className="sm:hidden flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold transition-colors">
                       Back
                     </button>
-                    <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-rose-100 text-rose-600 rounded-lg text-sm font-bold hover:bg-rose-50 hover:border-rose-200 transition-colors">
+                    <button onClick={handleReject} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-rose-100 text-rose-600 rounded-lg text-sm font-bold hover:bg-rose-50 hover:border-rose-200 transition-colors">
                       <X className="w-4 h-4" />
                       Return
                     </button>
-                    <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm">
+                    <button onClick={handleApprove} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm">
                       <Check className="w-4 h-4" />
-                      Approve
+                      Approve Evaluation
                     </button>
                   </div>
                 </div>

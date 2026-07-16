@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Student from './Student.js';
 import User from './User.js';
-import { computeTuition } from './subjectsCatalog.js';
+import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -285,26 +285,40 @@ const selectProgram = asyncHandler(async (req, res) => {
   student.programId = programId;
   student.academicTerm = academicTerm;
 
-  // Auto-enroll required subjects depending on programId and enrollmentType (nature)
-  const yearLevel = (student.enrollmentType === 'returning' || student.enrollmentType === 'continuing') ? 2 : 1;
-  let defaultSubjectIds = [];
-  if (programId === 'bscs') {
-    if (yearLevel === 1) defaultSubjectIds = ['cs101', 'cs102'];
-    else if (yearLevel === 2) defaultSubjectIds = ['cs201', 'cs202'];
-  } else if (programId === 'bsba') {
-    if (yearLevel === 1) defaultSubjectIds = ['ba101', 'ba102'];
-    else if (yearLevel === 2) defaultSubjectIds = ['ba201', 'ba202'];
-  } else if (programId === 'bsn') {
-    if (yearLevel === 1) defaultSubjectIds = ['nu101', 'nu102', 'nu103'];
-    else if (yearLevel === 2) defaultSubjectIds = ['nu201', 'nu202'];
+  const prefix = programId === 'bscs' ? 'cs' : programId === 'bsba' ? 'ba' : 'nu';
+  let eligibleSubjectIds = [];
+
+  if (student.enrollmentType === 'new') {
+    eligibleSubjectIds = SUBJECTS_CATALOG
+      .filter(sub => sub.id.startsWith(prefix) && sub.yearLevel === 1)
+      .map(sub => sub.id);
+    student.yearLevel = 1;
+  } else if (student.enrollmentType === 'continuing') {
+    const completed = student.completedSubjects || [];
+    eligibleSubjectIds = SUBJECTS_CATALOG
+      .filter(sub => sub.id.startsWith(prefix))
+      .filter(sub => !completed.includes(sub.id))
+      .filter(sub => sub.prerequisites.every(prereq => completed.includes(prereq)))
+      .map(sub => sub.id);
+    
+    if (eligibleSubjectIds.length > 0) {
+      const maxYear = Math.max(...eligibleSubjectIds.map(id => {
+        const sub = SUBJECTS_CATALOG.find(s => s.id === id);
+        return sub ? sub.yearLevel : 1;
+      }));
+      student.yearLevel = maxYear;
+    }
+  } else {
+    // Transfer or Returning: No auto-enrollment. Adviser must evaluate.
+    eligibleSubjectIds = [];
   }
 
-  student.selectedSubjects = defaultSubjectIds.map((subjectId) => ({
+  student.selectedSubjects = eligibleSubjectIds.map((subjectId) => ({
     subjectId,
     addedAt: new Date(),
   }));
 
-  const { tuitionBreakdown, totalTuition } = computeTuition(defaultSubjectIds);
+  const { tuitionBreakdown, totalTuition } = computeTuition(eligibleSubjectIds);
   student.tuitionBreakdown = tuitionBreakdown;
   student.totalTuition = totalTuition;
 
@@ -331,6 +345,25 @@ const setSubjects = asyncHandler(async (req, res) => {
   if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
     res.status(400);
     throw new Error('Cannot modify subjects after advising approval.');
+  }
+
+  if (req.body.completedSubjects !== undefined) {
+    student.completedSubjects = Array.isArray(req.body.completedSubjects) ? req.body.completedSubjects : [];
+  }
+  if (req.body.yearLevel !== undefined) {
+    student.yearLevel = Number(req.body.yearLevel);
+  }
+
+  // Prerequisite validation
+  for (const subjectId of subjectIds) {
+    const sub = SUBJECTS_CATALOG.find(s => s.id === subjectId);
+    if (sub && sub.prerequisites && sub.prerequisites.length > 0) {
+      const hasAllPrereqs = sub.prerequisites.every(prereq => student.completedSubjects.includes(prereq));
+      if (!hasAllPrereqs) {
+        res.status(400);
+        throw new Error(`Prerequisites not met for ${sub.name}. Requires: ${sub.prerequisites.join(', ')}`);
+      }
+    }
   }
 
   student.selectedSubjects = subjectIds.map((subjectId) => ({
@@ -457,6 +490,11 @@ const rejectAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'advising_pending') {
+    res.status(400);
+    throw new Error('Invalid action: Student must be pending advising.');
+  }
+
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_rejected';
 
@@ -469,6 +507,11 @@ const rejectAdvising = asyncHandler(async (req, res) => {
 const approveAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
+
+  if (student.status !== 'advising_pending') {
+    res.status(400);
+    throw new Error('Invalid action: Student must be pending advising.');
+  }
 
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_approved';
@@ -483,6 +526,11 @@ const approveAdvising = asyncHandler(async (req, res) => {
 const confirmPayment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
+
+  if (student.status !== 'payment_pending') {
+    res.status(400);
+    throw new Error('Invalid action: Student is not pending payment.');
+  }
 
   student.paymentStatus = 'paid';
   // Automate Registrar workflow: auto-enroll on payment confirmation
@@ -516,6 +564,11 @@ const proceedToPayment = asyncHandler(async (req, res) => {
 const validateEnrollment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
+
+  if (student.status !== 'payment_pending' && student.status !== 'enrolled') {
+    res.status(400);
+    throw new Error('Invalid action: Student must be pending payment or already enrolled.');
+  }
 
   student.status = 'enrolled';
   student.scheduleGenerated = true;

@@ -261,7 +261,11 @@ export function EnrollmentProvider({ children }) {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/subjects`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subjectIds }),
+          body: JSON.stringify({ 
+            subjectIds,
+            completedSubjects: payload.completedSubjects,
+            yearLevel: payload.yearLevel
+          }),
         });
         updatedStudent = await safeJson(res);
       } 

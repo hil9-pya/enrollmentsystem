@@ -58,6 +58,8 @@ const StudentSchema = new mongoose.Schema(
     enrollmentType: { type: String, default: null },
     programId: { type: String, default: null },
     academicTerm: { type: String, default: null },
+    yearLevel: { type: Number, default: 1 },
+    completedSubjects: { type: [String], default: [] },
 
     status: { 
       type: String, 

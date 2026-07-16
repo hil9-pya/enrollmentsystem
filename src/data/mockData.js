@@ -17,8 +17,9 @@ export const PROGRAMS = [
 export const ACADEMIC_TERMS = [
   { id: '1s-2026', label: '1st Semester 2026-2027' },
   { id: '2s-2026', label: '2nd Semester 2026-2027' },
-  { id: 'sum-2027', label: 'Summer 2027' },
 ];
+
+export const ACTIVE_TERM_ID = '1s-2026';
 
 // ---------------------------------------------------------------------------
 // 3. SUBJECTS
