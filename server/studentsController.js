@@ -658,6 +658,47 @@ const setReturning = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Rollover an enrolled student to the next semester (Continuing)
+// @route   POST /api/students/:id/rollover
+const rolloverStudent = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'enrolled') {
+    res.status(400);
+    throw new Error('Only fully enrolled students can be rolled over to the next semester.');
+  }
+
+  // Archive current subjects to academic record
+  if (student.selectedSubjects && student.selectedSubjects.length > 0) {
+    const newRecords = student.selectedSubjects.map(s => ({
+      subjectId: s.subjectId,
+      grade: 2.0, // Default passing grade
+      term: student.academicTerm || 'previous_term'
+    }));
+    student.academicRecord = [...(student.academicRecord || []), ...newRecords];
+  }
+
+  // Reset enrollment state
+  student.selectedSubjects = [];
+  student.tuitionBreakdown = [];
+  student.totalTuition = 0;
+  student.academicTerm = ''; // Force them to pick next term
+  
+  // Transition status
+  student.status = 'advising_pending';
+  student.enrollmentType = 'continuing';
+
+  student.auditLogs.push({
+    action: `Rolled over to Continuing Student`,
+    user: req.user ? req.user.username : 'System Admin',
+    date: new Date()
+  });
+
+  await student.save();
+  res.json(student);
+});
+
 export {
   createDraft,
   applicantLogin,
@@ -680,4 +721,5 @@ export {
   rejectAdvising,
   resolveHold,
   setReturning,
+  rolloverStudent,
 };

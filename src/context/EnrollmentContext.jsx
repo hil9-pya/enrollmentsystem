@@ -315,6 +315,13 @@ export function EnrollmentProvider({ children }) {
         updatedStudent = await safeJson(res);
       }
 
+      else if (type === 'ROLLOVER_STUDENT') {
+        const res = await authFetch(`/api/students/${payload.studentId}/rollover`, {
+          method: 'POST',
+        });
+        updatedStudent = await safeJson(res);
+      }
+
       else if (type === 'PROCEED_TO_PAYMENT') {
         const res = await authFetch(`/api/students/${activeStudentId}/proceed-to-payment`, {
           method: 'POST',

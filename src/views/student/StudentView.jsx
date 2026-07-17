@@ -95,6 +95,9 @@ function getResumeStepFromStudent(student) {
       return 'fulfillment';
     case 'advising_pending':
     case 'advising_rejected':
+      if (student.enrollmentType === 'continuing' && !student.academicTerm) {
+        return 'continuing';
+      }
       return 'evaluation';
     case 'advising_approved':
     case 'enrollment_pending':
@@ -113,7 +116,7 @@ function getFurthestStep(storedStep, resumeStep) {
 
   if (storedIndex < 0) return resumeStep;
   if (resumeIndex < 0) return storedStep;
-  return STEP_KEYS[Math.min(storedIndex, resumeIndex)];
+  return STEP_KEYS[Math.max(storedIndex, resumeIndex)];
 }
 
 export default function StudentView() {
