@@ -22,7 +22,18 @@ export default function EnrollmentValidation({ studentId, onBack }) {
   const selectedSubjectDetails = useMemo(() => {
     if (!student) return [];
     return student.selectedSubjects
-      .map((ss) => SUBJECTS.find((s) => s.id === ss.subjectId))
+      .map((ss) => {
+        const sub = SUBJECTS.find((s) => s.id === ss.subjectId);
+        if (!sub) return null;
+        const sec = sub.sections?.find((x) => x.id === ss.sectionId);
+        return {
+          id: ss.subjectId,
+          code: sec ? sec.code : sub.code,
+          name: sub.name,
+          units: sub.units,
+          schedule: sec ? sec.schedule : { day: '—', time: '—' },
+        };
+      })
       .filter(Boolean);
   }, [student]);
 

@@ -8,8 +8,10 @@ import CourseEvaluationStep from './steps/CourseEvaluationStep';
 import SubjectEnrollmentStep from './steps/SubjectEnrollmentStep';
 import PaymentStep from './steps/PaymentStep';
 import FulfillmentStep from './steps/FulfillmentStep';
+import ClearanceStep from './steps/ClearanceStep';
 
 export const STUDENT_STEPS = [
+  { key: 'clearance', label: 'Holds & Clearances' },
   { key: 'continuing', label: 'Continuing Enrollment' },
   { key: 'evaluation', label: 'Course Evaluation' },
   { key: 'enrollment', label: 'Subject Enrollment' },
@@ -46,7 +48,13 @@ function getCompletedStepsFromStudent(student) {
   const hasSelectedSubjects = student.selectedSubjects?.length > 0;
   const completed = [];
 
-  if (student.programId) {
+  const hasActiveHolds = student.holds?.some(h => h.status === 'active');
+  
+  if (!hasActiveHolds) {
+    completed.push('clearance');
+  }
+
+  if (student.programId && !hasActiveHolds) {
     completed.push('continuing');
   }
   if (rank >= 4 || student.adviserNotes || hasSelectedSubjects) {
@@ -71,6 +79,11 @@ function getResumeStepFromStudent(student) {
 
   const status = student.status || 'documents_approved';
   const hasSelectedSubjects = student.selectedSubjects?.length > 0;
+  const hasActiveHolds = student.holds?.some(h => h.status === 'active');
+
+  if (hasActiveHolds) {
+    return 'clearance';
+  }
 
   switch (status) {
     case 'payment_pending':
@@ -107,7 +120,9 @@ export default function StudentView() {
   const { user } = useAuth();
   const student = getActiveStudent();
 
-  const [currentStep, setCurrentStep] = useState('continuing');
+  const hasActiveHolds = student?.holds?.some(h => h.status === 'active');
+  const initialStep = hasActiveHolds ? 'clearance' : 'continuing';
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isVerified, setIsVerified] = useState(() => {
     return user?.role === 'student';
@@ -178,7 +193,13 @@ export default function StudentView() {
       let updated = [...prev];
       let changed = false;
 
-      if (student.programId && !updated.includes('continuing')) {
+      const hasHolds = student.holds?.some(h => h.status === 'active');
+
+      if (!hasHolds && !updated.includes('clearance')) {
+        updated.push('clearance');
+        changed = true;
+      }
+      if (student.programId && !updated.includes('continuing') && !hasHolds) {
         updated.push('continuing');
         changed = true;
       }
@@ -240,6 +261,8 @@ export default function StudentView() {
 
   const renderStep = () => {
     switch (effectiveStep) {
+      case 'clearance':
+        return <ClearanceStep onNext={onNext} />;
       case 'continuing':
         return <ContinuingEnrollmentStep onNext={onNext} onBack={onBack} />;
       case 'evaluation':

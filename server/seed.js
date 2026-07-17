@@ -102,8 +102,8 @@ const INITIAL_STUDENTS = [
       { typeId: 'birth-cert', fileName: 'birth-cert-carlos.pdf', originalName: 'PSA_Birth_Cert.pdf', status: 'approved' }
     ],
     selectedSubjects: [
-      { subjectId: 'cs101' },
-      { subjectId: 'cs102' }
+      { subjectId: 'cs101', sectionId: 'cs101-b' },
+      { subjectId: 'cs102', sectionId: 'cs102-b' }
     ],
     tuitionBreakdown: [
       { label: 'CS 101 - Intro to Computing (3 units)', amount: 4500 },
@@ -136,8 +136,8 @@ const INITIAL_STUDENTS = [
       { typeId: 'birth-cert', fileName: 'birth-cert-ana.pdf', originalName: 'PSA_Birth_Cert.pdf', status: 'approved' }
     ],
     selectedSubjects: [
-      { subjectId: 'cs101' },
-      { subjectId: 'cs102' }
+      { subjectId: 'cs101', sectionId: 'cs101-b' },
+      { subjectId: 'cs102', sectionId: 'cs102-b' }
     ],
     tuitionBreakdown: [
       { label: 'CS 101 - Intro to Computing (3 units)', amount: 4500 },
@@ -151,6 +151,43 @@ const INITIAL_STUDENTS = [
     receiptGenerated: false,
     admissionNotes: 'Documents verified.',
     adviserNotes: 'Approved for 1st Year CS subjects.',
+  },
+  {
+    _id: 'STU-2026-0004',
+    studentId: 'STU-2026-0004',
+    firstName: 'Miguel',
+    lastName: 'Gomez',
+    email: 'miguel@example.com',
+    phone: '0917-444-4444',
+    birthDate: '2001-02-14',
+    address: '202 Birch St, Cebu City',
+    enrollmentType: 'returning',
+    programId: 'bscs',
+    academicTerm: null,
+    status: 'registration', // will skip admission and get routed by StudentView
+    documents: [],
+    selectedSubjects: [],
+    tuitionBreakdown: [],
+    totalTuition: 0,
+    paymentMethod: null,
+    paymentStatus: 'unpaid',
+    scheduleGenerated: false,
+    registrationFormGenerated: false,
+    receiptGenerated: false,
+    admissionNotes: '',
+    adviserNotes: '',
+    holds: [
+      {
+        type: 'readmission',
+        status: 'active',
+        description: 'AWOL from previous semester. Please upload Readmission Clearance form from the Dean.',
+        createdAt: new Date(),
+      }
+    ],
+    academicRecord: [
+      { subjectId: 'cs101', grade: 1.5, term: '1s-2025' },
+      { subjectId: 'cs102', grade: 2.0, term: '1s-2025' }
+    ]
   }
 ];
 
@@ -171,7 +208,7 @@ export async function seedUsers() {
   console.log('Verifying demo accounts...');
   const passwordHash = await bcrypt.hash('password123', 10);
 
-  const studentIds = ['STU-2026-0000', 'STU-2026-0001', 'STU-2026-0002', 'STU-2026-0003'];
+  const studentIds = ['STU-2026-0000', 'STU-2026-0001', 'STU-2026-0002', 'STU-2026-0003', 'STU-2026-0004'];
   const usersToSeed = [
     ...DEFAULT_STAFF_ROLES.filter(r => r !== 'student').map((role) => ({
       username: role,
@@ -181,14 +218,23 @@ export async function seedUsers() {
       lastName: 'Account',
       role,
     })),
-    ...studentIds.map((sid, idx) => ({
-      username: sid,
-      email: sid === 'STU-2026-0000' ? 'student@example.com' : `student${idx}@example.com`,
-      password: passwordHash,
-      firstName: idx === 0 ? 'Demo' : (idx === 1 ? 'Maria' : (idx === 2 ? 'Carlos' : 'Ana')),
-      lastName: idx === 0 ? 'Student' : (idx === 1 ? 'Santos' : (idx === 2 ? 'Reyes' : 'Torres')),
-      role: 'student',
-    }))
+    ...studentIds.map((sid, idx) => {
+      const emailMap = {
+        0: 'student@example.com',
+        1: 'maria@example.com',
+        2: 'carlos@example.com',
+        3: 'ana@example.com',
+        4: 'miguel@example.com'
+      };
+      return {
+        username: sid,
+        email: emailMap[idx],
+        password: passwordHash,
+        firstName: idx === 0 ? 'Demo' : (idx === 1 ? 'Maria' : (idx === 2 ? 'Carlos' : (idx === 3 ? 'Ana' : 'Miguel'))),
+        lastName: idx === 0 ? 'Student' : (idx === 1 ? 'Santos' : (idx === 2 ? 'Reyes' : (idx === 3 ? 'Torres' : 'Gomez'))),
+        role: 'student',
+      };
+    })
   ];
 
   for (const userData of usersToSeed) {

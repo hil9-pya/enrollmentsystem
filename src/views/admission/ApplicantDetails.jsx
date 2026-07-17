@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Loader2, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
@@ -252,7 +252,15 @@ export default function ApplicantDetails({ studentId, onBack }) {
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
           <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Admissions Evaluation Actions</h3>
-          {student.status === 'documents_submitted' ? (
+          {student.status === 'registration' ? (
+            <div className="flex items-center gap-3 px-5 py-4 rounded-xl border shadow-sm bg-slate-50 border-slate-200 text-slate-500">
+              <Clock className="w-6 h-6 shrink-0 text-slate-400" />
+              <div>
+                <p className="font-extrabold uppercase tracking-widest text-[10px]">Awaiting Submission</p>
+                <p className="font-semibold text-sm text-slate-600">Applicant has not submitted documents yet</p>
+              </div>
+            </div>
+          ) : student.status === 'documents_submitted' ? (
             <>
               <textarea
                 value={notes}

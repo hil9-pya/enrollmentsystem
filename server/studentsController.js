@@ -191,6 +191,8 @@ const updateStudent = asyncHandler(async (req, res) => {
     'subjectChangeRequest',
     'applicantPassword',
     'paymentMethod',
+    'status',
+    'paymentStatus',
   ];
 
   for (const field of allowedFields) {
@@ -294,7 +296,9 @@ const selectProgram = asyncHandler(async (req, res) => {
       .map(sub => sub.id);
     student.yearLevel = 1;
   } else if (student.enrollmentType === 'continuing') {
-    const completed = student.completedSubjects || [];
+    const completed = student.academicRecord
+      ? student.academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId)
+      : [];
     eligibleSubjectIds = SUBJECTS_CATALOG
       .filter(sub => sub.id.startsWith(prefix))
       .filter(sub => !completed.includes(sub.id))
@@ -315,6 +319,7 @@ const selectProgram = asyncHandler(async (req, res) => {
 
   student.selectedSubjects = eligibleSubjectIds.map((subjectId) => ({
     subjectId,
+    sectionId: `${subjectId}-a`,
     addedAt: new Date(),
   }));
 
@@ -339,7 +344,10 @@ const setSubjects = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const subjectIds = Array.isArray(req.body.subjectIds) ? req.body.subjectIds : [];
+  const inputSubjects = Array.isArray(req.body.subjects) ? req.body.subjects : [];
+  const subjectIds = inputSubjects.length > 0 
+    ? inputSubjects.map(s => s.subjectId)
+    : (Array.isArray(req.body.subjectIds) ? req.body.subjectIds : []);
   const previousStatus = student.status;
 
   if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
@@ -347,18 +355,22 @@ const setSubjects = asyncHandler(async (req, res) => {
     throw new Error('Cannot modify subjects after advising approval.');
   }
 
-  if (req.body.completedSubjects !== undefined) {
-    student.completedSubjects = Array.isArray(req.body.completedSubjects) ? req.body.completedSubjects : [];
+  if (req.body.academicRecord !== undefined) {
+    student.academicRecord = Array.isArray(req.body.academicRecord) ? req.body.academicRecord : [];
   }
   if (req.body.yearLevel !== undefined) {
     student.yearLevel = Number(req.body.yearLevel);
   }
 
   // Prerequisite validation
+  const passedSubjectIds = student.academicRecord
+    ? student.academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId)
+    : [];
+
   for (const subjectId of subjectIds) {
     const sub = SUBJECTS_CATALOG.find(s => s.id === subjectId);
     if (sub && sub.prerequisites && sub.prerequisites.length > 0) {
-      const hasAllPrereqs = sub.prerequisites.every(prereq => student.completedSubjects.includes(prereq));
+      const hasAllPrereqs = sub.prerequisites.every(prereq => passedSubjectIds.includes(prereq));
       if (!hasAllPrereqs) {
         res.status(400);
         throw new Error(`Prerequisites not met for ${sub.name}. Requires: ${sub.prerequisites.join(', ')}`);
@@ -366,10 +378,14 @@ const setSubjects = asyncHandler(async (req, res) => {
     }
   }
 
-  student.selectedSubjects = subjectIds.map((subjectId) => ({
-    subjectId,
-    addedAt: new Date(),
-  }));
+  student.selectedSubjects = subjectIds.map((subjectId) => {
+    const matchedInput = inputSubjects.find(s => s.subjectId === subjectId);
+    return {
+      subjectId,
+      sectionId: matchedInput?.sectionId || `${subjectId}-a`,
+      addedAt: new Date(),
+    };
+  });
 
   const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
   student.tuitionBreakdown = tuitionBreakdown;
@@ -579,6 +595,69 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Admin: Resolve a student's hold
+// @route   POST /api/admin/students/:id/resolve-hold
+const resolveHold = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  const { type, notes } = req.body;
+  const holdIndex = student.holds.findIndex(h => h.type === type && h.status === 'active');
+  
+  if (holdIndex >= 0) {
+    student.holds[holdIndex].status = 'resolved';
+    student.holds[holdIndex].resolvedAt = new Date();
+    
+    // Also mark associated document as approved if exists
+    let docType = '';
+    if (type === 'readmission') docType = 'readmission_clearance';
+    if (docType) {
+      const doc = student.documents.find(d => d.typeId === docType && d.status === 'pending');
+      if (doc) doc.status = 'approved';
+    }
+
+    student.auditLogs.push({
+      action: `Resolved ${type} Hold`,
+      user: req.user ? req.user.username : 'System Admin',
+      date: new Date()
+    });
+
+    await student.save();
+  }
+
+  res.json(student);
+});
+
+// @desc    Admin: Flag student as AWOL/Returning
+// @route   POST /api/admin/students/:id/set-returning
+const setReturning = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  student.enrollmentType = 'returning';
+  student.status = 'registration'; // Kick them back to the start
+  
+  // Add readmission hold if not already there
+  const hasHold = student.holds.some(h => h.type === 'readmission' && h.status === 'active');
+  if (!hasHold) {
+    student.holds.push({
+      type: 'readmission',
+      status: 'active',
+      description: 'AWOL from previous semester. Please upload Readmission Clearance form from the Dean.',
+      createdAt: new Date(),
+    });
+  }
+
+  student.auditLogs.push({
+    action: `Flagged as Returning (AWOL)`,
+    user: req.user ? req.user.username : 'System Admin',
+    date: new Date()
+  });
+
+  await student.save();
+  res.json(student);
+});
+
 export {
   createDraft,
   applicantLogin,
@@ -599,4 +678,6 @@ export {
   validateEnrollment,
   proceedToPayment,
   rejectAdvising,
+  resolveHold,
+  setReturning,
 };

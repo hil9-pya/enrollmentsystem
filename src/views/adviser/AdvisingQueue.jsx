@@ -12,7 +12,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const filter = initialFilter || 'all';
 
   // Evaluation States
-  const [completedSubjects, setCompletedSubjects] = useState([]);
+  const [academicRecord, setAcademicRecord] = useState([]);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [adviserNotes, setAdviserNotes] = useState('');
 
@@ -40,27 +40,37 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   // Sync Evaluation State
   useEffect(() => {
     if (selectedStudent) {
-      setCompletedSubjects(selectedStudent.completedSubjects || []);
+      setAcademicRecord(selectedStudent.academicRecord || []);
       setSelectedSubjects(selectedStudent.selectedSubjects?.map(s => s.subjectId) || []);
       setAdviserNotes(selectedStudent.adviserNotes || '');
     }
-  }, [selectedStudent]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStudentId]);
 
   // Compute Eligible Subjects
   const programPrefix = selectedStudent?.programId === 'bscs' ? 'cs' : selectedStudent?.programId === 'bsba' ? 'ba' : 'nu';
   
   const eligibleSubjects = useMemo(() => {
     if (!selectedStudent || !programPrefix) return [];
+    
+    const passedSubjectIds = academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId);
+
     return SUBJECTS.filter(sub => {
       if (!sub.id.startsWith(programPrefix)) return false;
-      if (completedSubjects.includes(sub.id)) return false;
+      if (passedSubjectIds.includes(sub.id)) return false;
       if (!sub.prerequisites || sub.prerequisites.length === 0) return true;
-      return sub.prerequisites.every(prereq => completedSubjects.includes(prereq));
+      return sub.prerequisites.every(prereq => passedSubjectIds.includes(prereq));
     });
-  }, [selectedStudent, programPrefix, completedSubjects]);
+  }, [selectedStudent, programPrefix, academicRecord]);
 
   const toggleCompleted = (id) => {
-    setCompletedSubjects(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+    setAcademicRecord(prev => {
+      if (prev.find(r => r.subjectId === id)) {
+        return prev.filter(r => r.subjectId !== id);
+      } else {
+        return [...prev, { subjectId: id, grade: 2.0, term: 'transfer' }];
+      }
+    });
   };
 
   const toggleSelected = (id) => {
@@ -69,18 +79,16 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
 
   const handleApprove = async () => {
     try {
-      if (selectedStudent.enrollmentType === 'transfer' || selectedStudent.enrollmentType === 'returning' || selectedStudent.enrollmentType === 'continuing') {
-        const maxYear = eligibleSubjects.length > 0 ? Math.max(...eligibleSubjects.map(s => s.yearLevel || 1)) : 1;
-        await dispatch({
-          type: 'UPDATE_STUDENT_SUBJECTS',
-          payload: {
-            studentId: selectedStudent.id,
-            subjects: selectedSubjects.map(id => ({ subjectId: id })),
-            completedSubjects,
-            yearLevel: maxYear
-          }
-        });
-      }
+      const maxYear = eligibleSubjects.length > 0 ? Math.max(...eligibleSubjects.map(s => s.yearLevel || 1)) : 1;
+      await dispatch({
+        type: 'UPDATE_STUDENT_SUBJECTS',
+        payload: {
+          studentId: selectedStudent.id,
+          subjects: selectedSubjects.map(id => ({ subjectId: id })),
+          academicRecord,
+          yearLevel: maxYear
+        }
+      });
       await dispatch({
         type: 'APPROVE_ADVISING',
         payload: { studentId: selectedStudent.id, notes: adviserNotes }
@@ -216,13 +224,26 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                       <p className="text-xs text-slate-500">Check off the subjects this student has already passed.</p>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
-                       {SUBJECTS.filter(s => s.id.startsWith(programPrefix)).map(sub => (
-                         <label key={sub.id} className="flex items-center gap-2 text-sm p-2 bg-slate-50 rounded border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
-                           <input type="checkbox" checked={completedSubjects.includes(sub.id)} onChange={() => toggleCompleted(sub.id)} className="rounded text-univ-indigo focus:ring-univ-indigo" />
-                           <span className="font-semibold text-slate-700">{sub.code}</span>
-                           <span className="text-xs text-slate-500 truncate">{sub.name}</span>
-                         </label>
-                       ))}
+                        {SUBJECTS.filter(s => s.id.startsWith(programPrefix)).map(sub => (
+                          <div 
+                            key={sub.id} 
+                            onClick={() => toggleCompleted(sub.id)}
+                            className={`flex items-center gap-2 text-sm p-2 rounded border cursor-pointer transition-colors ${
+                              academicRecord.find(r => r.subjectId === sub.id)
+                                ? 'bg-univ-indigo/10 border-univ-indigo/30'
+                                : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={!!academicRecord.find(r => r.subjectId === sub.id)} 
+                              readOnly
+                              className="rounded text-univ-indigo accent-univ-indigo border-slate-300 focus:ring-univ-indigo transition-all cursor-pointer pointer-events-none" 
+                            />
+                            <span className="font-semibold text-slate-700">{sub.code}</span>
+                            <span className="text-xs text-slate-500 truncate">{sub.name}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -236,16 +257,29 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                       eligibleSubjects.length > 0 ? (
                         <div className="space-y-2">
                            {eligibleSubjects.map(sub => (
-                             <label key={sub.id} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-univ-indigo transition-colors">
+                             <div 
+                               key={sub.id} 
+                               onClick={() => toggleSelected(sub.id)}
+                               className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${
+                                 selectedSubjects.includes(sub.id)
+                                   ? 'bg-univ-blue/5 border-univ-blue/30'
+                                   : 'bg-white border-slate-200 hover:border-univ-blue'
+                               }`}
+                             >
                                <div className="flex items-center gap-3">
-                                 <input type="checkbox" checked={selectedSubjects.includes(sub.id)} onChange={() => toggleSelected(sub.id)} className="w-5 h-5 rounded text-univ-indigo focus:ring-univ-indigo" />
+                                 <input 
+                                   type="checkbox" 
+                                   checked={selectedSubjects.includes(sub.id)} 
+                                   readOnly
+                                   className="w-5 h-5 rounded text-univ-blue accent-univ-blue border-slate-300 focus:ring-univ-blue transition-all cursor-pointer pointer-events-none" 
+                                 />
                                  <div>
                                    <p className="text-sm font-bold text-slate-800">{sub.code} - {sub.name}</p>
                                    <p className="text-xs text-slate-500">Year {sub.yearLevel || 1} • {sub.units || 3} Units</p>
                                  </div>
                                </div>
                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-1 rounded">Eligible</span>
-                             </label>
+                             </div>
                            ))}
                         </div>
                       ) : (

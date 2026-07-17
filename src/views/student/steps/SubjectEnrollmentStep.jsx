@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { useConfirm } from '../../../context/ConfirmationContext';
 import { SUBJECTS } from '../../../data/mockData';
+import { checkScheduleConflict } from '../../../utils/scheduleUtils';
 import { Search, AlertTriangle, ArrowLeft, ArrowRight, Trash2, BookOpen, Clock, CheckCircle } from 'lucide-react';
 import SearchInput from '../../../components/SearchInput';
 import Modal from '../../../components/Modal';
@@ -40,50 +41,44 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     for (let i = 0; i < len; i++) {
       const subA = getSubjectById(selectedSubjects[i].subjectId);
       if (!subA) continue;
+      const secA = subA.sections?.find(s => s.id === selectedSubjects[i].sectionId);
+      if (!secA) continue;
+
       for (let j = i + 1; j < len; j++) {
         const subB = getSubjectById(selectedSubjects[j].subjectId);
         if (!subB) continue;
-        // Schedule day and time exact match check
-        if (
-          subA.schedule &&
-          subB.schedule &&
-          subA.schedule.day === subB.schedule.day &&
-          subA.schedule.time === subB.schedule.time
-        ) {
-          list.push({ subA, subB });
+        const secB = subB.sections?.find(s => s.id === selectedSubjects[j].sectionId);
+        if (!secB) continue;
+
+        if (checkScheduleConflict(secA.schedule, secB.schedule)) {
+          list.push({ subA, secA, subB, secB });
         }
       }
     }
     return list;
   }, [selectedSubjects, getSubjectById]);
 
-  const handleAddSubject = (subjectId) => {
-    const sub = SUBJECTS.find(s => s.id === subjectId);
-    if (!sub || !student) return;
-    const name = `${student.firstName} ${student.lastName}`;
-    setPendingAction({ type: 'add', subject: sub });
-    setRequestText(`${name} wants to make changes and add the following subjects: ${sub.code}`);
-    setShowRequestModal(true);
-  };
-
-  const handleRemoveSubject = (subjectId) => {
-    const sub = getSubjectById(subjectId);
-    if (!sub || !student) return;
-    const name = `${student.firstName} ${student.lastName}`;
-    setPendingAction({ type: 'drop', subject: sub });
-    setRequestText(`${name} wants to make changes and drop the following subjects: ${sub.code}`);
-    setShowRequestModal(true);
-  };
-
-  const handleSubmitRequest = async () => {
+  const handleSelectSection = async (subjectId, sectionId) => {
+    if (!student) return;
     try {
       await dispatch({
-        type: 'UPDATE_ACTIVE_STUDENT',
-        payload: { subjectChangeRequest: requestText },
+        type: 'ADD_SUBJECT',
+        payload: { subjectId, sectionId },
       });
-      setShowRequestModal(false);
     } catch (err) {
-      console.error('Failed to submit subject change request:', err);
+      console.error('Failed to select section:', err);
+    }
+  };
+
+  const handleRemoveSubject = async (subjectId) => {
+    if (!student) return;
+    try {
+      await dispatch({
+        type: 'REMOVE_SUBJECT',
+        payload: { subjectId },
+      });
+    } catch (err) {
+      console.error('Failed to remove subject:', err);
     }
   };
 
@@ -106,8 +101,12 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     }
   };
 
-  const isSelected = (subjectId) => {
-    return selectedSubjects.some((s) => s.subjectId === subjectId);
+  const isSectionSelected = (subjectId, sectionId) => {
+    return selectedSubjects.some((s) => s.subjectId === subjectId && s.sectionId === sectionId);
+  };
+
+  const getSelectedSectionForSubject = (subjectId) => {
+    return selectedSubjects.find((s) => s.subjectId === subjectId);
   };
 
   const totalUnits = useMemo(() => {
@@ -158,57 +157,93 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                 </div>
               ) : (
                 availableSubjects.map((sub) => {
-                  const remainingSlots = sub.maxSlots - sub.enrolledCount;
-                  const alreadySelected = isSelected(sub.id);
-                  const isLowSlots = remainingSlots < 5;
- 
+                  const selectedSection = getSelectedSectionForSubject(sub.id);
+                  const isAnySectionSelected = !!selectedSection;
+
                   return (
                     <div
                       key={sub.id}
-                      className={`border p-4.5 rounded-xl transition-all duration-200 ${
-                        alreadySelected 
-                          ? 'border-univ-blue/30 bg-univ-blue/[0.02] ring-1 ring-univ-blue/10 shadow-sm' 
-                          : 'border-slate-100 bg-white hover:border-slate-200 shadow-sm hover:shadow-md'
+                      className={`border p-5 rounded-2xl transition-all duration-200 ${
+                        isAnySectionSelected 
+                          ? 'border-univ-blue/20 bg-univ-blue/[0.01] shadow-sm' 
+                          : 'border-slate-200/80 bg-white hover:border-slate-350 shadow-sm'
                       }`}
                     >
-                      <div className="flex justify-between items-start gap-4">
+                      {/* Subject Header */}
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-3.5">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[10px] font-bold text-univ-navy bg-slate-100 px-2 py-0.5 rounded">
+                            <span className="font-mono text-[10px] font-extrabold text-univ-navy bg-slate-150 px-2 py-0.5 rounded-md">
                               {sub.code}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{sub.units} Units</span>
+                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">{sub.units} Units</span>
                           </div>
-                          <h4 className="text-sm font-extrabold text-univ-navy mt-2 leading-snug">{sub.name}</h4>
-                          <p className="text-[11px] text-slate-500 mt-1 font-mono font-medium">{sub.schedule.day} &bull; {sub.schedule.time} &bull; {sub.schedule.room}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5 font-medium">Instructor: {sub.instructor}</p>
+                          <h4 className="text-sm font-extrabold text-univ-navy mt-1.5 leading-snug">{sub.name}</h4>
                         </div>
- 
-                        <div className="flex flex-col items-end gap-2.5 shrink-0">
-                          <span
-                            className={`text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                              isLowSlots 
-                                ? 'bg-rose-50 text-rose-600 border border-rose-100' 
-                                : 'bg-slate-50 text-slate-500 border border-slate-100'
-                            }`}
-                          >
-                            {remainingSlots} slots left
+                        {isAnySectionSelected && (
+                          <span className="text-[10px] text-univ-blue font-extrabold bg-univ-blue/10 px-2 py-1 rounded-lg flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Section {selectedSection?.sectionId ? selectedSection.sectionId?.split('-')[1]?.toUpperCase() || 'A' : 'A'} Enrolled
                           </span>
- 
-                          <button
-                            onClick={() => handleAddSubject(sub.id)}
-                            disabled={alreadySelected || remainingSlots <= 0}
-                            className={`px-4 py-2 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
-                              alreadySelected
-                                ? 'bg-univ-blue/10 border-univ-blue/25 text-univ-blue pointer-events-none'
-                                : remainingSlots <= 0
-                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-univ-blue hover:text-white hover:border-univ-blue hover:shadow-md'
-                            }`}
-                          >
-                            {alreadySelected ? 'Selected' : remainingSlots <= 0 ? 'Full' : 'Add Subject'}
-                          </button>
-                        </div>
+                        )}
+                      </div>
+
+                      {/* Sections List */}
+                      <div className="space-y-2.5">
+                        {sub.sections?.map((sec) => {
+                          const remainingSlots = sec.maxSlots - sec.enrolledCount;
+                          const isCurrentSection = isSectionSelected(sub.id, sec.id);
+                          const isLowSlots = remainingSlots < 5;
+                          const isFull = remainingSlots <= 0;
+
+                          return (
+                            <div
+                              key={sec.id}
+                              className={`flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3 rounded-xl border transition-all ${
+                                isCurrentSection
+                                  ? 'border-emerald-500/30 bg-emerald-500/[0.02]'
+                                  : 'border-slate-100 bg-slate-50/30'
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-[10px] font-bold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                                    Section {sec.code?.split('-')[1]?.toUpperCase() || 'A'}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                                      isFull
+                                        ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                        : isLowSlots
+                                        ? 'bg-amber-50 text-amber-600 border border-amber-150'
+                                        : 'bg-slate-100 text-slate-500 border border-slate-200/50'
+                                    }`}
+                                  >
+                                    {isFull ? 'FULL' : `${remainingSlots} slots left`}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 font-mono font-medium">{sec.schedule.day} &bull; {sec.schedule.time} &bull; {sec.schedule.room}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">Instructor: {sec.instructor}</p>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSelectSection(sub.id, sec.id)}
+                                disabled={isCurrentSection || isFull}
+                                className={`self-end sm:self-auto px-4 py-2 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                                  isCurrentSection
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600 pointer-events-none'
+                                    : isFull
+                                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                    : isAnySectionSelected
+                                    ? 'bg-white border-univ-blue/30 text-univ-blue hover:bg-univ-blue hover:text-white hover:border-univ-blue'
+                                    : 'bg-univ-blue border-univ-blue text-white hover:bg-blue-700 hover:shadow-md'
+                                }`}
+                              >
+                                {isCurrentSection ? 'Selected' : isFull ? 'Closed' : isAnySectionSelected ? 'Switch' : 'Enroll'}
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -225,7 +260,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
  
             {/* Schedule conflicts alerts */}
             {conflicts.length > 0 && (
-              <div className="bg-rose-50 border border-rose-200/60 rounded-xl p-3.5 mb-4 space-y-2 shadow-sm">
+              <div className="bg-rose-50 border border-rose-200/60 rounded-xl p-3.5 mb-4 space-y-2 shadow-sm text-left">
                 <div className="flex items-center gap-1.5 text-rose-800 font-extrabold text-[10px] uppercase tracking-wider">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
                   <span>Schedule Conflict Detected!</span>
@@ -233,7 +268,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                 <div className="text-[11px] text-rose-700 space-y-1 font-mono leading-relaxed font-medium">
                   {conflicts.map((conf, idx) => (
                     <div key={idx}>
-                      &bull; {conf.subA.code} conflicts with {conf.subB.code} ({conf.subA.schedule.day} {conf.subA.schedule.time})
+                      &bull; {conf.secA.code} conflicts with {conf.secB.code} ({conf.secA.schedule.day} {conf.secA.schedule.time})
                     </div>
                   ))}
                 </div>
@@ -250,19 +285,21 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                 selectedSubjects.map((s) => {
                   const sub = getSubjectById(s.subjectId);
                   if (!sub) return null;
+                  const sec = sub.sections?.find(x => x.id === s.sectionId);
+                  if (!sec) return null;
                   return (
                     <div
                       key={s.subjectId}
-                      className="flex justify-between items-center p-4 bg-white border border-slate-200/80 rounded-xl shadow-sm hover:border-slate-300 transition-all duration-200"
+                      className="flex justify-between items-center p-4 bg-white border border-slate-200/80 rounded-xl shadow-sm hover:border-slate-300 transition-all duration-200 text-left"
                     >
                       <div className="min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] font-bold text-univ-navy bg-slate-100 px-1.5 py-0.5 rounded">{sub.code}</span>
+                          <span className="font-mono text-[10px] font-bold text-univ-navy bg-slate-100 px-1.5 py-0.5 rounded">{sec?.code || 'A'}</span>
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{sub.units}u</span>
                         </div>
                         <h5 className="text-xs font-extrabold text-univ-navy truncate mt-1.5">{sub.name}</h5>
                         <span className="text-[10px] text-slate-500 block font-mono font-medium mt-0.5 truncate">
-                          {sub.schedule.day} {sub.schedule.time}
+                          {sec?.schedule?.day} &bull; {sec?.schedule?.time} &bull; {sec?.schedule?.room}
                         </span>
                       </div>
                       <button

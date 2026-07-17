@@ -12,11 +12,11 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
   const selectedProgram = PROGRAMS.find((p) => p.id === selectedProgramId);
 
   React.useEffect(() => {
-    if (student && student.academicTerm !== ACTIVE_TERM_ID) {
+    if (student && student.programId && student.academicTerm !== ACTIVE_TERM_ID) {
       dispatch({
         type: 'SELECT_PROGRAM',
         payload: {
-          programId: student.programId || '',
+          programId: student.programId,
           academicTerm: ACTIVE_TERM_ID,
         },
       });
