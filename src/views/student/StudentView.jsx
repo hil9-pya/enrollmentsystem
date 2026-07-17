@@ -9,6 +9,7 @@ import SubjectEnrollmentStep from './steps/SubjectEnrollmentStep';
 import PaymentStep from './steps/PaymentStep';
 import FulfillmentStep from './steps/FulfillmentStep';
 import ClearanceStep from './steps/ClearanceStep';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 export const STUDENT_STEPS = [
   { key: 'clearance', label: 'Holds & Clearances' },
@@ -341,7 +342,11 @@ export default function StudentView() {
  
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-slate-50/70">
-        <div className="max-w-4xl mx-auto p-8">{renderStep()}</div>
+        <div className="max-w-4xl mx-auto p-8">
+          <ErrorBoundary>
+            {renderStep()}
+          </ErrorBoundary>
+        </div>
       </main>
     </div>
   );

@@ -101,6 +101,12 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     }
   };
 
+  const handleSubmitRequest = async () => {
+    toast.success("Request sent to Academic Adviser");
+    setShowRequestModal(false);
+    setRequestText('');
+  };
+
   const isSectionSelected = (subjectId, sectionId) => {
     return selectedSubjects.some((s) => s.subjectId === subjectId && s.sectionId === sectionId);
   };
