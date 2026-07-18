@@ -48,6 +48,8 @@ export default function RegistrationStep({ onNext, onBack }) {
       }
       if (age < 18) {
         newErrors.birthDate = "You must be at least 18 years old to enroll.";
+      } else if (age > 120) {
+        newErrors.birthDate = "Please enter a valid birth date.";
       }
     }
 
@@ -88,6 +90,10 @@ export default function RegistrationStep({ onNext, onBack }) {
       onNext();
     }
   };
+
+  const todayDate = new Date();
+  const maxDate = new Date(todayDate.getFullYear() - 18, todayDate.getMonth(), todayDate.getDate()).toISOString().split('T')[0];
+  const minDate = new Date(todayDate.getFullYear() - 120, todayDate.getMonth(), todayDate.getDate()).toISOString().split('T')[0];
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-premium">
@@ -154,6 +160,8 @@ export default function RegistrationStep({ onNext, onBack }) {
           onChange={(e) => handleChange('birthDate', e.target.value)}
           error={errors.birthDate}
           required
+          min={minDate}
+          max={maxDate}
         />
 
         <FloatingInput

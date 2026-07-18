@@ -60,11 +60,48 @@ async function findStudentOr404(res, id) {
   return student;
 }
 
-// @desc    List all students
+// @desc    List all students (not deleted)
 // @route   GET /api/students
 const getStudents = asyncHandler(async (req, res) => {
-  const students = await Student.find({}).sort({ _id: 1 });
+  const students = await Student.find({ isDeleted: { $ne: true } }).sort({ _id: 1 });
   res.json(students);
+});
+
+// @desc    List all deleted students
+// @route   GET /api/admin/students/deleted
+const getDeletedStudents = asyncHandler(async (req, res) => {
+  const students = await Student.find({ isDeleted: true }).sort({ _id: 1 });
+  res.json(students);
+});
+
+// @desc    Soft delete a student
+// @route   DELETE /api/admin/students/:id
+const softDeleteStudent = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  student.isDeleted = true;
+  await student.save();
+  res.json({ message: 'Student moved to trash', id: student._id });
+});
+
+// @desc    Restore a soft-deleted student
+// @route   POST /api/admin/students/:id/restore
+const restoreStudent = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  student.isDeleted = false;
+  await student.save();
+  res.json({ message: 'Student restored', id: student._id });
+});
+
+// @desc    Permanently delete a student
+// @route   DELETE /api/admin/students/:id/permanent
+const permanentlyDeleteStudent = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  
+  await Student.deleteOne({ _id: student._id });
+  res.json({ message: 'Student permanently deleted', id: student._id });
 });
 
 // @desc    Get a single student
@@ -771,4 +808,8 @@ export {
   resolveHold,
   setReturning,
   rolloverStudent,
+  getDeletedStudents,
+  softDeleteStudent,
+  restoreStudent,
+  permanentlyDeleteStudent,
 };

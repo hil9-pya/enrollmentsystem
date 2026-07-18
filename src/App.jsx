@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EnrollmentProvider, useEnrollment } from './context/EnrollmentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ConfirmationProvider } from './context/ConfirmationContext';
+import { ConfirmationProvider, useConfirm } from './context/ConfirmationContext';
 
 // Views
 import LandingView from './views/public/LandingView';
@@ -19,6 +19,7 @@ import { Toaster } from 'react-hot-toast';
 
 function AppContent() {
   const { user, logout, isLoading } = useAuth();
+  const { confirm } = useConfirm();
   const { state: { activeStudentId } } = useEnrollment();
   const [isApplicantVerified, setIsApplicantVerified] = useState(false);
   
@@ -29,6 +30,20 @@ function AppContent() {
     if (portal === 'applicant' || portal === 'student' || portal === 'staff' || portal === 'admin') return portal;
     return 'landing'; // Default to landing page
   });
+
+  const handleLogout = async () => {
+    const isConfirmed = await confirm({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning'
+    });
+    if (isConfirmed) {
+      logout();
+      setViewMode('gateway');
+    }
+  };
 
   const viewMap = {
     student: StudentView,
@@ -92,7 +107,7 @@ function AppContent() {
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden md:inline-block text-xs text-slate-500 font-medium">{user.email}</span>
-            <button onClick={() => { logout(); setViewMode('gateway'); }} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
+            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
             </button>
@@ -119,7 +134,7 @@ function AppContent() {
           </div>
           <div className="flex items-center gap-4">
             <span className="hidden md:inline-block text-xs text-slate-500 font-medium">{user.email}</span>
-            <button onClick={() => { logout(); setViewMode('gateway'); }} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
+            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
             </button>

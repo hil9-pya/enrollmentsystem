@@ -119,6 +119,7 @@ const StudentSchema = new mongoose.Schema(
 
     applicantPassword: { type: String, default: null },
     auditLogs: { type: [AuditLogSchema], default: [] },
+    isDeleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

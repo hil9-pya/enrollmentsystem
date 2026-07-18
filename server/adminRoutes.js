@@ -10,6 +10,10 @@ import {
   setSubjects,
   resolveHold,
   setReturning,
+  getDeletedStudents,
+  softDeleteStudent,
+  restoreStudent,
+  permanentlyDeleteStudent,
 } from './studentsController.js';
 import { protect, authorize } from './authMiddleware.js';
 
@@ -20,6 +24,12 @@ router.use(protect);
 
 // GET /api/admin/students - List all student applications (allowed for all staff roles)
 router.get('/', authorize('admin', 'admission', 'adviser', 'accounting', 'registrar'), getStudents);
+
+// Admin-specific deletion routes
+router.get('/deleted', authorize('admin'), getDeletedStudents);
+router.delete('/:id', authorize('admin'), softDeleteStudent);
+router.post('/:id/restore', authorize('admin'), restoreStudent);
+router.delete('/:id/permanent', authorize('admin'), permanentlyDeleteStudent);
 
 // Department-specific actions
 router.post('/:id/approve-admission', authorize('admin', 'admission'), approveAdmission);
