@@ -4,7 +4,7 @@ import LoginView from '../auth/LoginView';
 import ApplicantPortalAccess from '../applicant/ApplicantPortalAccess';
 
 export default function GatewayView({ onVerified, onBack }) {
-  const [viewMode, setViewMode] = useState(null); // 'applicant', 'student', 'staff', 'admin'
+  const [viewMode, setViewMode] = useState('applicant'); // 'applicant', 'student', 'staff', 'admin'
 
   return (
     <div className="flex h-screen w-full overflow-hidden font-sans bg-[#f4f6fb]">

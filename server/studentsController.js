@@ -141,6 +141,19 @@ const registerStudent = asyncHandler(async (req, res) => {
     throw new Error('firstName, lastName, email, and phone are all required.');
   }
 
+  if (/[^a-zA-Z\s]/.test(firstName)) {
+    res.status(400).json({ error: 'First name must contain letters and spaces only.' });
+    return;
+  }
+  if (/[^a-zA-Z\s]/.test(lastName)) {
+    res.status(400).json({ error: 'Last name must contain letters and spaces only.' });
+    return;
+  }
+  if (/[^0-9-\s]/.test(phone)) {
+    res.status(400).json({ error: 'Contact number must contain digits, hyphens, and spaces only.' });
+    return;
+  }
+
   const normalizedEmail = String(email).trim().toLowerCase();
   const existing = await Student.findOne({ email: normalizedEmail });
   if (existing) {
@@ -194,6 +207,42 @@ const updateStudent = asyncHandler(async (req, res) => {
     'status',
     'paymentStatus',
   ];
+
+  if (req.body.firstName !== undefined) {
+    const val = String(req.body.firstName);
+    if (/[^a-zA-Z\s]/.test(val)) {
+      res.status(400).json({ error: 'First name must contain letters and spaces only.' });
+      return;
+    }
+  }
+  if (req.body.lastName !== undefined) {
+    const val = String(req.body.lastName);
+    if (/[^a-zA-Z\s]/.test(val)) {
+      res.status(400).json({ error: 'Last name must contain letters and spaces only.' });
+      return;
+    }
+  }
+  if (req.body.phone !== undefined) {
+    const val = String(req.body.phone);
+    if (/[^0-9-\s]/.test(val)) {
+      res.status(400).json({ error: 'Contact number must contain digits, hyphens, and spaces only.' });
+      return;
+    }
+  }
+  if (req.body.applicantPassword !== undefined && req.body.applicantPassword) {
+    const pwd = String(req.body.applicantPassword);
+    const hasUppercase = /[A-Z]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(pwd);
+    if (pwd.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      return;
+    }
+    if (!hasUppercase || !hasNumber || !hasSpecialChar) {
+      res.status(400).json({ error: 'Password must include at least one uppercase letter, one number, and one special character.' });
+      return;
+    }
+  }
 
   for (const field of allowedFields) {
     if (Object.prototype.hasOwnProperty.call(req.body, field)) {
