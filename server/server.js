@@ -15,7 +15,10 @@ import courseRoutes from './courses.js';
 import enrollmentRoutes from './enrollmentRoutes.js';
 import studentsRoutes from './studentsRoutes.js';
 import adminRoutes from './adminRoutes.js';
+import userRoutes from './userRoutes.js';
+import settingsRoutes from './settingsRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
+import { startCleanupTask } from './cron.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -78,6 +81,9 @@ const startServer = async () => {
     // Seed default demo accounts & applicant records on first run.
     await seedUsers();
     await seedStudents();
+
+    // Start background tasks
+    startCleanupTask();
 
     // --- Security Best Practice: Check for Insecure Secrets ---
     const insecureSecrets = [
@@ -152,6 +158,8 @@ const startServer = async () => {
     app.use('/api/enrollments', enrollmentRoutes);
     app.use('/api/students', studentsRoutes);
     app.use('/api/admin/students', adminRoutes);
+    app.use('/api/admin/users', userRoutes);
+    app.use('/api/settings', settingsRoutes);
 
     // Error Handling Middleware
     app.use(notFound);

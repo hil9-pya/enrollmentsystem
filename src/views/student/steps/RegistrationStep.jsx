@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
+import FloatingInput from '../../../components/FloatingInput';
+import { User, Mail, Phone, Calendar, MapPin, Lock } from 'lucide-react';
 
 export default function RegistrationStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
@@ -12,11 +14,16 @@ export default function RegistrationStep({ onNext, onBack }) {
     const newErrors = {};
     const today = new Date();
 
+    const nameValidationRegex = /^[a-zA-Z\s]+$/;
     if (!student?.firstName?.trim() || student.firstName.trim().length < 2) {
       newErrors.firstName = "First name must be at least 2 characters.";
+    } else if (!nameValidationRegex.test(student.firstName.trim())) {
+      newErrors.firstName = "First name must contain letters and spaces only.";
     }
     if (!student?.lastName?.trim() || student.lastName.trim().length < 2) {
       newErrors.lastName = "Last name must be at least 2 characters.";
+    } else if (!nameValidationRegex.test(student.lastName.trim())) {
+      newErrors.lastName = "Last name must contain letters and spaces only.";
     }
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,6 +48,8 @@ export default function RegistrationStep({ onNext, onBack }) {
       }
       if (age < 18) {
         newErrors.birthDate = "You must be at least 18 years old to enroll.";
+      } else if (age > 120) {
+        newErrors.birthDate = "Please enter a valid birth date.";
       }
     }
 
@@ -48,8 +57,14 @@ export default function RegistrationStep({ onNext, onBack }) {
       newErrors.address = "Please enter a complete address.";
     }
 
+    const hasUppercase = /[A-Z]/.test(password || '');
+    const hasNumber = /[0-9]/.test(password || '');
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(password || '');
+
     if (!password || password.length < 6) {
       newErrors.password = "Password must be at least 6 characters.";
+    } else if (!hasUppercase || !hasNumber || !hasSpecialChar) {
+      newErrors.password = "Password must include at least one uppercase letter, one number, and one special character.";
     }
 
     if (password !== confirmPassword) {
@@ -76,137 +91,123 @@ export default function RegistrationStep({ onNext, onBack }) {
     }
   };
 
+  const todayDate = new Date();
+  const maxDate = new Date(todayDate.getFullYear() - 18, todayDate.getMonth(), todayDate.getDate()).toISOString().split('T')[0];
+  const minDate = new Date(todayDate.getFullYear() - 120, todayDate.getMonth(), todayDate.getDate()).toISOString().split('T')[0];
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
-      <h1 className="text-xl font-extrabold text-univ-navy">Student Registration</h1>
-      <p className="text-xs text-slate-500 mt-1 mb-8 leading-relaxed font-medium">
+    <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-premium">
+      <h1 className="text-2xl font-heading font-extrabold text-univ-navy mb-2">Student Registration</h1>
+      <p className="text-sm text-slate-500 mb-8 font-medium">
         Please fill in your correct personal details below. Fields marked with an asterisk (*) are mandatory.
       </p>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Name row — 2 columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-              First Name <span className="text-rose-600">*</span>
-            </label>
-            <input
-              type="text"
-              value={student?.firstName || ''}
-              onChange={(e) => handleChange('firstName', e.target.value)}
-              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.firstName ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-              placeholder="Juan"
-            />
-            {errors.firstName && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.firstName}</p>}
-          </div>
-          <div>
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-              Last Name <span className="text-rose-600">*</span>
-            </label>
-            <input
-              type="text"
-              value={student?.lastName || ''}
-              onChange={(e) => handleChange('lastName', e.target.value)}
-              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.lastName ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-              placeholder="Dela Cruz"
-            />
-            {errors.lastName && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.lastName}</p>}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FloatingInput
+            label="First Name"
+            id="firstName"
+            icon={User}
+            value={student?.firstName || ''}
+            onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+            error={errors.firstName}
+            required
+            placeholder="Juan"
+          />
+          <FloatingInput
+            label="Last Name"
+            id="lastName"
+            icon={User}
+            value={student?.lastName || ''}
+            onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+            error={errors.lastName}
+            required
+            placeholder="Dela Cruz"
+          />
         </div>
 
-        {/* Email */}
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-            Email Address <span className="text-rose-600">*</span>
-          </label>
-          <input
-            type="email"
-            value={student?.email || ''}
-            onChange={(e) => handleChange('email', e.target.value)}
-            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.email ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-            placeholder="juan@email.com"
-          />
-          {errors.email && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.email}</p>}
-        </div>
+        <FloatingInput
+          label="Email Address"
+          id="email"
+          type="email"
+          icon={Mail}
+          value={student?.email || ''}
+          onChange={(e) => handleChange('email', e.target.value)}
+          error={errors.email}
+          required
+          placeholder="juan@email.com"
+        />
 
-        {/* Phone */}
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-            Phone Number <span className="text-rose-600">*</span>
-          </label>
-          <input
-            type="tel"
-            value={student?.phone || ''}
-            onChange={(e) => handleChange('phone', e.target.value)}
-            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.phone ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-            placeholder="0917-123-4567"
-          />
-          {errors.phone && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.phone}</p>}
-        </div>
+        <FloatingInput
+          label="Phone Number"
+          id="phone"
+          type="tel"
+          icon={Phone}
+          value={student?.phone || ''}
+          onChange={(e) => handleChange('phone', e.target.value.replace(/[^0-9-\s]/g, ''))}
+          error={errors.phone}
+          required
+          placeholder="0917-123-4567"
+        />
 
-        {/* Birth Date */}
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-            Birth Date <span className="text-rose-600">*</span>
-          </label>
-          <input
-            type="date"
-            value={student?.birthDate || ''}
-            onChange={(e) => handleChange('birthDate', e.target.value)}
-            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.birthDate ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-          />
-          {errors.birthDate && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.birthDate}</p>}
-        </div>
+        <FloatingInput
+          label="Birth Date"
+          id="birthDate"
+          type="date"
+          icon={Calendar}
+          value={student?.birthDate || ''}
+          onChange={(e) => handleChange('birthDate', e.target.value)}
+          error={errors.birthDate}
+          required
+          min={minDate}
+          max={maxDate}
+        />
 
-        {/* Address */}
-        <div>
-          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-            Home Address <span className="text-rose-600">*</span>
-          </label>
-          <textarea
-            rows={3}
-            value={student?.address || ''}
-            onChange={(e) => handleChange('address', e.target.value)}
-            className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white resize-none ${errors.address ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-            placeholder="123 Rizal St., Quezon City"
-          />
-          {errors.address && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.address}</p>}
-        </div>
+        <FloatingInput
+          label="Home Address"
+          id="address"
+          icon={MapPin}
+          value={student?.address || ''}
+          onChange={(e) => handleChange('address', e.target.value)}
+          error={errors.address}
+          required
+          placeholder="123 Rizal St., Quezon City"
+        />
 
         {/* Password */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-          <div>
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-              Applicant Portal Password <span className="text-rose-600">*</span>
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
-              }}
-              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.password ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-              placeholder="Create a strong password"
-            />
-            {errors.password && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.password}</p>}
-          </div>
-          <div>
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">
-              Confirm Password <span className="text-rose-600">*</span>
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
-              }}
-              className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white ${errors.confirmPassword ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200'}`}
-              placeholder="Re-enter password"
-            />
-            {errors.confirmPassword && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.confirmPassword}</p>}
-          </div>
+        <div className="pt-6 mt-4 border-t border-slate-100">
+           <h3 className="text-sm font-extrabold text-univ-navy mb-4">Account Security</h3>
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FloatingInput
+                label="Applicant Password"
+                id="password"
+                type="password"
+                icon={Lock}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
+                }}
+                error={errors.password}
+                required
+                placeholder="Create a strong password"
+              />
+              <FloatingInput
+                label="Confirm Password"
+                id="confirmPassword"
+                type="password"
+                icon={Lock}
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                }}
+                error={errors.confirmPassword}
+                required
+                placeholder="Re-enter password"
+              />
+           </div>
         </div>
       </div>
 
@@ -215,14 +216,14 @@ export default function RegistrationStep({ onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer"
+          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm"
         >
           Back
         </button>
         <button
           type="button"
           onClick={handleNext}
-          className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue transition-all shadow-sm cursor-pointer"
+          className="px-8 py-3 rounded-xl text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 transition-all shadow-md shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
         >
           Continue
         </button>

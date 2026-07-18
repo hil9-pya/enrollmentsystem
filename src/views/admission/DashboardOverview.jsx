@@ -1,151 +1,184 @@
 import React, { useMemo } from 'react';
-import { Users, FileCheck, Clock, FileWarning, ArrowUpRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ArrowRight, Inbox, Activity, CheckCircle, Clock, Users } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
-
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e'];
+import StatusBadge from '../../components/StatusBadge';
+import MiniStat from '../../components/MiniStat';
 
 export default function DashboardOverview({ students, onNavigate }) {
   const metrics = useMemo(() => {
     const totalApplicants = students.length;
-    const pending = students.filter(s => s.status === 'registration').length;
-    const approved = students.filter(s => s.status === 'documents_approved' || s.status === 'enrolled').length;
-    const incomplete = students.filter(s => s.status === 'documents_rejected').length;
+    const pendingReview = students.filter(s => s.status === 'documents_submitted');
+    const justRegistered = students.filter(s => s.status === 'registration');
+    const approved = students.filter(s => [
+      'documents_approved',
+      'advising_pending',
+      'advising_approved',
+      'payment_pending',
+      'validation_pending',
+      'enrolled'
+    ].includes(s.status));
 
-    // Group by status
-    const statusData = [
-      { name: 'Pending', value: pending },
-      { name: 'Approved', value: approved },
-      { name: 'Incomplete', value: incomplete },
-      { name: 'Processing', value: totalApplicants - pending - approved - incomplete },
-    ].filter(d => d.value > 0);
+    const recentSubmissions = [...students]
+      .filter(s => s.status !== 'registration')
+      .sort((a, b) => b.id.localeCompare(a.id))
+      .slice(0, 8); // increased to 8 since rows are tighter
 
-    // Group by program
-    const programData = PROGRAMS.map(prog => {
-      const count = students.filter(s => s.programId === prog.id).length;
-      return { name: prog.id.toUpperCase(), count };
-    });
-
-    return { totalApplicants, pending, approved, incomplete, statusData, programData };
+    return { totalApplicants, pendingReview, justRegistered, approved, recentSubmissions };
   }, [students]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-200 p-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-2xl font-extrabold text-univ-navy">Admission Dashboard</h1>
-          <p className="text-xs text-slate-500 mt-1.5 font-medium">Overview of current applicant numbers and processing statuses.</p>
+          <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">Overview of applicant pipeline and recent activity.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard 
-          title="Total Applicants" 
-          value={metrics.totalApplicants} 
-          icon={<Users className="w-5 h-5" />} 
-          color="bg-indigo-50/70 text-univ-indigo border border-indigo-100" 
-          onClick={() => onNavigate('management')}
-        />
-        <MetricCard 
-          title="Pending Applications" 
-          value={metrics.pending} 
-          icon={<Clock className="w-5 h-5" />} 
-          color="bg-amber-50/70 text-univ-gold border border-amber-100" 
-          onClick={() => onNavigate('pending')}
-        />
-        <MetricCard 
-          title="Approved Documents" 
-          value={metrics.approved} 
-          icon={<FileCheck className="w-5 h-5" />} 
-          color="bg-emerald-50/70 text-emerald-600 border border-emerald-100" 
-          onClick={() => onNavigate('approved')}
-        />
-        <MetricCard 
-          title="Incomplete Docs" 
-          value={metrics.incomplete} 
-          icon={<FileWarning className="w-5 h-5" />} 
-          color="bg-rose-50/70 text-rose-600 border border-rose-100" 
-          onClick={() => onNavigate('verification')}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-premium">
-          <h2 className="text-xs font-bold text-univ-navy mb-6 uppercase tracking-wider">Applicants by Course Program</h2>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.programData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
-                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05)' }} />
-                <Bar 
-                  dataKey="count" 
-                  fill="#1e3a8a" 
-                  radius={[6, 6, 0, 0]} 
-                />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        
+        {/* Left Column: Action Queue & Pipeline */}
+        <div className="xl:col-span-2 flex flex-col gap-6">
+          
+          {/* Action Queue */}
+          <div className="rounded-lg bg-univ-navy text-white p-6 shadow-sm border border-indigo-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-white/10 rounded-md shrink-0">
+                <Inbox className="w-6 h-6 text-indigo-100" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-semibold text-indigo-200 uppercase tracking-wider">Action Required</span>
+                </div>
+                <h2 className="text-2xl font-bold">
+                  {metrics.pendingReview.length} Applications Ready
+                </h2>
+                <p className="text-sm text-indigo-100/70 mt-1">
+                  Documents submitted and waiting for verification.
+                </p>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => onNavigate('verification')}
+              className="shrink-0 flex items-center justify-center gap-2 bg-white text-univ-navy px-4 py-2 rounded-md font-semibold text-sm hover:bg-slate-50 transition-colors border border-transparent focus:ring-2 focus:ring-offset-2 focus:ring-offset-univ-navy focus:ring-white focus:outline-none"
+            >
+              Review Now
+              <ArrowRight className="w-4 h-4 text-slate-400" />
+            </button>
           </div>
+
+          {/* Pipeline */}
+          <div className="bg-white rounded-lg p-6 border border-slate-200 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
+               Applicant Pipeline
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <PipelineStat 
+                title="Registered" 
+                count={metrics.justRegistered.length} 
+                total={metrics.totalApplicants}
+                icon={<Users className="w-4 h-4" />}
+                colorClass="text-slate-600 bg-slate-100"
+                barColorClass="bg-slate-300"
+              />
+              <PipelineStat 
+                title="Awaiting Review" 
+                count={metrics.pendingReview.length} 
+                total={metrics.totalApplicants}
+                icon={<Clock className="w-4 h-4" />}
+                colorClass="text-amber-600 bg-amber-50"
+                barColorClass="bg-amber-400"
+              />
+              <PipelineStat 
+                title="Approved" 
+                count={metrics.approved.length} 
+                total={metrics.totalApplicants}
+                icon={<CheckCircle className="w-4 h-4" />}
+                colorClass="text-emerald-600 bg-emerald-50"
+                barColorClass="bg-emerald-400"
+              />
+            </div>
+          </div>
+          
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-premium flex flex-col justify-between">
-          <div>
-            <h2 className="text-xs font-bold text-univ-navy mb-6 uppercase tracking-wider">Applicants by Status</h2>
-            <div className="h-56 flex items-center justify-center">
-              {metrics.statusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={metrics.statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={75}
-                      paddingAngle={4}
-                      dataKey="value"
+        {/* Right Column: Recent Activity */}
+        <div className="h-full">
+          <div className="bg-white rounded-lg p-6 h-full border border-slate-200 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-slate-400" /> Recent Activity
+              </h3>
+              <button 
+                onClick={() => onNavigate('management')}
+                className="text-xs font-semibold text-univ-indigo hover:text-indigo-700 transition-colors"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {metrics.recentSubmissions.length > 0 ? (
+                <div className="divide-y divide-slate-100">
+                  {metrics.recentSubmissions.map(student => (
+                    <div 
+                      key={student.id} 
+                      className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50 cursor-pointer px-2 -mx-2 rounded-md transition-colors" 
+                      onClick={() => onNavigate('verification')}
                     >
-                      {metrics.statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {student.firstName || 'Anonymous'} {student.lastName || 'Applicant'}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {PROGRAMS.find(p => p.id === student.programId)?.name || 'Undecided'}
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <StatusBadge status={student.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                 <p className="text-xs text-slate-400">No data available.</p>
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm py-8">
+                  No recent activity.
+                </div>
               )}
             </div>
           </div>
-          <div className="flex justify-center gap-5 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-t border-slate-50 pt-4 flex-wrap">
-            {metrics.statusData.map((entry, idx) => (
-              <div key={entry.name} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
-                {entry.name}
-              </div>
-            ))}
-          </div>
         </div>
+        
       </div>
     </div>
   );
 }
 
-function MetricCard({ title, value, icon, color, onClick }) {
+function PipelineStat({ title, count, total, icon, colorClass, barColorClass }) {
+  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+  
   return (
-    <div 
-      onClick={onClick}
-      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-premium flex flex-col justify-between min-h-[120px] cursor-pointer hover:shadow-premium-lg hover:border-univ-indigo/40 transition-all duration-200"
+    <MiniStat 
+      title={title}
+      value={count}
+      icon={icon}
+      colorClass={colorClass}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{title}</p>
-          <p className="text-2xl font-extrabold text-univ-navy mt-3 tracking-tight">{value}</p>
+      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100/60">
+        <div className="h-1 flex-1 bg-slate-100 rounded-full overflow-hidden">
+          <div className={`h-full ${barColorClass} rounded-full`} style={{ width: `${percentage}%` }}></div>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${color}`}>
-          {icon}
-        </div>
+        <span className="text-[10px] font-bold text-slate-400 w-6 text-right">{percentage}%</span>
       </div>
-    </div>
+    </MiniStat>
   );
 }
+
