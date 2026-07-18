@@ -1,26 +1,29 @@
 import React, { useMemo } from 'react';
-import { ArrowRight, Clock, CheckCircle, FileWarning, Activity, Search } from 'lucide-react';
-import { PROGRAMS } from '../../data/mockData';
+import { Clock, CheckCircle, AlertTriangle, ArrowRight, Activity, BookOpen } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
 
 export default function AdviserDashboard({ students, onNavigate }) {
   const metrics = useMemo(() => {
-    const pendingStudents = students.filter(s => s.status === 'advising_pending');
-    
-    // Sort pending by ID to simulate oldest first (or however they are ordered)
-    const actionRequired = [...pendingStudents].sort((a, b) => a.id.localeCompare(b.id)).slice(0, 10);
+    const relevantStudents = students.filter(s => 
+      ['advising_pending', 'advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status)
+    );
 
-    const recentActivity = [...students]
-      .filter(s => ['advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status))
+    const pending = relevantStudents.filter(s => s.status === 'advising_pending').length;
+    const approved = relevantStudents.filter(s => ['advising_approved', 'payment_pending', 'enrolled'].includes(s.status)).length;
+    const returned = relevantStudents.filter(s => s.status === 'advising_rejected').length;
+
+    const actionRequired = relevantStudents
+      .filter(s => s.status === 'advising_pending')
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .slice(0, 5);
+
+    const recentActivity = [...relevantStudents]
+      .filter(s => s.status !== 'advising_pending')
       .sort((a, b) => b.id.localeCompare(a.id))
       .slice(0, 8);
 
-    const pending = pendingStudents.length;
-    const approved = students.filter(s => ['advising_approved', 'payment_pending', 'enrolled'].includes(s.status)).length;
-    const rejected = students.filter(s => s.status === 'advising_rejected').length;
-
-    return { actionRequired, recentActivity, pending, approved, rejected };
+    return { pending, approved, returned, actionRequired, recentActivity };
   }, [students]);
 
   return (
@@ -29,8 +32,8 @@ export default function AdviserDashboard({ students, onNavigate }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Advising Workspace</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage pending curriculum evaluations and recent activity.</p>
+          <h1 className="text-xl font-bold text-slate-900">Evaluation Overview</h1>
+          <p className="text-sm text-slate-500 mt-1">High-level view of curriculum evaluation progress.</p>
         </div>
       </div>
 
@@ -44,7 +47,7 @@ export default function AdviserDashboard({ students, onNavigate }) {
           onClick={() => onNavigate('pending')}
         />
         <MiniStat 
-          title="Approved Today" 
+          title="Approved Curriculums" 
           value={metrics.approved} 
           icon={<CheckCircle className="w-4 h-4" />} 
           colorClass="text-emerald-600 bg-emerald-50"
@@ -52,8 +55,8 @@ export default function AdviserDashboard({ students, onNavigate }) {
         />
         <MiniStat 
           title="Returned for Revision" 
-          value={metrics.rejected} 
-          icon={<FileWarning className="w-4 h-4" />} 
+          value={metrics.returned} 
+          icon={<AlertTriangle className="w-4 h-4" />} 
           colorClass="text-rose-600 bg-rose-50"
           onClick={() => onNavigate('rejected')}
         />
@@ -61,68 +64,62 @@ export default function AdviserDashboard({ students, onNavigate }) {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* Left Column: Action Required Queue */}
+        {/* Left Column: Quick Action */}
         <div className="xl:col-span-2">
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col h-[500px]">
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900">Action Required: Pending Evaluations</h2>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                 <BookOpen className="w-4 h-4 text-univ-indigo" /> Priority Queue
+              </h2>
               <button 
                 onClick={() => onNavigate('pending')}
                 className="text-xs font-semibold text-univ-indigo hover:text-indigo-700 transition-colors"
               >
-                View Full Queue
+                Open Evaluation Workspace
               </button>
             </div>
             
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 sticky top-0 z-10">
-                  <tr className="border-b border-slate-200 text-slate-500 font-semibold">
-                    <th className="px-4 py-2 font-semibold">Student</th>
-                    <th className="px-4 py-2 font-semibold">Program</th>
-                    <th className="px-4 py-2 font-semibold">Type</th>
-                    <th className="px-4 py-2 text-right font-semibold">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {metrics.actionRequired.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-12 text-center text-slate-500 font-medium">
-                        No pending evaluations in the queue.
-                      </td>
-                    </tr>
-                  ) : (
-                    metrics.actionRequired.map(student => (
-                      <tr key={student.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-900">{student.firstName} {student.lastName}</span>
-                            <span className="text-[10px] font-mono text-slate-500">{student.id}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="text-slate-600 truncate max-w-[150px] inline-block" title={PROGRAMS.find(p => p.id === student.programId)?.name}>
-                            {PROGRAMS.find(p => p.id === student.programId)?.name || '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="text-slate-500 capitalize">{student.enrollmentType}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => onNavigate('verification')} // Assuming verification is the eval route
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-univ-indigo bg-indigo-50 hover:bg-univ-indigo hover:text-white rounded-md transition-colors"
-                          >
-                            Evaluate
-                            <ArrowRight className="w-3 h-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="flex-1 overflow-auto bg-slate-50/50">
+              {metrics.actionRequired.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center p-8">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 border border-slate-200 shadow-sm">
+                    <CheckCircle className="w-6 h-6 text-emerald-500" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">All caught up!</p>
+                  <p className="text-xs font-medium text-slate-500 mt-1">There are no pending evaluations.</p>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                    {metrics.actionRequired.map((student, index) => (
+                      <div key={student.id} className={`p-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors ${index !== metrics.actionRequired.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                         <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-univ-indigo font-bold text-sm">
+                              {student.firstName[0]}{student.lastName[0]}
+                           </div>
+                           <div>
+                             <p className="text-sm font-bold text-slate-900">{student.firstName} {student.lastName}</p>
+                             <p className="text-xs font-medium text-slate-500">{student.id}</p>
+                           </div>
+                         </div>
+                         <button
+                           onClick={() => onNavigate('pending')}
+                           className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-xs font-bold hover:bg-slate-50 hover:text-univ-indigo transition-colors shadow-sm"
+                         >
+                           Evaluate
+                         </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {metrics.pending > 5 && (
+              <div className="p-3 border-t border-slate-200 bg-white text-center">
+                <p className="text-xs font-semibold text-slate-500">+ {metrics.pending - 5} more students waiting in queue.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -131,7 +128,7 @@ export default function AdviserDashboard({ students, onNavigate }) {
           <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col h-full">
             <div className="p-4 border-b border-slate-200">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-slate-400" /> Recent Decisions
+                <Activity className="w-4 h-4 text-slate-400" /> Recent Evaluations
               </h2>
             </div>
 
@@ -141,7 +138,7 @@ export default function AdviserDashboard({ students, onNavigate }) {
                   {metrics.recentActivity.map(student => (
                     <div 
                       key={student.id} 
-                      className="flex items-center justify-between gap-3 p-2 hover:bg-slate-50 rounded-md transition-colors" 
+                      className="flex items-center justify-between gap-3 p-3 hover:bg-slate-50 rounded-md transition-colors" 
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-900 truncate">

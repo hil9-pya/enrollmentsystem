@@ -4,11 +4,19 @@ import { SUBJECTS, PROGRAMS } from '../../../data/mockData';
 import { Clock, CheckCircle, AlertCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 
 export default function CourseEvaluationStep({ onNext, onBack }) {
-  const { getActiveStudent } = useEnrollment();
+  const { getActiveStudent, dispatch } = useEnrollment();
   const student = getActiveStudent();
 
   const program = PROGRAMS.find((p) => p.id === student?.programId);
   const programSubjects = SUBJECTS.filter((s) => s.programId === student?.programId);
+
+  const groupedSubjects = programSubjects.reduce((acc, sub) => {
+    const yl = sub.yearLevel || 1;
+    if (!acc[yl]) acc[yl] = [];
+    acc[yl].push(sub);
+    return acc;
+  }, {});
+  const yearLevels = Object.keys(groupedSubjects).sort((a, b) => Number(a) - Number(b));
 
   const status = student?.status || 'registration';
   const isApproved = ['advising_approved', 'enrollment_pending', 'payment_pending', 'payment_confirmed', 'validation_pending', 'enrolled'].includes(status);
@@ -119,39 +127,48 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {programSubjects.length === 0 ? (
+                {yearLevels.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="px-4 py-8 text-center text-slate-400 font-medium">
                       No program details found. Please go back and select a program.
                     </td>
                   </tr>
                 ) : (
-                  programSubjects.map((sub) => {
-                    const hasPrereq = sub.prerequisites && sub.prerequisites.length > 0;
-                    return (
-                      <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors duration-150">
-                        <td className="px-4 py-3.5 font-mono font-bold text-univ-navy bg-slate-50/30">{sub.code}</td>
-                        <td className="px-4 py-3.5 font-semibold text-slate-700">{sub.name}</td>
-                        <td className="px-4 py-3.5 text-center font-bold text-slate-600">{sub.units}</td>
-                        <td className="px-4 py-3.5 text-slate-500 font-mono text-[10px]">{getPrereqsText(sub.prerequisites)}</td>
-                        <td className="px-4 py-3.5">
-                          {isApproved ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
-                              Eligible
-                            </span>
-                          ) : !hasPrereq ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
-                              Eligible
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-univ-gold bg-amber-50 px-2 py-0.5 rounded border border-univ-gold/15 uppercase tracking-wider">
-                              Pending Review
-                            </span>
-                          )}
+                  yearLevels.map((yl) => (
+                    <React.Fragment key={yl}>
+                      <tr className="bg-slate-100/50">
+                        <td colSpan="5" className="px-4 py-2 text-xs font-extrabold text-univ-navy uppercase tracking-widest border-t border-b border-slate-200">
+                          Year Level {yl}
                         </td>
                       </tr>
-                    );
-                  })
+                      {groupedSubjects[yl].map((sub) => {
+                        const hasPrereq = sub.prerequisites && sub.prerequisites.length > 0;
+                        return (
+                          <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors duration-150">
+                            <td className="px-4 py-3.5 font-mono font-bold text-univ-navy bg-slate-50/30">{sub.code}</td>
+                            <td className="px-4 py-3.5 font-semibold text-slate-700">{sub.name}</td>
+                            <td className="px-4 py-3.5 text-center font-bold text-slate-600">{sub.units}</td>
+                            <td className="px-4 py-3.5 text-slate-500 font-mono text-[10px]">{getPrereqsText(sub.prerequisites)}</td>
+                            <td className="px-4 py-3.5">
+                              {isApproved ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
+                                  Eligible
+                                </span>
+                              ) : !hasPrereq ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
+                                  Eligible
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-univ-gold bg-amber-50 px-2 py-0.5 rounded border border-univ-gold/15 uppercase tracking-wider">
+                                  Pending Review
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))
                 )}
               </tbody>
             </table>

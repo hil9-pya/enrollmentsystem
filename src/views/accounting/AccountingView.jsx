@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import AccountingSidebar from './AccountingSidebar';
 import AccountingDashboard from './AccountingDashboard';
-import PaymentLedger from './PaymentLedger';
 import PaymentVerification from './PaymentVerification';
 
 export default function AccountingView() {
@@ -36,16 +35,16 @@ export default function AccountingView() {
 
     switch (activeTab) {
       case 'dashboard':
-        return <AccountingDashboard students={students} onNavigate={handleTabChange} />;
-      
-      case 'pending':
-        return <PaymentLedger students={students} initialFilter="pending" onViewDetails={handleViewDetails} key="pending" />;
+        return <AccountingDashboard students={students} initialFilter="all" showOverview={true} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="dashboard" />;
       
       case 'ledger':
-        return <PaymentLedger students={students} initialFilter="all" onViewDetails={handleViewDetails} key="ledger" />;
+        return <AccountingDashboard students={students} initialFilter="all" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="ledger" />;
+      
+      case 'pending':
+        return <AccountingDashboard students={students} initialFilter="pending" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="pending" />;
       
       case 'paid':
-        return <PaymentLedger students={students} initialFilter="paid" onViewDetails={handleViewDetails} key="paid" />;
+        return <AccountingDashboard students={students} initialFilter="paid" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="paid" />;
       
       case 'settings':
         return (
@@ -56,7 +55,7 @@ export default function AccountingView() {
         );
 
       default:
-        return <AccountingDashboard students={students} onNavigate={handleTabChange} />;
+        return <AccountingDashboard students={students} initialFilter="all" showOverview={true} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="default" />;
     }
   };
 

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Student from './Student.js';
 import User from './User.js';
-import { computeTuition } from './subjectsCatalog.js';
+import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -141,6 +141,19 @@ const registerStudent = asyncHandler(async (req, res) => {
     throw new Error('firstName, lastName, email, and phone are all required.');
   }
 
+  if (/[^a-zA-Z\s]/.test(firstName)) {
+    res.status(400).json({ error: 'First name must contain letters and spaces only.' });
+    return;
+  }
+  if (/[^a-zA-Z\s]/.test(lastName)) {
+    res.status(400).json({ error: 'Last name must contain letters and spaces only.' });
+    return;
+  }
+  if (/[^0-9-\s]/.test(phone)) {
+    res.status(400).json({ error: 'Contact number must contain digits, hyphens, and spaces only.' });
+    return;
+  }
+
   const normalizedEmail = String(email).trim().toLowerCase();
   const existing = await Student.findOne({ email: normalizedEmail });
   if (existing) {
@@ -160,10 +173,13 @@ const registerStudent = asyncHandler(async (req, res) => {
     status: 'registration',
   });
 
-  // FAST-TRACK logic: if returning student, jump to advising_pending
-  if (req.body.enrollmentType === 'returning' || req.body.enrollmentType === 'continuing') {
+  // FAST-TRACK logic: continuing students do not need document review
+  if (req.body.enrollmentType === 'continuing') {
     student.enrollmentType = req.body.enrollmentType;
     student.status = 'advising_pending';
+    await student.save();
+  } else if (req.body.enrollmentType) {
+    student.enrollmentType = req.body.enrollmentType;
     await student.save();
   }
 
@@ -188,7 +204,45 @@ const updateStudent = asyncHandler(async (req, res) => {
     'subjectChangeRequest',
     'applicantPassword',
     'paymentMethod',
+    'status',
+    'paymentStatus',
   ];
+
+  if (req.body.firstName !== undefined) {
+    const val = String(req.body.firstName);
+    if (/[^a-zA-Z\s]/.test(val)) {
+      res.status(400).json({ error: 'First name must contain letters and spaces only.' });
+      return;
+    }
+  }
+  if (req.body.lastName !== undefined) {
+    const val = String(req.body.lastName);
+    if (/[^a-zA-Z\s]/.test(val)) {
+      res.status(400).json({ error: 'Last name must contain letters and spaces only.' });
+      return;
+    }
+  }
+  if (req.body.phone !== undefined) {
+    const val = String(req.body.phone);
+    if (/[^0-9-\s]/.test(val)) {
+      res.status(400).json({ error: 'Contact number must contain digits, hyphens, and spaces only.' });
+      return;
+    }
+  }
+  if (req.body.applicantPassword !== undefined && req.body.applicantPassword) {
+    const pwd = String(req.body.applicantPassword);
+    const hasUppercase = /[A-Z]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(pwd);
+    if (pwd.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      return;
+    }
+    if (!hasUppercase || !hasNumber || !hasSpecialChar) {
+      res.status(400).json({ error: 'Password must include at least one uppercase letter, one number, and one special character.' });
+      return;
+    }
+  }
 
   for (const field of allowedFields) {
     if (Object.prototype.hasOwnProperty.call(req.body, field)) {
@@ -206,7 +260,11 @@ const submitDocuments = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  student.status = 'documents_submitted';
+  if (student.enrollmentType === 'continuing') {
+    student.status = 'advising_pending';
+  } else {
+    student.status = 'documents_submitted';
+  }
   student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
   res.json(student);
@@ -278,26 +336,43 @@ const selectProgram = asyncHandler(async (req, res) => {
   student.programId = programId;
   student.academicTerm = academicTerm;
 
-  // Auto-enroll required subjects depending on programId and enrollmentType (nature)
-  const yearLevel = (student.enrollmentType === 'returning' || student.enrollmentType === 'continuing') ? 2 : 1;
-  let defaultSubjectIds = [];
-  if (programId === 'bscs') {
-    if (yearLevel === 1) defaultSubjectIds = ['cs101', 'cs102'];
-    else if (yearLevel === 2) defaultSubjectIds = ['cs201', 'cs202'];
-  } else if (programId === 'bsba') {
-    if (yearLevel === 1) defaultSubjectIds = ['ba101', 'ba102'];
-    else if (yearLevel === 2) defaultSubjectIds = ['ba201', 'ba202'];
-  } else if (programId === 'bsn') {
-    if (yearLevel === 1) defaultSubjectIds = ['nu101', 'nu102', 'nu103'];
-    else if (yearLevel === 2) defaultSubjectIds = ['nu201', 'nu202'];
+  const prefix = programId === 'bscs' ? 'cs' : programId === 'bsba' ? 'ba' : 'nu';
+  let eligibleSubjectIds = [];
+
+  if (student.enrollmentType === 'new') {
+    eligibleSubjectIds = SUBJECTS_CATALOG
+      .filter(sub => sub.id.startsWith(prefix) && sub.yearLevel === 1)
+      .map(sub => sub.id);
+    student.yearLevel = 1;
+  } else if (student.enrollmentType === 'continuing') {
+    const completed = student.academicRecord
+      ? student.academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId)
+      : [];
+    eligibleSubjectIds = SUBJECTS_CATALOG
+      .filter(sub => sub.id.startsWith(prefix))
+      .filter(sub => !completed.includes(sub.id))
+      .filter(sub => sub.prerequisites.every(prereq => completed.includes(prereq)))
+      .map(sub => sub.id);
+    
+    if (eligibleSubjectIds.length > 0) {
+      const maxYear = Math.max(...eligibleSubjectIds.map(id => {
+        const sub = SUBJECTS_CATALOG.find(s => s.id === id);
+        return sub ? sub.yearLevel : 1;
+      }));
+      student.yearLevel = maxYear;
+    }
+  } else {
+    // Transfer or Returning: No auto-enrollment. Adviser must evaluate.
+    eligibleSubjectIds = [];
   }
 
-  student.selectedSubjects = defaultSubjectIds.map((subjectId) => ({
+  student.selectedSubjects = eligibleSubjectIds.map((subjectId) => ({
     subjectId,
+    sectionId: `${subjectId}-a`,
     addedAt: new Date(),
   }));
 
-  const { tuitionBreakdown, totalTuition } = computeTuition(defaultSubjectIds);
+  const { tuitionBreakdown, totalTuition } = computeTuition(eligibleSubjectIds);
   student.tuitionBreakdown = tuitionBreakdown;
   student.totalTuition = totalTuition;
 
@@ -318,7 +393,10 @@ const setSubjects = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const subjectIds = Array.isArray(req.body.subjectIds) ? req.body.subjectIds : [];
+  const inputSubjects = Array.isArray(req.body.subjects) ? req.body.subjects : [];
+  const subjectIds = inputSubjects.length > 0 
+    ? inputSubjects.map(s => s.subjectId)
+    : (Array.isArray(req.body.subjectIds) ? req.body.subjectIds : []);
   const previousStatus = student.status;
 
   if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
@@ -326,10 +404,37 @@ const setSubjects = asyncHandler(async (req, res) => {
     throw new Error('Cannot modify subjects after advising approval.');
   }
 
-  student.selectedSubjects = subjectIds.map((subjectId) => ({
-    subjectId,
-    addedAt: new Date(),
-  }));
+  if (req.body.academicRecord !== undefined) {
+    student.academicRecord = Array.isArray(req.body.academicRecord) ? req.body.academicRecord : [];
+  }
+  if (req.body.yearLevel !== undefined) {
+    student.yearLevel = Number(req.body.yearLevel);
+  }
+
+  // Prerequisite validation
+  const passedSubjectIds = student.academicRecord
+    ? student.academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId)
+    : [];
+
+  for (const subjectId of subjectIds) {
+    const sub = SUBJECTS_CATALOG.find(s => s.id === subjectId);
+    if (sub && sub.prerequisites && sub.prerequisites.length > 0) {
+      const hasAllPrereqs = sub.prerequisites.every(prereq => passedSubjectIds.includes(prereq));
+      if (!hasAllPrereqs) {
+        res.status(400);
+        throw new Error(`Prerequisites not met for ${sub.name}. Requires: ${sub.prerequisites.join(', ')}`);
+      }
+    }
+  }
+
+  student.selectedSubjects = subjectIds.map((subjectId) => {
+    const matchedInput = inputSubjects.find(s => s.subjectId === subjectId);
+    return {
+      subjectId,
+      sectionId: matchedInput?.sectionId || `${subjectId}-a`,
+      addedAt: new Date(),
+    };
+  });
 
   const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
   student.tuitionBreakdown = tuitionBreakdown;
@@ -370,6 +475,11 @@ const approveAdmission = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'documents_submitted') {
+    res.status(400);
+    throw new Error('Invalid action: Applicant is not in a pending review state.');
+  }
+
   student.admissionNotes = req.body.notes || '';
   
   if (!student.studentId) {
@@ -404,6 +514,12 @@ const approveAdmission = asyncHandler(async (req, res) => {
     student.status = 'documents_approved';
   }
 
+  student.auditLogs.push({
+    action: 'Approved Documents',
+    user: req.user ? req.user.username : 'Admissions Officer',
+    date: new Date()
+  });
+
   await student.save();
   res.json(student);
 });
@@ -415,8 +531,19 @@ const rejectAdmission = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'documents_submitted') {
+    res.status(400);
+    throw new Error('Invalid action: Applicant is not in a pending review state.');
+  }
+
   student.admissionNotes = req.body.notes || '';
   student.status = 'documents_rejected';
+
+  student.auditLogs.push({
+    action: 'Rejected Documents',
+    user: req.user ? req.user.username : 'Admissions Officer',
+    date: new Date()
+  });
 
   await student.save();
   res.json(student);
@@ -427,6 +554,11 @@ const rejectAdmission = asyncHandler(async (req, res) => {
 const rejectAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
+
+  if (student.status !== 'advising_pending') {
+    res.status(400);
+    throw new Error('Invalid action: Student must be pending advising.');
+  }
 
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_rejected';
@@ -441,6 +573,11 @@ const approveAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'advising_pending') {
+    res.status(400);
+    throw new Error('Invalid action: Student must be pending advising.');
+  }
+
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_approved';
   student.subjectChangeRequest = '';
@@ -454,6 +591,11 @@ const approveAdvising = asyncHandler(async (req, res) => {
 const confirmPayment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
+
+  if (student.status !== 'payment_pending') {
+    res.status(400);
+    throw new Error('Invalid action: Student is not pending payment.');
+  }
 
   student.paymentStatus = 'paid';
   // Automate Registrar workflow: auto-enroll on payment confirmation
@@ -488,10 +630,119 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
+  if (student.status !== 'payment_pending' && student.status !== 'enrolled') {
+    res.status(400);
+    throw new Error('Invalid action: Student must be pending payment or already enrolled.');
+  }
+
   student.status = 'enrolled';
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;
+
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Admin: Resolve a student's hold
+// @route   POST /api/admin/students/:id/resolve-hold
+const resolveHold = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  const { type, notes } = req.body;
+  const holdIndex = student.holds.findIndex(h => h.type === type && h.status === 'active');
+  
+  if (holdIndex >= 0) {
+    student.holds[holdIndex].status = 'resolved';
+    student.holds[holdIndex].resolvedAt = new Date();
+    
+    // Also mark associated document as approved if exists
+    let docType = '';
+    if (type === 'readmission') docType = 'readmission_clearance';
+    if (docType) {
+      const doc = student.documents.find(d => d.typeId === docType && d.status === 'pending');
+      if (doc) doc.status = 'approved';
+    }
+
+    student.auditLogs.push({
+      action: `Resolved ${type} Hold`,
+      user: req.user ? req.user.username : 'System Admin',
+      date: new Date()
+    });
+
+    await student.save();
+  }
+
+  res.json(student);
+});
+
+// @desc    Admin: Flag student as AWOL/Returning
+// @route   POST /api/admin/students/:id/set-returning
+const setReturning = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  student.enrollmentType = 'returning';
+  student.status = 'registration'; // Kick them back to the start
+  
+  // Add readmission hold if not already there
+  const hasHold = student.holds.some(h => h.type === 'readmission' && h.status === 'active');
+  if (!hasHold) {
+    student.holds.push({
+      type: 'readmission',
+      status: 'active',
+      description: 'AWOL from previous semester. Please upload Readmission Clearance form from the Dean.',
+      createdAt: new Date(),
+    });
+  }
+
+  student.auditLogs.push({
+    action: `Flagged as Returning (AWOL)`,
+    user: req.user ? req.user.username : 'System Admin',
+    date: new Date()
+  });
+
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Rollover an enrolled student to the next semester (Continuing)
+// @route   POST /api/students/:id/rollover
+const rolloverStudent = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'enrolled') {
+    res.status(400);
+    throw new Error('Only fully enrolled students can be rolled over to the next semester.');
+  }
+
+  // Archive current subjects to academic record
+  if (student.selectedSubjects && student.selectedSubjects.length > 0) {
+    const newRecords = student.selectedSubjects.map(s => ({
+      subjectId: s.subjectId,
+      grade: 2.0, // Default passing grade
+      term: student.academicTerm || 'previous_term'
+    }));
+    student.academicRecord = [...(student.academicRecord || []), ...newRecords];
+  }
+
+  // Reset enrollment state
+  student.selectedSubjects = [];
+  student.tuitionBreakdown = [];
+  student.totalTuition = 0;
+  student.academicTerm = ''; // Force them to pick next term
+  
+  // Transition status
+  student.status = 'advising_pending';
+  student.enrollmentType = 'continuing';
+
+  student.auditLogs.push({
+    action: `Rolled over to Continuing Student`,
+    user: req.user ? req.user.username : 'System Admin',
+    date: new Date()
+  });
 
   await student.save();
   res.json(student);
@@ -517,4 +768,7 @@ export {
   validateEnrollment,
   proceedToPayment,
   rejectAdvising,
+  resolveHold,
+  setReturning,
+  rolloverStudent,
 };

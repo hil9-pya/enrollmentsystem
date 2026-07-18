@@ -16,7 +16,7 @@ export default function StudentPortalAccess({ onVerified }) {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const nameRegex = /^[A-Za-z][A-Za-z\s'.-]{1,49}$/;
+  const nameRegex = /^[A-Za-z\s]{1,50}$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^09\d{2}[-\s]?\d{3}[-\s]?\d{4}$/;
 
@@ -64,13 +64,13 @@ export default function StudentPortalAccess({ onVerified }) {
     }
 
     if (!nameRegex.test(firstName.trim())) {
-      setError('First name must contain letters only.');
+      setError('First name must contain letters and spaces only.');
       setIsSubmitting(false);
       return;
     }
 
     if (!nameRegex.test(lastName.trim())) {
-      setError('Last name must contain letters only.');
+      setError('Last name must contain letters and spaces only.');
       setIsSubmitting(false);
       return;
     }
@@ -206,11 +206,11 @@ export default function StudentPortalAccess({ onVerified }) {
                 <input
                   type="text"
                   required
-                  pattern="[A-Za-z][A-Za-z\s'.-]{1,49}"
-                  title="Use letters only. Spaces, hyphens, periods, and apostrophes are allowed."
+                  pattern="[A-Za-z\s]{1,50}"
+                  title="Use letters and spaces only."
                   placeholder="Juan"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => setFirstName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white"
                 />
               </div>
@@ -219,11 +219,11 @@ export default function StudentPortalAccess({ onVerified }) {
                 <input
                   type="text"
                   required
-                  pattern="[A-Za-z][A-Za-z\s'.-]{1,49}"
-                  title="Use letters only. Spaces, hyphens, periods, and apostrophes are allowed."
+                  pattern="[A-Za-z\s]{1,50}"
+                  title="Use letters and spaces only."
                   placeholder="Dela Cruz"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => setLastName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white"
                 />
               </div>
@@ -249,7 +249,7 @@ export default function StudentPortalAccess({ onVerified }) {
                 title="Use a valid PH mobile number, e.g., 0917-123-4567 or 09171234567."
                 placeholder="0917-123-4567"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/[^0-9-\s]/g, ''))}
                 className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white"
               />
             </div>

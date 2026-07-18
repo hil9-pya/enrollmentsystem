@@ -16,6 +16,7 @@ import enrollmentRoutes from './enrollmentRoutes.js';
 import studentsRoutes from './studentsRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
+import { startCleanupTask } from './cron.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -78,6 +79,9 @@ const startServer = async () => {
     // Seed default demo accounts & applicant records on first run.
     await seedUsers();
     await seedStudents();
+
+    // Start background tasks
+    startCleanupTask();
 
     // --- Security Best Practice: Check for Insecure Secrets ---
     const insecureSecrets = [

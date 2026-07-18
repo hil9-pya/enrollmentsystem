@@ -182,18 +182,20 @@ export function EnrollmentProvider({ children }) {
       
       else if (type === 'ADD_SUBJECT' || type === 'REMOVE_SUBJECT') {
         const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
-        let subjectIds = currentStudent?.selectedSubjects?.map(s => s.subjectId) || [];
+        let selectedSubjects = currentStudent?.selectedSubjects || [];
         
         if (type === 'ADD_SUBJECT') {
-          subjectIds = [...subjectIds, payload.subjectId];
+          // Remove previous section of the same subject if it exists (student changed section)
+          selectedSubjects = selectedSubjects.filter(s => s.subjectId !== payload.subjectId);
+          selectedSubjects = [...selectedSubjects, { subjectId: payload.subjectId, sectionId: payload.sectionId }];
         } else {
-          subjectIds = subjectIds.filter(id => id !== payload.subjectId);
+          selectedSubjects = selectedSubjects.filter(s => s.subjectId !== payload.subjectId);
         }
 
         const res = await authFetch(`/api/students/${activeStudentId}/subjects`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subjectIds }),
+          body: JSON.stringify({ subjects: selectedSubjects }),
         });
         updatedStudent = await safeJson(res);
       } 
@@ -247,6 +249,31 @@ export function EnrollmentProvider({ children }) {
         updatedStudent = await safeJson(res);
       } 
       
+      else if (type === 'APPROVE_ADMISSION') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/approve-admission`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: payload.notes }),
+        });
+        updatedStudent = await safeJson(res);
+      } 
+      
+      else if (type === 'RESOLVE_HOLD') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/resolve-hold`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: payload.holdType }),
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'SET_RETURNING') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/set-returning`, {
+          method: 'POST',
+        });
+        updatedStudent = await safeJson(res);
+      }
+      
       else if (type === 'REJECT_ADVISING') {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/reject-advising`, {
           method: 'POST',
@@ -257,11 +284,19 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'UPDATE_STUDENT_SUBJECTS') {
-        const subjectIds = payload.subjects.map(s => s.subjectId);
+        // Ensure subjects are formatted as { subjectId, sectionId }
+        const subjects = payload.subjects.map(s => ({
+          subjectId: s.subjectId,
+          sectionId: s.sectionId || `${s.subjectId}-a` // default to section A if not specified
+        }));
         const res = await authFetch(`/api/admin/students/${payload.studentId}/subjects`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subjectIds }),
+          body: JSON.stringify({ 
+            subjects,
+            academicRecord: payload.academicRecord,
+            yearLevel: payload.yearLevel
+          }),
         });
         updatedStudent = await safeJson(res);
       } 
@@ -275,6 +310,13 @@ export function EnrollmentProvider({ children }) {
       
       else if (type === 'VALIDATE_ENROLLMENT') {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/validate-enrollment`, {
+          method: 'POST',
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'ROLLOVER_STUDENT') {
+        const res = await authFetch(`/api/students/${payload.studentId}/rollover`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);

@@ -154,6 +154,12 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     student.selectedSubjects.forEach((s, index) => {
       const sub = getSubjectById(s.subjectId);
       if (sub) {
+        const sec = sub.sections?.find(x => x.id === s.sectionId);
+        const dayTimeStr = sec ? `${sec.schedule.day} ${sec.schedule.time}` : '—';
+        const roomStr = sec ? sec.schedule.room : '—';
+        const instructorStr = sec ? sec.instructor : sub.instructor || '—';
+        const codeStr = sec ? sec.code : sub.code;
+
         // Alternating rows background
         if (index % 2 === 0) {
           doc.setFillColor(248, 250, 252); // slate-50
@@ -167,7 +173,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
 
         doc.setTextColor(15, 23, 42); // Code in navy bold
         doc.setFont('Helvetica', 'bold');
-        doc.text(sub.code, 15, currentY + 5.5);
+        doc.text(codeStr, 15, currentY + 5.5);
         
         doc.setTextColor(51, 65, 85);
         doc.setFont('Helvetica', 'normal');
@@ -175,9 +181,9 @@ export default function FulfillmentStep({ onReturnToGateway }) {
         // Truncate subject description if too long
         const nameText = sub.name.length > 32 ? sub.name.substring(0, 30) + '...' : sub.name;
         doc.text(nameText, 38, currentY + 5.5);
-        doc.text(`${sub.schedule.day} ${sub.schedule.time}`, 92, currentY + 5.5);
-        doc.text(sub.schedule.room, 145, currentY + 5.5);
-        doc.text(sub.instructor, 165, currentY + 5.5);
+        doc.text(dayTimeStr, 92, currentY + 5.5);
+        doc.text(roomStr, 145, currentY + 5.5);
+        doc.text(instructorStr, 165, currentY + 5.5);
         
         currentY += 8;
       }
@@ -680,6 +686,12 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     student.selectedSubjects.forEach((s, index) => {
       const sub = getSubjectById(s.subjectId);
       if (sub) {
+        const sec = sub.sections?.find(x => x.id === s.sectionId);
+        const dayTimeStr = sec ? `${sec.schedule.day} ${sec.schedule.time}` : '—';
+        const roomStr = sec ? sec.schedule.room : '—';
+        const instructorStr = sec ? sec.instructor : sub.instructor || '—';
+        const codeStr = sec ? sec.code : sub.code;
+
         if (index % 2 === 0) {
           doc.setFillColor(248, 250, 252); // slate-50
           doc.rect(12, currentY, 186, 8, 'F');
@@ -691,16 +703,16 @@ export default function FulfillmentStep({ onReturnToGateway }) {
 
         doc.setTextColor(15, 23, 42); // Code in navy bold
         doc.setFont('Helvetica', 'bold');
-        doc.text(sub.code, 15, currentY + 5.5);
+        doc.text(codeStr, 15, currentY + 5.5);
         
         doc.setTextColor(51, 65, 85);
         doc.setFont('Helvetica', 'normal');
         
         const nameText = sub.name.length > 32 ? sub.name.substring(0, 30) + '...' : sub.name;
         doc.text(nameText, 38, currentY + 5.5);
-        doc.text(`${sub.schedule.day} ${sub.schedule.time}`, 92, currentY + 5.5);
-        doc.text(sub.schedule.room, 145, currentY + 5.5);
-        doc.text(sub.instructor, 165, currentY + 5.5);
+        doc.text(dayTimeStr, 92, currentY + 5.5);
+        doc.text(roomStr, 145, currentY + 5.5);
+        doc.text(instructorStr, 165, currentY + 5.5);
         
         currentY += 8;
       }
