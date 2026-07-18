@@ -62,8 +62,8 @@ export default function FloatingInput({
         </label>
       </div>
       {error && (
-        <div className="absolute -bottom-5 left-0 flex items-center gap-1 mt-1 animate-in slide-in-from-top-1">
-          <AlertCircle className="w-3 h-3 text-rose-500" />
+        <div className="flex items-center gap-1 mt-1.5 animate-in slide-in-from-top-1">
+          <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
           <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</span>
         </div>
       )}
