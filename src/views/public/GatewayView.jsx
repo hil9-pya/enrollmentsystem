@@ -4,7 +4,7 @@ import LoginView from '../auth/LoginView';
 import ApplicantPortalAccess from '../applicant/ApplicantPortalAccess';
 
 export default function GatewayView({ onVerified, onBack }) {
-  const [viewMode, setViewMode] = useState('applicant'); // 'applicant', 'student', 'staff', 'admin'
+  const [viewMode, setViewMode] = useState(null); // 'applicant', 'student', 'staff', 'admin'
 
   return (
     <div className="flex h-screen w-full overflow-hidden font-sans bg-[#f4f6fb]">
@@ -59,13 +59,17 @@ export default function GatewayView({ onVerified, onBack }) {
            </div>
            
            <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-sm border border-slate-200/60 mb-6">
-              {['applicant', 'student', 'staff'].map((role) => (
+              {[
+                { id: 'applicant', label: 'Admissions' },
+                { id: 'student', label: 'Student Portal' },
+                { id: 'staff', label: 'Staff / Admin' }
+              ].map((tab) => (
                 <button 
-                  key={role}
-                  onClick={() => setViewMode(role)}
-                  className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all duration-300 outline-none focus:outline-none focus:ring-0 cursor-pointer ${viewMode === role || (role === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
+                  key={tab.id}
+                  onClick={() => setViewMode(tab.id)}
+                  className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 outline-none focus:outline-none focus:ring-0 cursor-pointer ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
                 >
-                  {role}
+                  {tab.label}
                 </button>
               ))}
            </div>

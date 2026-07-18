@@ -27,7 +27,7 @@ export default function EnrollmentTypeStep({ onNext }) {
       </p>
  
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {ENROLLMENT_TYPES.filter(et => et.id !== 'continuing').map((et) => {
+        {ENROLLMENT_TYPES.filter(t => ['new', 'transfer'].includes(t.id)).map((et) => {
           const Icon = iconMap[et.icon];
           const isSelected = selectedType === et.id;
  

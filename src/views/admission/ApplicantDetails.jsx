@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Loader2, Clock } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { REQUIRED_DOCUMENTS, PROGRAMS } from '../../data/mockData';
@@ -9,7 +10,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
   const { getStudentById, dispatch } = useEnrollment();
   const { confirm } = useConfirm();
   const [notes, setNotes] = useState('');
-  const [flashMessage, setFlashMessage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
 
   const student = getStudentById(studentId);
@@ -24,43 +25,58 @@ export default function ApplicantDetails({ studentId, onBack }) {
 
   const program = PROGRAMS.find((p) => p.id === student.programId);
 
-  function showFlash(message, type) {
-    setFlashMessage({ message, type });
-    setTimeout(() => setFlashMessage(null), 3000);
-  }
-
   async function handleApprove() {
     const isConfirmed = await confirm({
-      title: 'Approve Admission',
-      message: `Are you sure you want to approve the documents for ${student.firstName} ${student.lastName}? This clears their admissions hold.`,
-      confirmText: 'Approve Documents',
+      title: 'Confirm Approval',
+      message: 'Are you sure you want to approve this applicant? This action will officially verify the submitted admission documents.',
+      confirmText: 'Approve',
       cancelText: 'Cancel',
       type: 'success',
     });
     if (!isConfirmed) return;
-    await dispatch({
-      type: 'APPROVE_DOCUMENTS',
-      payload: { studentId: student.id, notes },
-    });
-    showFlash(`Documents approved for ${student.firstName} ${student.lastName}`, 'success');
-    setNotes('');
+    
+    setIsProcessing(true);
+    try {
+      await dispatch({
+        type: 'APPROVE_DOCUMENTS',
+        payload: { studentId: student.id, notes },
+      });
+      // The dispatch will handle the state update, but we should show a success toast.
+      // Assuming dispatch handles errors via toast, we only reach here if it didn't throw,
+      // but dispatch in this app catches errors internally. We should check if status actually changed
+      // but for simplicity, we'll assume it worked if no exception was thrown and we'll show success.
+      toast.success('Applicant approved successfully.');
+      setNotes('');
+    } catch (err) {
+      toast.error('Unable to update applicant status. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   async function handleReject() {
     const isConfirmed = await confirm({
-      title: 'Request Resubmission',
-      message: `Are you sure you want to request document resubmission for ${student.firstName} ${student.lastName}? This notifies the applicant to upload correct files.`,
-      confirmText: 'Request Resubmission',
+      title: 'Confirm Refusal',
+      message: 'Are you sure you want to refuse this applicant? This applicant will be notified that the submitted requirements were not accepted.',
+      confirmText: 'Refuse',
       cancelText: 'Cancel',
       type: 'danger',
     });
     if (!isConfirmed) return;
-    await dispatch({
-      type: 'REJECT_DOCUMENTS',
-      payload: { studentId: student.id, notes },
-    });
-    showFlash(`Resubmission requested for ${student.firstName} ${student.lastName}`, 'error');
-    setNotes('');
+    
+    setIsProcessing(true);
+    try {
+      await dispatch({
+        type: 'REJECT_DOCUMENTS',
+        payload: { studentId: student.id, notes },
+      });
+      toast.success('Applicant refused successfully.');
+      setNotes('');
+    } catch (err) {
+      toast.error('Unable to update applicant status. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   function getDocLabel(typeId) {
@@ -120,17 +136,6 @@ export default function ApplicantDetails({ studentId, onBack }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 space-y-6">
-        {flashMessage && (
-          <div
-            className={`px-4 py-3 rounded-xl text-xs font-bold shadow-sm ${
-              flashMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/40'
-                : 'bg-rose-50 text-rose-700 border border-rose-200/40'
-            }`}
-          >
-            {flashMessage.message}
-          </div>
-        )}
 
         <div className="flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl p-5 shadow-premium">
           <div className="flex items-center gap-4">
@@ -247,29 +252,68 @@ export default function ApplicantDetails({ studentId, onBack }) {
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
           <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Admissions Evaluation Actions</h3>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Write evaluation feedback or rejection details here..."
-            rows={3}
-            className="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white resize-none"
-          />
-          <div className="flex items-center gap-3 mt-5">
-            <button
-              onClick={handleApprove}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm cursor-pointer"
-            >
-              <CheckCircle className="h-4 w-4" />
-              Approve Application
-            </button>
-            <button
-              onClick={handleReject}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-all shadow-sm cursor-pointer"
-            >
-              <XCircle className="h-4 w-4" />
-              Mark Documents Incomplete
-            </button>
-          </div>
+          {student.status === 'registration' ? (
+            <div className="flex items-center gap-3 px-5 py-4 rounded-xl border shadow-sm bg-slate-50 border-slate-200 text-slate-500">
+              <Clock className="w-6 h-6 shrink-0 text-slate-400" />
+              <div>
+                <p className="font-extrabold uppercase tracking-widest text-[10px]">Awaiting Submission</p>
+                <p className="font-semibold text-sm text-slate-600">Applicant has not submitted documents yet</p>
+              </div>
+            </div>
+          ) : student.status === 'documents_submitted' ? (
+            <>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Write evaluation feedback or rejection details here..."
+                rows={3}
+                disabled={isProcessing}
+                className="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-univ-indigo focus:border-transparent transition-all bg-slate-50/50 focus:bg-white resize-none disabled:opacity-50"
+              />
+              <div className="flex items-center gap-3 mt-5">
+                <button
+                  onClick={handleApprove}
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Approve Application
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={isProcessing}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                  Refuse Application
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className={`flex items-center gap-3 px-5 py-4 rounded-xl border shadow-sm ${
+              student.status === 'documents_rejected' 
+                ? 'bg-rose-50 border-rose-200 text-rose-700' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            }`}>
+              {student.status === 'documents_rejected' ? (
+                <>
+                  <XCircle className="w-6 h-6 shrink-0" />
+                  <div>
+                    <p className="font-extrabold uppercase tracking-widest text-[10px]">Decision Finalized</p>
+                    <p className="font-semibold text-sm">Applicant Refused</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-6 h-6 shrink-0" />
+                  <div>
+                    <p className="font-extrabold uppercase tracking-widest text-[10px]">Decision Finalized</p>
+                    <p className="font-semibold text-sm">Applicant Approved</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

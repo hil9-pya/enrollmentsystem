@@ -22,7 +22,18 @@ export default function EnrollmentValidation({ studentId, onBack }) {
   const selectedSubjectDetails = useMemo(() => {
     if (!student) return [];
     return student.selectedSubjects
-      .map((ss) => SUBJECTS.find((s) => s.id === ss.subjectId))
+      .map((ss) => {
+        const sub = SUBJECTS.find((s) => s.id === ss.subjectId);
+        if (!sub) return null;
+        const sec = sub.sections?.find((x) => x.id === ss.sectionId);
+        return {
+          id: ss.subjectId,
+          code: sec ? sec.code : sub.code,
+          name: sub.name,
+          units: sub.units,
+          schedule: sec ? sec.schedule : { day: '—', time: '—' },
+        };
+      })
       .filter(Boolean);
   }, [student]);
 
@@ -59,6 +70,25 @@ export default function EnrollmentValidation({ studentId, onBack }) {
     
     showFlash(`Enrollment validated for ${student.firstName} ${student.lastName}`);
     setConfirmingValidation(false);
+  }
+
+  async function handleRollover() {
+    const isConfirmed = await confirm({
+      title: 'Initialize Next Semester',
+      message: `Are you sure you want to rollover ${student.firstName} ${student.lastName} to the next academic term? This will archive their current subjects and reset their enrollment status.`,
+      confirmText: 'Yes, Rollover',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    
+    if (!isConfirmed) return;
+
+    await dispatch({
+      type: 'ROLLOVER_STUDENT',
+      payload: { studentId: student.id },
+    });
+    
+    showFlash(`Successfully rolled over ${student.firstName} ${student.lastName} to Continuing Student`);
   }
 
   function getDocLabel(typeId) {
@@ -117,6 +147,12 @@ export default function EnrollmentValidation({ studentId, onBack }) {
                   Verified on {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
               </div>
+              <button 
+                onClick={handleRollover}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+              >
+                Initialize Next Semester
+              </button>
               <StatusBadge status="enrolled" />
             </div>
           ) : (

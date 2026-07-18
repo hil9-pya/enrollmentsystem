@@ -14,6 +14,7 @@ const DocumentSchema = new mongoose.Schema(
 const SelectedSubjectSchema = new mongoose.Schema(
   {
     subjectId: { type: String, required: true },
+    sectionId: { type: String, required: true },
     addedAt: { type: Date, default: Date.now },
   },
   { _id: false }
@@ -23,6 +24,34 @@ const TuitionLineSchema = new mongoose.Schema(
   {
     label: { type: String, required: true },
     amount: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const AuditLogSchema = new mongoose.Schema(
+  {
+    action: { type: String, required: true },
+    user: { type: String, required: true },
+    date: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const HoldSchema = new mongoose.Schema(
+  {
+    type: { type: String, required: true }, // e.g., 'readmission', 'financial', 'academic'
+    status: { type: String, enum: ['active', 'resolved'], default: 'active' },
+    description: { type: String, default: '' },
+    resolvedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
+const AcademicRecordSchema = new mongoose.Schema(
+  {
+    subjectId: { type: String, required: true },
+    grade: { type: Number, required: true },
+    term: { type: String, required: true },
   },
   { _id: false }
 );
@@ -49,6 +78,9 @@ const StudentSchema = new mongoose.Schema(
     enrollmentType: { type: String, default: null },
     programId: { type: String, default: null },
     academicTerm: { type: String, default: null },
+    yearLevel: { type: Number, default: 1 },
+    academicRecord: { type: [AcademicRecordSchema], default: [] },
+    holds: { type: [HoldSchema], default: [] },
 
     status: { 
       type: String, 
@@ -61,6 +93,7 @@ const StudentSchema = new mongoose.Schema(
         'advising_approved',
         'advising_rejected',
         'payment_pending',
+        'payment_confirmed',
         'validation_pending',
         'enrolled'
       ],
@@ -85,6 +118,7 @@ const StudentSchema = new mongoose.Schema(
     subjectChangeRequest: { type: String, default: '' },
 
     applicantPassword: { type: String, default: null },
+    auditLogs: { type: [AuditLogSchema], default: [] },
   },
   {
     timestamps: true,

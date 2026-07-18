@@ -17,8 +17,9 @@ export const PROGRAMS = [
 export const ACADEMIC_TERMS = [
   { id: '1s-2026', label: '1st Semester 2026-2027' },
   { id: '2s-2026', label: '2nd Semester 2026-2027' },
-  { id: 'sum-2027', label: 'Summer 2027' },
 ];
+
+export const ACTIVE_TERM_ID = '1s-2026';
 
 // ---------------------------------------------------------------------------
 // 3. SUBJECTS
@@ -34,10 +35,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 301' },
-    instructor: 'Prof. Renato Villanueva',
-    maxSlots: 40,
-    enrolledCount: 33,
+    sections: [
+      { id: 'cs101-a', code: 'CS 101-A', schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 301' }, instructor: 'Prof. Renato Villanueva', maxSlots: 40, enrolledCount: 40 }, // FULL
+      { id: 'cs101-b', code: 'CS 101-B', schedule: { day: 'TTH', time: '9:00 AM - 10:30 AM', room: 'Room 302' }, instructor: 'Prof. Lourdes Bautista', maxSlots: 40, enrolledCount: 20 }
+    ],
     fee: 4500,
   },
   {
@@ -49,10 +50,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'TTH', time: '10:00 AM - 11:30 AM', room: 'Room 302' },
-    instructor: 'Prof. Lourdes Bautista',
-    maxSlots: 40,
-    enrolledCount: 37,
+    sections: [
+      { id: 'cs102-a', code: 'CS 102-A', schedule: { day: 'TTH', time: '10:00 AM - 11:30 AM', room: 'Room 302' }, instructor: 'Prof. Lourdes Bautista', maxSlots: 40, enrolledCount: 37 },
+      { id: 'cs102-b', code: 'CS 102-B', schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 301' }, instructor: 'Prof. Renato Villanueva', maxSlots: 40, enrolledCount: 15 }
+    ],
     fee: 4500,
   },
   {
@@ -64,10 +65,10 @@ export const SUBJECTS = [
     yearLevel: 2,
     semester: 1,
     prerequisites: ['cs102'],
-    schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 303' },
-    instructor: 'Prof. Andres Dela Cruz',
-    maxSlots: 40,
-    enrolledCount: 29,
+    sections: [
+      { id: 'cs201-a', code: 'CS 201-A', schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 303' }, instructor: 'Prof. Andres Dela Cruz', maxSlots: 40, enrolledCount: 29 },
+      { id: 'cs201-b', code: 'CS 201-B', schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 304' }, instructor: 'Prof. Margarita Ramos', maxSlots: 40, enrolledCount: 10 }
+    ],
     fee: 4500,
   },
   {
@@ -79,10 +80,10 @@ export const SUBJECTS = [
     yearLevel: 2,
     semester: 1,
     prerequisites: ['cs102'],
-    schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 304' },
-    instructor: 'Prof. Margarita Ramos',
-    maxSlots: 40,
-    enrolledCount: 31,
+    sections: [
+      { id: 'cs202-a', code: 'CS 202-A', schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 304' }, instructor: 'Prof. Margarita Ramos', maxSlots: 40, enrolledCount: 31 },
+      { id: 'cs202-b', code: 'CS 202-B', schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 303' }, instructor: 'Prof. Andres Dela Cruz', maxSlots: 40, enrolledCount: 12 }
+    ],
     fee: 4500,
   },
   {
@@ -94,10 +95,10 @@ export const SUBJECTS = [
     yearLevel: 3,
     semester: 1,
     prerequisites: ['cs201'],
-    schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 305' },
-    instructor: 'Prof. Danilo Mendoza',
-    maxSlots: 40,
-    enrolledCount: 26,
+    sections: [
+      { id: 'cs301-a', code: 'CS 301-A', schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 305' }, instructor: 'Prof. Danilo Mendoza', maxSlots: 40, enrolledCount: 26 },
+      { id: 'cs301-b', code: 'CS 301-B', schedule: { day: 'TTH', time: '3:00 PM - 4:30 PM', room: 'Room 306' }, instructor: 'Prof. Cecilia Aguilar', maxSlots: 40, enrolledCount: 8 }
+    ],
     fee: 4500,
   },
   {
@@ -109,10 +110,10 @@ export const SUBJECTS = [
     yearLevel: 3,
     semester: 1,
     prerequisites: ['cs201'],
-    schedule: { day: 'TTH', time: '8:00 AM - 9:30 AM', room: 'Room 306' },
-    instructor: 'Prof. Cecilia Aguilar',
-    maxSlots: 40,
-    enrolledCount: 28,
+    sections: [
+      { id: 'cs302-a', code: 'CS 302-A', schedule: { day: 'TTH', time: '8:00 AM - 9:30 AM', room: 'Room 306' }, instructor: 'Prof. Cecilia Aguilar', maxSlots: 40, enrolledCount: 28 },
+      { id: 'cs302-b', code: 'CS 302-B', schedule: { day: 'MWF', time: '3:00 PM - 4:30 PM', room: 'Room 305' }, instructor: 'Prof. Danilo Mendoza', maxSlots: 40, enrolledCount: 14 }
+    ],
     fee: 4500,
   },
 
@@ -126,10 +127,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 401' },
-    instructor: 'Prof. Ricardo Gonzales',
-    maxSlots: 40,
-    enrolledCount: 35,
+    sections: [
+      { id: 'ba101-a', code: 'BA 101-A', schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 401' }, instructor: 'Prof. Ricardo Gonzales', maxSlots: 40, enrolledCount: 35 },
+      { id: 'ba101-b', code: 'BA 101-B', schedule: { day: 'TTH', time: '9:00 AM - 10:30 AM', room: 'Room 402' }, instructor: 'Prof. Elena Soriano', maxSlots: 40, enrolledCount: 12 }
+    ],
     fee: 4500,
   },
   {
@@ -141,10 +142,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'TTH', time: '10:00 AM - 11:30 AM', room: 'Room 402' },
-    instructor: 'Prof. Elena Soriano',
-    maxSlots: 40,
-    enrolledCount: 32,
+    sections: [
+      { id: 'ba102-a', code: 'BA 102-A', schedule: { day: 'TTH', time: '10:00 AM - 11:30 AM', room: 'Room 402' }, instructor: 'Prof. Elena Soriano', maxSlots: 40, enrolledCount: 32 },
+      { id: 'ba102-b', code: 'BA 102-B', schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 401' }, instructor: 'Prof. Ricardo Gonzales', maxSlots: 40, enrolledCount: 15 }
+    ],
     fee: 4500,
   },
   {
@@ -156,10 +157,10 @@ export const SUBJECTS = [
     yearLevel: 2,
     semester: 1,
     prerequisites: ['ba101'],
-    schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 403' },
-    instructor: 'Prof. Fernando Aquino',
-    maxSlots: 40,
-    enrolledCount: 27,
+    sections: [
+      { id: 'ba201-a', code: 'BA 201-A', schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 403' }, instructor: 'Prof. Fernando Aquino', maxSlots: 40, enrolledCount: 27 },
+      { id: 'ba201-b', code: 'BA 201-B', schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 404' }, instructor: 'Prof. Patricia Lagman', maxSlots: 40, enrolledCount: 8 }
+    ],
     fee: 4500,
   },
   {
@@ -171,10 +172,10 @@ export const SUBJECTS = [
     yearLevel: 2,
     semester: 1,
     prerequisites: ['ba102'],
-    schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 404' },
-    instructor: 'Prof. Patricia Lagman',
-    maxSlots: 40,
-    enrolledCount: 30,
+    sections: [
+      { id: 'ba202-a', code: 'BA 202-A', schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 404' }, instructor: 'Prof. Patricia Lagman', maxSlots: 40, enrolledCount: 30 },
+      { id: 'ba202-b', code: 'BA 202-B', schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 403' }, instructor: 'Prof. Fernando Aquino', maxSlots: 40, enrolledCount: 11 }
+    ],
     fee: 4500,
   },
   {
@@ -186,10 +187,10 @@ export const SUBJECTS = [
     yearLevel: 3,
     semester: 1,
     prerequisites: ['ba201'],
-    schedule: { day: 'MWF', time: '3:00 PM - 4:30 PM', room: 'Room 405' },
-    instructor: 'Prof. Gabriel Pascual',
-    maxSlots: 40,
-    enrolledCount: 25,
+    sections: [
+      { id: 'ba301-a', code: 'BA 301-A', schedule: { day: 'MWF', time: '3:00 PM - 4:30 PM', room: 'Room 405' }, instructor: 'Prof. Gabriel Pascual', maxSlots: 40, enrolledCount: 25 },
+      { id: 'ba301-b', code: 'BA 301-B', schedule: { day: 'TTH', time: '3:00 PM - 4:30 PM', room: 'Room 406' }, instructor: 'Prof. Patricia Lagman', maxSlots: 40, enrolledCount: 9 }
+    ],
     fee: 4500,
   },
 
@@ -203,10 +204,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 501' },
-    instructor: 'Prof. Teresa Castillo',
-    maxSlots: 40,
-    enrolledCount: 36,
+    sections: [
+      { id: 'nu101-a', code: 'NU 101-A', schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 501' }, instructor: 'Prof. Teresa Castillo', maxSlots: 40, enrolledCount: 36 },
+      { id: 'nu101-b', code: 'NU 101-B', schedule: { day: 'TTH', time: '9:00 AM - 10:30 AM', room: 'Room 502' }, instructor: 'Prof. Rosario Dizon', maxSlots: 40, enrolledCount: 15 }
+    ],
     fee: 4500,
   },
   {
@@ -218,10 +219,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'TTH', time: '10:00 AM - 11:30 AM', room: 'Room 502' },
-    instructor: 'Prof. Rosario Dizon',
-    maxSlots: 40,
-    enrolledCount: 34,
+    sections: [
+      { id: 'nu102-a', code: 'NU 102-A', schedule: { day: 'TTH', time: '10:00 AM - 11:30 AM', room: 'Room 502' }, instructor: 'Prof. Rosario Dizon', maxSlots: 40, enrolledCount: 34 },
+      { id: 'nu102-b', code: 'NU 102-B', schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 501' }, instructor: 'Prof. Teresa Castillo', maxSlots: 40, enrolledCount: 18 }
+    ],
     fee: 4500,
   },
   {
@@ -233,10 +234,10 @@ export const SUBJECTS = [
     yearLevel: 1,
     semester: 1,
     prerequisites: [],
-    schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 503' },
-    instructor: 'Prof. Josefina Manalo',
-    maxSlots: 40,
-    enrolledCount: 38,
+    sections: [
+      { id: 'nu103-a', code: 'NU 103-A', schedule: { day: 'MWF', time: '10:00 AM - 11:30 AM', room: 'Room 503' }, instructor: 'Prof. Josefina Manalo', maxSlots: 40, enrolledCount: 38 },
+      { id: 'nu103-b', code: 'NU 103-B', schedule: { day: 'TTH', time: '1:00 PM - 2:30 PM', room: 'Room 504' }, instructor: 'Prof. Rosario Dizon', maxSlots: 40, enrolledCount: 10 }
+    ],
     fee: 4500,
   },
   {
@@ -248,10 +249,10 @@ export const SUBJECTS = [
     yearLevel: 2,
     semester: 1,
     prerequisites: ['nu101'],
-    schedule: { day: 'TTH', time: '8:00 AM - 9:30 AM', room: 'Room 504' },
-    instructor: 'Prof. Alberto Evangelista',
-    maxSlots: 40,
-    enrolledCount: 27,
+    sections: [
+      { id: 'nu201-a', code: 'NU 201-A', schedule: { day: 'TTH', time: '8:00 AM - 9:30 AM', room: 'Room 504' }, instructor: 'Prof. Alberto Evangelista', maxSlots: 40, enrolledCount: 27 },
+      { id: 'nu201-b', code: 'NU 201-B', schedule: { day: 'MWF', time: '3:00 PM - 4:30 PM', room: 'Room 503' }, instructor: 'Prof. Teresa Castillo', maxSlots: 40, enrolledCount: 12 }
+    ],
     fee: 4500,
   },
   {
@@ -263,10 +264,10 @@ export const SUBJECTS = [
     yearLevel: 2,
     semester: 1,
     prerequisites: ['nu102'],
-    schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 505' },
-    instructor: 'Prof. Carmela Salazar',
-    maxSlots: 40,
-    enrolledCount: 30,
+    sections: [
+      { id: 'nu202-a', code: 'NU 202-A', schedule: { day: 'MWF', time: '1:00 PM - 2:30 PM', room: 'Room 505' }, instructor: 'Prof. Carmela Salazar', maxSlots: 40, enrolledCount: 30 },
+      { id: 'nu202-b', code: 'NU 202-B', schedule: { day: 'TTH', time: '3:00 PM - 4:30 PM', room: 'Room 506' }, instructor: 'Prof. Roberto Santiago', maxSlots: 40, enrolledCount: 14 }
+    ],
     fee: 4500,
   },
   {
@@ -278,10 +279,10 @@ export const SUBJECTS = [
     yearLevel: 3,
     semester: 1,
     prerequisites: ['nu202'],
-    schedule: { day: 'TTH', time: '3:00 PM - 4:30 PM', room: 'Room 506' },
-    instructor: 'Prof. Roberto Santiago',
-    maxSlots: 40,
-    enrolledCount: 26,
+    sections: [
+      { id: 'nu301-a', code: 'NU 301-A', schedule: { day: 'TTH', time: '3:00 PM - 4:30 PM', room: 'Room 506' }, instructor: 'Prof. Roberto Santiago', maxSlots: 40, enrolledCount: 26 },
+      { id: 'nu301-b', code: 'NU 301-B', schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: 'Room 505' }, instructor: 'Prof. Carmela Salazar', maxSlots: 40, enrolledCount: 8 }
+    ],
     fee: 4500,
   },
 ];
@@ -290,12 +291,14 @@ export const SUBJECTS = [
 // 4. REQUIRED DOCUMENTS
 // ---------------------------------------------------------------------------
 export const REQUIRED_DOCUMENTS = [
-  { id: 'form-138', label: 'Form 138 (Report Card)', required: true },
-  { id: 'form-137', label: 'Form 137 / Transcript of Records', required: true },
-  { id: 'birth-cert', label: 'PSA Birth Certificate', required: true },
-  { id: 'good-moral', label: 'Certificate of Good Moral Character', required: false },
-  { id: '2x2-photo', label: '2x2 ID Photo', required: false },
-  { id: 'med-cert', label: 'Medical Certificate', required: false },
+  { id: 'form-138', label: 'Form 138 (Report Card)', requiredFor: ['new'] },
+  { id: 'form-137', label: 'Form 137 / Transcript of Records', requiredFor: ['new', 'transfer'] },
+  { id: 'birth-cert', label: 'PSA Birth Certificate', requiredFor: ['new', 'transfer'] },
+  { id: 'transfer-credentials', label: 'Certificate of Transfer Credentials', requiredFor: ['transfer'] },
+  { id: 'readmission-form', label: 'Re-admission Form', requiredFor: ['returning'] },
+  { id: 'good-moral', label: 'Certificate of Good Moral Character', optionalFor: ['new', 'transfer'] },
+  { id: '2x2-photo', label: '2x2 ID Photo', optionalFor: ['new', 'transfer', 'returning'] },
+  { id: 'med-cert', label: 'Medical Certificate', optionalFor: ['new', 'transfer', 'returning'] },
 ];
 
 // ---------------------------------------------------------------------------

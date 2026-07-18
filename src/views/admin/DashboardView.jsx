@@ -205,6 +205,30 @@ export default function DashboardView() {
     }
   };
 
+  const handleResolveHold = async (studentId, type) => {
+    try {
+      await dispatch({
+        type: 'RESOLVE_HOLD',
+        payload: { studentId, holdType: type }
+      });
+      toast.success(`${type} hold resolved`);
+    } catch (err) {
+      toast.error('Failed to resolve hold');
+    }
+  };
+
+  const handleSetReturning = async (studentId) => {
+    try {
+      await dispatch({
+        type: 'SET_RETURNING',
+        payload: { studentId }
+      });
+      toast.success(`Student flagged as AWOL/Returning`);
+    } catch (err) {
+      toast.error('Failed to flag student');
+    }
+  };
+
   return (
     <div className="p-8 h-full overflow-y-auto bg-slate-50">
       {/* Header */}
@@ -572,11 +596,12 @@ export default function DashboardView() {
                               {stud.paymentStatus}
                             </span>
                             <select
-                              value={stud.paymentStatus}
+                              value={stud.paymentStatus || 'unpaid'}
                               onChange={(e) => handleUpdatePaymentStatus(stud.id, e.target.value)}
                               className="text-[10px] font-bold border border-slate-200 rounded-lg px-2 py-1 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-univ-indigo cursor-pointer w-28"
                             >
                               <option value="unpaid">Unpaid</option>
+                              <option value="pending">Pending</option>
                               <option value="processing">Processing</option>
                               <option value="paid">Paid</option>
                             </select>
@@ -632,11 +657,38 @@ export default function DashboardView() {
                               </button>
                             )}
 
+                            {/* Resolve Holds */}
+                            {stud.holds?.some(h => h.status === 'active') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const activeHolds = stud.holds.filter(h => h.status === 'active');
+                                  activeHolds.forEach(h => handleResolveHold(stud.id, h.type));
+                                }}
+                                className="px-2 py-1 text-[9px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg transition-all cursor-pointer"
+                                title="Resolve all active holds"
+                              >
+                                Resolve Holds
+                              </button>
+                            )}
+
                             {/* Fully complete check */}
                             {stud.status === 'enrolled' && (
                               <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-650 font-bold">
                                 <CheckCircle className="w-3.5 h-3.5" /> All Checks Passed
                               </span>
+                            )}
+
+                            {/* Simulate AWOL / Return option for any student without active holds */}
+                            {!stud.holds?.some(h => h.status === 'active') && stud.status !== 'registration' && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetReturning(stud.id)}
+                                className="w-fit px-2 py-1 text-[9px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 rounded-lg transition-all cursor-pointer"
+                                title="Simulate student going AWOL and returning later"
+                              >
+                                Simulate AWOL/Return
+                              </button>
                             )}
 
                             {/* Fallback state message */}

@@ -59,8 +59,10 @@ export default function ApplicantPortalAccess({ onVerified }) {
     <div className="w-full flex-1 flex flex-col justify-start pt-2 outline-none focus:outline-none">
         
         <div className="text-center mb-8 flex flex-col items-center">
-          <h3 className="text-2xl font-heading font-extrabold text-univ-navy tracking-tight">Applicant Portal</h3>
-          <p className="text-sm text-slate-500 mt-1.5 font-medium">Resume an existing application or start a new one</p>
+          <h3 className="text-2xl font-heading font-extrabold text-univ-navy tracking-tight">Admissions Portal</h3>
+          <p className="text-sm text-slate-500 mt-1.5 font-medium max-w-sm leading-relaxed">
+            For New and Transfer applicants. Resume an existing application or start a new one.
+          </p>
         </div>
 
         {error && (

@@ -20,7 +20,14 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
       if (statusFilter === 'pending') {
         matchesStatus = s.status === 'registration';
       } else if (statusFilter === 'approved') {
-        matchesStatus = s.status === 'documents_approved' || s.status === 'enrolled';
+        matchesStatus = [
+          'documents_approved', 
+          'advising_pending', 
+          'advising_approved', 
+          'payment_pending', 
+          'validation_pending', 
+          'enrolled'
+        ].includes(s.status);
       } else if (statusFilter === 'rejected') {
         matchesStatus = s.status === 'documents_rejected'; // meaning incomplete/resubmission
       } else if (statusFilter !== '') {

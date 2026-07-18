@@ -58,11 +58,11 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  const identifier = String(email || '').trim();
   const user = await User.findOne({
     $or: [
-      { email: String(email || '').toLowerCase() },
-      { username: String(email || '') },
-      { username: String(email || '').toUpperCase() }
+      { email: identifier.toLowerCase() },
+      { username: { $regex: new RegExp(`^${identifier}$`, 'i') } }
     ]
   });
 
