@@ -291,14 +291,83 @@ export const SUBJECTS = [
 // 4. REQUIRED DOCUMENTS
 // ---------------------------------------------------------------------------
 export const REQUIRED_DOCUMENTS = [
-  { id: 'form-138', label: 'Form 138 (Report Card)', requiredFor: ['new'] },
-  { id: 'form-137', label: 'Form 137 / Transcript of Records', requiredFor: ['new', 'transfer'] },
-  { id: 'birth-cert', label: 'PSA Birth Certificate', requiredFor: ['new', 'transfer'] },
-  { id: 'transfer-credentials', label: 'Certificate of Transfer Credentials', requiredFor: ['transfer'] },
-  { id: 'readmission-form', label: 'Re-admission Form', requiredFor: ['returning'] },
-  { id: 'good-moral', label: 'Certificate of Good Moral Character', optionalFor: ['new', 'transfer'] },
-  { id: '2x2-photo', label: '2x2 ID Photo', optionalFor: ['new', 'transfer', 'returning'] },
-  { id: 'med-cert', label: 'Medical Certificate', optionalFor: ['new', 'transfer', 'returning'] },
+  // ── New Student ──────────────────────────────────────────────────────────────
+  {
+    id: 'form-138',
+    label: 'Form 138 (Original Report Card)',
+    description: 'Original copy of your Senior High School Report Card issued by your school.',
+    requiredFor: ['new'],
+  },
+  {
+    id: 'form-137',
+    label: 'Form 137 (Scholastic Record)',
+    description: 'Official scholastic records/permanent record forwarded from your previous school.',
+    requiredFor: ['new'],
+  },
+  // ── Transferee Documents ─────────────────────────────────────────────────────
+  {
+    id: 'honorable-dismissal',
+    label: 'Certificate of Honorable Dismissal / Transfer Credentials',
+    description: 'Issued by the Registrar of your previous college/university, certifying that you are in good standing and cleared all obligations.',
+    requiredFor: ['transfer'],
+  },
+  {
+    id: 'tor',
+    label: 'Official Transcript of Records (TOR)',
+    description: 'Official sealed Transcript of Records from your previous institution showing all subjects taken and grades earned. Must be a certified true copy.',
+    requiredFor: ['transfer'],
+  },
+  {
+    id: 'course-description',
+    label: 'Course Descriptions / Syllabus',
+    description: 'Copies of the course descriptions or syllabi for subjects you want credited for assessment and possible credit transfer evaluation.',
+    requiredFor: ['transfer'],
+  },
+  // ── Shared by New & Transfer ─────────────────────────────────────────────────
+  {
+    id: 'birth-cert',
+    label: 'PSA Birth Certificate (Original / Certified)',
+    description: 'Authenticated original copy from the Philippine Statistics Authority (PSA). E-copy or photocopy is not accepted.',
+    requiredFor: ['new', 'transfer'],
+  },
+  {
+    id: 'good-moral',
+    label: 'Certificate of Good Moral Character',
+    description: 'Signed by your school principal, guidance counselor, or dean from your previous institution. Must be issued within the last 6 months.',
+    requiredFor: ['new', 'transfer'],
+  },
+  // ── Returning Student ────────────────────────────────────────────────────────
+  {
+    id: 'readmission-form',
+    label: 'Re-admission Form',
+    description: 'Duly accomplished re-admission form available from the Office of the Registrar.',
+    requiredFor: ['returning'],
+  },
+  {
+    id: 'clearance-returning',
+    label: 'School Clearance (Returning)',
+    description: 'Clearance from all school departments verifying no outstanding obligations before re-admission.',
+    requiredFor: ['returning'],
+  },
+  // ── Optional for All ─────────────────────────────────────────────────────────
+  {
+    id: '2x2-photo',
+    label: '2×2 ID Photos (White Background)',
+    description: '4 pieces of 2×2 ID photos with white background, taken within the last 3 months. Must be in formal attire.',
+    optionalFor: ['new', 'transfer', 'returning'],
+  },
+  {
+    id: 'med-cert',
+    label: 'Medical Certificate',
+    description: 'Issued by a licensed physician or the school clinic. Certifies you are fit to enroll.',
+    optionalFor: ['new', 'transfer', 'returning'],
+  },
+  {
+    id: 'marriage-cert',
+    label: 'Marriage Certificate (if applicable)',
+    description: 'PSA-authenticated Marriage Certificate if your current name differs from your documents.',
+    optionalFor: ['new', 'transfer', 'returning'],
+  },
 ];
 
 // ---------------------------------------------------------------------------

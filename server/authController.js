@@ -58,15 +58,27 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const identifier = String(email || '').trim();
+  // Force string coercion and strip MongoDB operator chars ($) to block NoSQL injection
+  const rawIdentifier = String(email || '').replace(/[\$]/g, '').trim();
+  const rawPassword = String(password || '');
+
+  if (!rawIdentifier || !rawPassword) {
+    res.status(400);
+    throw new Error('Please provide email/username and password');
+  }
+
+  // Escape any regex special characters before using in a RegExp
+  const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const identifier = rawIdentifier.toLowerCase();
   const user = await User.findOne({
     $or: [
-      { email: identifier.toLowerCase() },
-      { username: { $regex: new RegExp(`^${identifier}$`, 'i') } }
+      { email: identifier },
+      { username: { $regex: new RegExp(`^${escapeRegex(rawIdentifier)}$`, 'i') } }
     ]
   });
 
-  if (user && (await user.comparePassword(password))) {
+  if (user && (await user.comparePassword(rawPassword))) {
     res.json({
       token: generateToken(user._id, user.role),
       user: toSafeUser(user),

@@ -243,28 +243,77 @@ const updateStudent = asyncHandler(async (req, res) => {
     'paymentMethod',
     'status',
     'paymentStatus',
+    // Transferee-specific fields
+    'previousSchool',
+    'previousProgram',
+    'yearLevelAtTransfer',
+    'reasonForTransfer',
+    'unitsEarned',
   ];
 
+  // Helper: strip characters used in NoSQL injection attacks ($ and leading dots)
+  const sanitizeString = (val, maxLen = 300) => {
+    if (typeof val !== 'string') return '';
+    // Remove $ to prevent MongoDB operator injection, trim whitespace, cap length
+    return val.replace(/[\$]/g, '').trim().slice(0, maxLen);
+  };
+
+  // Validate enrollmentType is an allowed value
+  const VALID_ENROLLMENT_TYPES = ['new', 'transfer', 'returning', 'continuing', 'cross_enrollee'];
+  if (req.body.enrollmentType !== undefined && !VALID_ENROLLMENT_TYPES.includes(req.body.enrollmentType)) {
+    res.status(400).json({ error: 'Invalid enrollment type.' });
+    return;
+  }
+
   if (req.body.firstName !== undefined) {
-    const val = String(req.body.firstName);
-    if (/[^a-zA-Z\s]/.test(val)) {
-      res.status(400).json({ error: 'First name must contain letters and spaces only.' });
+    const val = sanitizeString(String(req.body.firstName), 100);
+    if (/[^a-zA-Z\s\-\.]/.test(val)) {
+      res.status(400).json({ error: 'First name must contain letters, spaces, hyphens, and dots only.' });
       return;
     }
+    req.body.firstName = val;
   }
   if (req.body.lastName !== undefined) {
-    const val = String(req.body.lastName);
-    if (/[^a-zA-Z\s]/.test(val)) {
-      res.status(400).json({ error: 'Last name must contain letters and spaces only.' });
+    const val = sanitizeString(String(req.body.lastName), 100);
+    if (/[^a-zA-Z\s\-\.]/.test(val)) {
+      res.status(400).json({ error: 'Last name must contain letters, spaces, hyphens, and dots only.' });
       return;
     }
+    req.body.lastName = val;
   }
   if (req.body.phone !== undefined) {
-    const val = String(req.body.phone);
-    if (/[^0-9-\s]/.test(val)) {
+    const val = sanitizeString(String(req.body.phone), 20);
+    if (/[^0-9-\s+]/.test(val)) {
       res.status(400).json({ error: 'Contact number must contain digits, hyphens, and spaces only.' });
       return;
     }
+    req.body.phone = val;
+  }
+  if (req.body.address !== undefined) {
+    req.body.address = sanitizeString(String(req.body.address), 500);
+  }
+  // Validate and sanitize transferee fields
+  if (req.body.previousSchool !== undefined) {
+    req.body.previousSchool = sanitizeString(String(req.body.previousSchool), 200);
+  }
+  if (req.body.previousProgram !== undefined) {
+    req.body.previousProgram = sanitizeString(String(req.body.previousProgram), 200);
+  }
+  if (req.body.reasonForTransfer !== undefined) {
+    req.body.reasonForTransfer = sanitizeString(String(req.body.reasonForTransfer), 500);
+  }
+  if (req.body.unitsEarned !== undefined) {
+    const val = String(req.body.unitsEarned).trim();
+    if (!/^\d{0,3}$/.test(val)) {
+      res.status(400).json({ error: 'Units earned must be a valid number (0-999).' });
+      return;
+    }
+    req.body.unitsEarned = val;
+  }
+  const VALID_YEAR_LEVELS = ['1', '2', '3', '4', '5'];
+  if (req.body.yearLevelAtTransfer !== undefined && req.body.yearLevelAtTransfer !== '' && !VALID_YEAR_LEVELS.includes(String(req.body.yearLevelAtTransfer))) {
+    res.status(400).json({ error: 'Invalid year level at transfer.' });
+    return;
   }
   if (req.body.applicantPassword !== undefined && req.body.applicantPassword) {
     const pwd = String(req.body.applicantPassword);

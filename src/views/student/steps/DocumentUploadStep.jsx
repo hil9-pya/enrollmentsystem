@@ -202,6 +202,37 @@ export default function DocumentUploadStep({ onNext, onBack }) {
       <p className="text-[10px] text-slate-400 mb-6 font-extrabold uppercase tracking-widest">
         Accepted formats: PDF, JPEG, PNG — Max size: 5MB per file
       </p>
+
+      {/* Transferee Requirements Banner */}
+      {enrollmentType === 'transfer' && (
+        <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+            <p className="text-xs font-extrabold text-indigo-800 uppercase tracking-wider">Transferee Document Requirements</p>
+          </div>
+          <p className="text-xs text-indigo-700 mb-3 leading-relaxed font-medium">
+            All documents must be <strong>original or certified true copies</strong> authenticated by your previous school's Registrar. Scanned copies must be clear and complete — no blurred, cropped, or incomplete pages will be accepted.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-indigo-800 font-medium">
+            {[
+              '✅ Certificate of Honorable Dismissal (from Registrar)',
+              '✅ Official Transcript of Records (sealed)',
+              '✅ Course Descriptions / Syllabus (for credit evaluation)',
+              '✅ PSA Birth Certificate (original / authenticated)',
+              '✅ Certificate of Good Moral Character',
+              '📎 2×2 ID Photos (white background, formal attire)',
+              '📎 Medical Certificate (from licensed physician)',
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-1.5">
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-indigo-600 mt-3 font-semibold border-t border-indigo-200 pt-2">
+            ℹ️ Your application will not proceed to advising until all required documents are approved by the Admissions Office.
+          </p>
+        </div>
+      )}
  
       {/* Submitted banner */}
       {isSubmitted && (

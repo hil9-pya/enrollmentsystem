@@ -33,6 +33,7 @@ export function EnrollmentProvider({ children }) {
   const { token } = useAuth();
   const [currentRole, setRole] = useState('student');
   const [students, setStudents] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [currentStudentId, setCurrentStudentId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeStudentId, setActiveStudentId] = useState(() => {
@@ -51,6 +52,15 @@ export function EnrollmentProvider({ children }) {
   // 1. Fetch initial students array from backend SQLite on mount and poll periodically
   useEffect(() => {
     async function loadStudents() {
+      // Fetch global settings (public) with cache-busting
+      try {
+        const settingsRes = await fetch('/api/settings', { cache: 'no-store' });
+        const settingsData = await safeJson(settingsRes);
+        setSettings(settingsData);
+      } catch (err) {
+        console.error('Failed to fetch settings:', err);
+      }
+
       if (!token) {
         setIsLoading(false);
         return;
@@ -373,8 +383,9 @@ export function EnrollmentProvider({ children }) {
     students,
     currentStudentId,
     activeStudentId,
-    isLoading
-  }), [currentRole, students, currentStudentId, activeStudentId, isLoading]);
+    isLoading,
+    settings
+  }), [currentRole, students, currentStudentId, activeStudentId, isLoading, settings]);
 
   const value = useMemo(
     () => ({

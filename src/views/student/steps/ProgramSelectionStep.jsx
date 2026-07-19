@@ -3,7 +3,7 @@ import { useEnrollment } from '../../../context/EnrollmentContext';
 import { PROGRAMS, ACADEMIC_TERMS, ACTIVE_TERM_ID } from '../../../data/mockData';
 
 export default function ProgramSelectionStep({ onNext, onBack }) {
-  const { getActiveStudent, dispatch } = useEnrollment();
+  const { getActiveStudent, dispatch, settings } = useEnrollment();
   const student = getActiveStudent();
 
   const selectedProgramId = student?.programId || '';
@@ -11,22 +11,26 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
   const selectedProgram = PROGRAMS.find((p) => p.id === selectedProgramId);
 
+  const activeTermLabel = settings?.activeTerm || '1st Semester'; // Fallback if settings didn't load
+  
   React.useEffect(() => {
-    if (student && student.programId && student.academicTerm !== ACTIVE_TERM_ID) {
+    if (student && student.programId && student.academicTerm !== activeTermLabel) {
       dispatch({
         type: 'SELECT_PROGRAM',
         payload: {
           programId: student.programId,
-          academicTerm: ACTIVE_TERM_ID,
+          academicTerm: activeTermLabel,
         },
       });
     }
-  }, [student?.academicTerm, student?.programId, dispatch]);  function handleChange(field, value) {
+  }, [student?.academicTerm, student?.programId, dispatch, activeTermLabel]);  
+
+  function handleChange(field, value) {
     dispatch({
       type: 'SELECT_PROGRAM',
       payload: {
         programId: field === 'programId' ? value : selectedProgramId,
-        academicTerm: ACTIVE_TERM_ID,
+        academicTerm: activeTermLabel,
       },
     });
   }
@@ -66,7 +70,7 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
             Active Academic Term
           </label>
           <div className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50/50 text-slate-700 font-medium">
-            {ACADEMIC_TERMS.find((t) => t.id === ACTIVE_TERM_ID)?.label}
+            {activeTermLabel}
           </div>
         </div>
       </div>

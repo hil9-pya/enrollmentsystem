@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
+import { AlertCircle, Wrench } from 'lucide-react';
 import StepIndicator from '../../components/StepIndicator';
 import ApplicantPortalAccess from './ApplicantPortalAccess';
 import EnrollmentTypeStep from '../student/steps/EnrollmentTypeStep';
@@ -88,7 +89,7 @@ function getFurthestStep(storedStep, resumeStep) {
 }
 
 export default function ApplicantView() {
-  const { getActiveStudent, setActiveStudent } = useEnrollment();
+  const { getActiveStudent, setActiveStudent, settings } = useEnrollment();
   const student = getActiveStudent();
 
   const [currentStep, setCurrentStep] = useState('type');
@@ -190,6 +191,25 @@ export default function ApplicantView() {
 
   const hasStudentInfo = student && student.firstName && student.lastName;
 
+  if (settings?.systemMaintenance) {
+    return (
+      <div className="flex h-screen bg-slate-50 items-center justify-center p-6">
+        <div className="bg-white rounded-3xl border border-slate-200/60 p-10 shadow-premium max-w-md text-center">
+          <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Wrench className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-univ-navy mb-3">System Maintenance</h1>
+          <p className="text-sm text-slate-500 leading-relaxed font-medium mb-8">
+            The Admissions Portal is currently undergoing scheduled maintenance. Please check back later.
+          </p>
+          <button onClick={() => { setActiveStudent(null); window.location.href = '/'; }} className="px-6 py-2.5 bg-univ-navy text-white text-xs font-bold rounded-xl shadow-md cursor-pointer hover:bg-slate-800 transition-all">
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full bg-slate-50">
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
@@ -227,7 +247,6 @@ export default function ApplicantView() {
             <button
               onClick={() => {
                 setActiveStudent(null);
-                setIsVerified(false);
                 window.location.href = '/';
               }}
               className="mt-3 w-full py-2 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold text-slate-500 hover:text-rose-600 transition-all rounded-lg text-center cursor-pointer uppercase tracking-wider"
@@ -239,7 +258,17 @@ export default function ApplicantView() {
       </aside>
  
       <main className="flex-1 overflow-y-auto bg-slate-50/70">
-        <div className="max-w-4xl mx-auto p-8">{renderStep()}</div>
+        <div className="max-w-4xl mx-auto p-8">
+          {settings?.announcement && (
+            <div className="mb-6 p-4 bg-amber-50 rounded-xl flex items-start gap-3 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 stroke-[2]" />
+              <p className="text-sm text-amber-900 font-bold leading-relaxed whitespace-pre-wrap">
+                {settings.announcement}
+              </p>
+            </div>
+          )}
+          {renderStep()}
+        </div>
       </main>
     </div>
   );

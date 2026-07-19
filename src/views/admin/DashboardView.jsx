@@ -420,7 +420,7 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
       {/* Filters */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text" placeholder="Search by name, email or student ID…"
             value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -921,9 +921,11 @@ function SettingsTab() {
         </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Active Academic Term</label>
-          <input value={settings.activeTerm} onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
-            placeholder="e.g. 1st Semester 2026-2027"
-            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all" />
+          <select value={settings.activeTerm} onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+            <option value="1st Semester">1st Semester</option>
+            <option value="2nd Semester">2nd Semester</option>
+          </select>
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import User from './User.js';
 // @route   GET /api/admin/users
 // @access  Private/Admin
 const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({}).select('-password').sort({ role: 1, createdAt: -1 });
+  const users = await User.find({ role: { $ne: 'student' } }).select('-password').sort({ role: 1, createdAt: -1 });
   res.json(users);
 });
 
