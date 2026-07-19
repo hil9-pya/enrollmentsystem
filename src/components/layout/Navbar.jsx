@@ -64,9 +64,6 @@ export default function Navbar({ onNavigate }) {
               <span className={`font-heading font-extrabold text-lg tracking-wide leading-tight transition-colors duration-300 ${isScrolled ? 'text-univ-navy' : 'text-white'}`}>
                 NCST
               </span>
-              <span className={`text-[9px] font-bold tracking-widest uppercase transition-colors duration-300 ${isScrolled ? 'text-univ-blue' : 'text-slate-300'}`}>
-                College Gateway
-              </span>
             </div>
           </div>
 

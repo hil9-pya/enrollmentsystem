@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import AdmissionSidebar from './AdmissionSidebar';
 import DashboardOverview from './DashboardOverview';
@@ -13,8 +13,10 @@ export default function AdmissionView() {
   const [selectedStudentId, setSelectedStudentId] = useState(null);
 
   // Compute notification badges
-  const pendingCount = students.filter(s => s.status === 'registration').length;
-  const incompleteCount = students.filter(s => s.status === 'documents_submitted').length; // Waiting for verification
+  const validStudents = useMemo(() => students.filter(s => s.firstName?.trim() || s.lastName?.trim()), [students]);
+
+  const pendingCount = validStudents.filter(s => s.status === 'registration').length;
+  const incompleteCount = validStudents.filter(s => s.status === 'documents_submitted').length; // Waiting for verification
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
@@ -38,22 +40,22 @@ export default function AdmissionView() {
     switch (activeTab) {
       case 'dashboard':
       case 'reports':
-        return <DashboardOverview students={students} onNavigate={handleTabChange} />;
+        return <DashboardOverview students={validStudents} onNavigate={handleTabChange} />;
       
       case 'pending':
-        return <ApplicantManagement students={students} initialFilter="pending" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="pending" />;
+        return <ApplicantManagement students={validStudents} initialFilter="pending" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="pending" />;
       
       case 'approved':
-        return <ApplicantManagement students={students} initialFilter="approved" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="approved" />;
+        return <ApplicantManagement students={validStudents} initialFilter="approved" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="approved" />;
       
       case 'rejected':
-        return <ApplicantManagement students={students} initialFilter="rejected" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="rejected" />;
+        return <ApplicantManagement students={validStudents} initialFilter="rejected" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="rejected" />;
       
       case 'management':
-        return <ApplicantManagement students={students} initialFilter="" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="management" />;
+        return <ApplicantManagement students={validStudents} initialFilter="" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="management" />;
       
       case 'verification':
-        return <ApplicantManagement students={students} initialFilter="documents_submitted" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="verification" />;
+        return <ApplicantManagement students={validStudents} initialFilter="documents_submitted" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="verification" />;
       
       case 'settings':
         return (
@@ -64,7 +66,7 @@ export default function AdmissionView() {
         );
 
       default:
-        return <DashboardOverview students={students} onNavigate={handleTabChange} />;
+        return <DashboardOverview students={validStudents} onNavigate={handleTabChange} />;
     }
   };
 

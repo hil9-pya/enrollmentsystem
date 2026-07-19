@@ -198,11 +198,11 @@ export default function RegistrationStep({ onNext, onBack }) {
 
       {/* Transferee notice */}
       {isTransferee && (
-        <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-200/60 rounded-2xl p-4 mb-6 shadow-sm">
-          <ArrowRightLeft className="h-5 w-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 shadow-sm">
+          <ArrowRightLeft className="h-5 w-5 text-slate-900 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-extrabold text-indigo-800 uppercase tracking-wider">Transferee Applicant</p>
-            <p className="text-xs text-indigo-700 mt-1 leading-relaxed font-medium">
+            <p className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Transferee Applicant</p>
+            <p className="text-xs text-slate-700 mt-1 leading-relaxed font-medium">
               As a transferee, please provide your complete academic history from your previous institution. This information is required for credit transfer evaluation and proper year-level placement.
             </p>
           </div>
@@ -288,17 +288,10 @@ export default function RegistrationStep({ onNext, onBack }) {
         {isTransferee && (
           <>
             <div className="pt-6 mt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <School className="w-3.5 h-3.5 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-univ-navy">Previous Academic History</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">Required for credit transfer evaluation</p>
-                </div>
-              </div>
+              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Previous Academic History</h3>
+              <p className="text-[10px] text-slate-400 font-medium mb-4">Required for credit transfer evaluation</p>
 
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+              <div className="space-y-4">
                 <FloatingInput
                   label="Previous School / University Name"
                   id="previousSchool"
@@ -367,12 +360,7 @@ export default function RegistrationStep({ onNext, onBack }) {
 
         {/* Password Section */}
         <div className="pt-6 mt-4 border-t border-slate-100">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center">
-              <Lock className="w-3.5 h-3.5 text-slate-600" />
-            </div>
-            <h3 className="text-sm font-extrabold text-univ-navy">Account Security</h3>
-          </div>
+          <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Account Security</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FloatingInput
               label="Applicant Password"

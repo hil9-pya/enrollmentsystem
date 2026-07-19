@@ -358,7 +358,7 @@ export function EnrollmentProvider({ children }) {
 
   // Expose selectors
   const getStudentsByStatus = useCallback(
-    (status) => students.filter((s) => s.status === status),
+    (status) => students.filter((s) => s.status === status && (s.firstName?.trim() || s.lastName?.trim())),
     [students]
   );
 

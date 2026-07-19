@@ -47,7 +47,8 @@ function getCompletedStepsFromApplicant(student) {
     student.email?.trim() &&
     student.phone?.trim() &&
     student.birthDate &&
-    student.address?.trim()
+    student.address?.trim() &&
+    student.applicantPassword
   ) {
     completed.push('registration');
   }
@@ -101,10 +102,16 @@ export default function ApplicantView() {
   useEffect(() => {
     if (!student?.id) return;
 
-    setCompletedSteps(getCompletedStepsFromApplicant(student));
+    const studentChanged = lastInitializedStudentId.current !== student.id;
+
+    setCompletedSteps((prev) => {
+      const computed = getCompletedStepsFromApplicant(student);
+      const stored = JSON.parse(localStorage.getItem(`applicant_completed_steps_${student.id}`) || '[]');
+      const baseSteps = studentChanged ? [] : prev;
+      return Array.from(new Set([...baseSteps, ...computed, ...stored]));
+    });
 
     const resumeStep = getResumeStepFromApplicant(student);
-    const studentChanged = lastInitializedStudentId.current !== student.id;
     const statusChanged = lastKnownStatus.current !== student.status;
 
     if (studentChanged) {

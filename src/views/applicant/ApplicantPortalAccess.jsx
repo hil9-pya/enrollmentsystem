@@ -47,6 +47,8 @@ export default function ApplicantPortalAccess({ onVerified }) {
       const res = await fetch(`/api/students/draft`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
+        localStorage.removeItem(`applicant_completed_steps_${data._id}`);
+        localStorage.removeItem(`applicant_current_step_${data._id}`);
         setActiveStudent(data._id);
         onVerified();
       }

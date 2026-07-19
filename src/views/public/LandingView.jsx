@@ -6,8 +6,6 @@ import AboutSection from './sections/AboutSection';
 import WhyChooseSection from './sections/WhyChooseSection';
 import ProgramsSection from './sections/ProgramsSection';
 import AdmissionTimeline from './sections/AdmissionTimeline';
-import GallerySection from './sections/GallerySection';
-import TestimonialSection from './sections/TestimonialSection';
 import FAQSection from './sections/FAQSection';
 import ContactSection from './sections/ContactSection';
 
@@ -27,8 +25,6 @@ export default function LandingView({ onNavigate }) {
         <WhyChooseSection />
         <ProgramsSection />
         <AdmissionTimeline />
-        <GallerySection />
-        <TestimonialSection />
         <FAQSection />
         <ContactSection />
       </main>

@@ -6,12 +6,12 @@ export default function AboutSection() {
     {
       icon: Target,
       title: 'Our Mission',
-      description: 'To provide quality, relevant, and responsive education to our students, preparing them for global competitiveness and ethical leadership.'
+      description: 'NCST undertakes the responsibility of providing the country with quality graduates who are trained with industry-responsive knowledge and skills and founded with underpinning values of faith, love of country and humanity, hope, justice, mutual respect and peace.'
     },
     {
       icon: Eye,
       title: 'Our Vision',
-      description: 'To be a premier institution of higher learning recognized for academic excellence, innovative research, and impactful community extension.'
+      description: 'The National College of Science and Technology (NCST) envisions to become one of the nation\'s leading industry-based educational institution with campuses in key areas around the Philippines. NCST will be a top choice for human resources of every industry.'
     },
     {
       icon: Star,

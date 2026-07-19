@@ -1032,7 +1032,7 @@ export default function DashboardView() {
   const [programFilter, setProgramFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
 
-  const visibleStudents = useMemo(() => students.filter(s => !s.isDeleted), [students]);
+  const visibleStudents = useMemo(() => students.filter(s => !s.isDeleted && (s.firstName?.trim() || s.lastName?.trim())), [students]);
 
   const metrics = useMemo(() => {
     const totalEnrolled = visibleStudents.filter(s => s.status === 'enrolled').length;

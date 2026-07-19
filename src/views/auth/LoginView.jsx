@@ -91,7 +91,7 @@ export default function LoginView({ portalType }) {
       </form>
       
       {/* Quick Demo Logins */}
-      {portalType !== 'student' ? (
+      {portalType !== 'student' && (
         <div className="mt-8 pt-6 border-t border-slate-100">
           <p className="text-[10px] font-bold text-slate-400 mb-3 text-center uppercase tracking-wider">Quick Demo Access</p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -105,19 +105,6 @@ export default function LoginView({ portalType }) {
                 {role}
               </button>
             ))}
-          </div>
-        </div>
-      ) : (
-        <div className="mt-8 pt-6 border-t border-slate-100">
-          <p className="text-[10px] font-bold text-slate-400 mb-3 text-center uppercase tracking-wider">Quick Demo Access</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => fillCredentials('student')}
-              className="px-3 py-1.5 text-xs font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-univ-navy rounded-lg transition-colors capitalize cursor-pointer shadow-sm"
-            >
-              Demo Student
-            </button>
           </div>
         </div>
       )}

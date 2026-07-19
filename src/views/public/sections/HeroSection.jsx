@@ -17,18 +17,9 @@ export default function HeroSection({ onNavigate }) {
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
         <div className="max-w-3xl animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-both">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-8">
-            <span className="w-2 h-2 rounded-full bg-univ-gold animate-pulse"></span>
-            <span className="text-xs font-bold text-white tracking-widest uppercase">Admissions Now Open</span>
-          </div>
-          
-          <h1 className="font-heading font-extrabold text-5xl sm:text-6xl lg:text-7xl tracking-tight text-white leading-[1.1] mb-6 drop-shadow-lg">
-            Empowering the <span className="text-univ-gold">Next Generation</span> of Leaders
+          <h1 className="font-heading font-extrabold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-white leading-[1.1] mb-6 drop-shadow-lg uppercase">
+            Estudyanteng Magaling, Sa <span className="text-univ-gold">NCST Galing</span>
           </h1>
-          
-          <p className="text-lg sm:text-xl text-slate-200 font-medium mb-10 max-w-2xl leading-relaxed drop-shadow-md">
-            National College of Science and Technology offers world-class education, state-of-the-art facilities, and a vibrant campus life to prepare you for global competitiveness.
-          </p>
           
           <div className="flex flex-col sm:flex-row gap-4">
             <button 
