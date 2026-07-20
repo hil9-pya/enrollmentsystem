@@ -63,25 +63,25 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
           title="Total Enrolled" value={metrics.totalEnrolled}
           icon={<GraduationCap className="w-5 h-5" />} gradient="from-indigo-500 to-indigo-600"
           sub={`${metrics.totalEnrolled > 0 ? '+' : ''}${metrics.totalEnrolled} this term`}
-          onClick={() => { setActiveTab('directory'); setStatusFilter('enrolled'); setProgramFilter(''); setPaymentFilter(''); }}
+          onClick={() => { setActiveTab('students'); setStatusFilter('enrolled'); setProgramFilter(''); setPaymentFilter(''); }}
         />
         <MetricCard
           title="Pending Validation" value={metrics.pendingValidation}
           icon={<FileCheck className="w-5 h-5" />} gradient="from-amber-400 to-amber-500"
           sub="Awaiting final check"
-          onClick={() => { setActiveTab('directory'); setStatusFilter('validation_pending'); setProgramFilter(''); setPaymentFilter(''); }}
+          onClick={() => { setActiveTab('applicants'); setStatusFilter('validation_pending'); setProgramFilter(''); setPaymentFilter(''); }}
         />
         <MetricCard
           title="Active Processing" value={metrics.activeProcessing}
           icon={<Activity className="w-5 h-5" />} gradient="from-blue-500 to-blue-600"
           sub="In pipeline"
-          onClick={() => { setActiveTab('directory'); setStatusFilter('processing_all'); setProgramFilter(''); setPaymentFilter(''); }}
+          onClick={() => { setActiveTab('applicants'); setStatusFilter('processing_all'); setProgramFilter(''); setPaymentFilter(''); }}
         />
         <MetricCard
           title="Total Revenue" value={`₱${metrics.revenue.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
           icon={<DollarSign className="w-5 h-5" />} gradient="from-emerald-500 to-emerald-600"
           sub="From paid tuitions"
-          onClick={() => { setActiveTab('directory'); setStatusFilter(''); setProgramFilter(''); setPaymentFilter('paid'); }}
+          onClick={() => { setActiveTab('students'); setStatusFilter(''); setProgramFilter(''); setPaymentFilter('paid'); }}
         />
       </div>
 
@@ -102,7 +102,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.08)', fontSize: 12 }} />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]} onClick={(data) => { if (data?.name) { setActiveTab('directory'); setProgramFilter(data.name.toLowerCase()); setStatusFilter('enrolled'); setPaymentFilter(''); }}}>
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} onClick={(data) => { if (data?.name) { setActiveTab('students'); setProgramFilter(data.name.toLowerCase()); setStatusFilter('enrolled'); setPaymentFilter(''); }}}>
                   {metrics.programData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Bar>
               </BarChart>
@@ -122,7 +122,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie data={metrics.statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={72} paddingAngle={4} dataKey="value"
-                  onClick={(data) => { if (!data?.name) return; setActiveTab('directory'); setProgramFilter(''); setPaymentFilter(''); if (data.name === 'Enrolled') setStatusFilter('enrolled'); else if (data.name === 'Processing') setStatusFilter('processing_all'); else setStatusFilter('validation_pending'); }}>
+                  onClick={(data) => { if (!data?.name) return; setActiveTab(data.name === 'Enrolled' ? 'students' : 'applicants'); setProgramFilter(''); setPaymentFilter(''); if (data.name === 'Enrolled') setStatusFilter('enrolled'); else if (data.name === 'Processing') setStatusFilter('processing_all'); else setStatusFilter('validation_pending'); }}>
                   {metrics.statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }} />
@@ -177,7 +177,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Recently Enrolled</h2>
-          <button onClick={() => { setActiveTab('directory'); setStatusFilter('enrolled'); }} className="text-xs text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1 cursor-pointer">
+          <button onClick={() => { setActiveTab('students'); setStatusFilter('enrolled'); }} className="text-xs text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1 cursor-pointer">
             View all <ArrowRight className="w-3 h-3" />
           </button>
         </div>
@@ -1016,7 +1016,8 @@ function MetricCard({ title, value, icon, gradient, sub, onClick }) {
 // ─── Navigation items ──────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', icon: LayoutDashboard, desc: 'Overview & metrics' },
-  { id: 'directory', label: 'Student Directory', icon: Users, desc: 'Manage applicants' },
+  { id: 'applicants', label: 'Applicant Directory', icon: UserPlus, desc: 'Manage applicants' },
+  { id: 'students', label: 'Student Database', icon: Users, desc: 'Registrar records' },
   { id: 'trash', label: 'Trash Bin', icon: Trash2, desc: 'Deleted records' },
   { id: 'staff', label: 'Staff Management', icon: UserCog, desc: 'System users' },
   { id: 'settings', label: 'Settings', icon: Settings, desc: 'System configuration' },
@@ -1160,9 +1161,17 @@ export default function DashboardView() {
               setPaymentFilter={setPaymentFilter}
             />
           )}
-          {activeTab === 'directory' && (
+          {activeTab === 'applicants' && (
             <DirectoryTab
-              visibleStudents={visibleStudents}
+              visibleStudents={visibleStudents.filter(s => s.id?.startsWith('APP-'))}
+              onTrash={handleTrashStudent}
+              onStudentUpdated={handleStudentUpdated}
+              dispatch={dispatch}
+            />
+          )}
+          {activeTab === 'students' && (
+            <DirectoryTab
+              visibleStudents={visibleStudents.filter(s => s.id?.startsWith('STU-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
               dispatch={dispatch}

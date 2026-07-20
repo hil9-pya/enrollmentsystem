@@ -298,12 +298,7 @@ export const REQUIRED_DOCUMENTS = [
     description: 'Original copy of your Senior High School Report Card issued by your school.',
     requiredFor: ['new'],
   },
-  {
-    id: 'form-137',
-    label: 'Form 137 (Scholastic Record)',
-    description: 'Official scholastic records/permanent record forwarded from your previous school.',
-    requiredFor: ['new'],
-  },
+
   // ── Transferee Documents ─────────────────────────────────────────────────────
   {
     id: 'honorable-dismissal',
