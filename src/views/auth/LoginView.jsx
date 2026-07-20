@@ -47,7 +47,7 @@ export default function LoginView({ portalType }) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-2">
+      <form onSubmit={handleSubmit} className="space-y-2" autoComplete="off">
         <FloatingInput
           label={portalType === 'student' ? 'Student ID' : 'Email Address'}
           id="email"
