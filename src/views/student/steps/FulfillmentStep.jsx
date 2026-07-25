@@ -109,7 +109,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.text('Program:', 16, 80);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.id, 40, 68);
+    doc.text(student.studentId || student.id, 40, 68);
     doc.text(`${student.lastName}, ${student.firstName}`, 40, 74);
     doc.text(student.programId.toUpperCase(), 40, 80);
 
@@ -273,7 +273,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Student ID:', labelX, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.id, valueX, currentInfoY);
+    doc.text(student.studentId || student.id, valueX, currentInfoY);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Enrollment Type:', labelX2, currentInfoY);
@@ -490,7 +490,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Student ID:', 16, orY + 6);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.id, 45, orY + 6);
+    doc.text(student.studentId || student.id, 45, orY + 6);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Student Name:', 16, orY + 12);
@@ -641,7 +641,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.text('Program:', 16, 80);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.id, 40, 68);
+    doc.text(student.studentId || student.id, 40, 68);
     doc.text(`${student.lastName}, ${student.firstName}`, 40, 74);
     doc.text(student.programId.toUpperCase(), 40, 80);
 

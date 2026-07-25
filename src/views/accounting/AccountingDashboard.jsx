@@ -217,7 +217,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
                     <td className="px-5 py-3">
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-900">{student.firstName} {student.lastName}</span>
-                        <span className="text-[10px] font-mono font-medium text-slate-400">{student.id}</span>
+                        <span className="text-[10px] font-mono font-medium text-slate-400">{student.studentId || student.id}</span>
                       </div>
                     </td>
                     <td className="px-5 py-3">

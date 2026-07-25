@@ -13,14 +13,20 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
   const activeTermLabel = settings?.activeTerm || '1st Semester'; // Fallback if settings didn't load
   
+  const autoSelected = React.useRef(false);
+
   React.useEffect(() => {
-    if (student && student.programId && student.academicTerm !== activeTermLabel) {
+    if (student && student.programId && student.academicTerm !== activeTermLabel && !autoSelected.current) {
+      autoSelected.current = true;
       dispatch({
         type: 'SELECT_PROGRAM',
         payload: {
           programId: student.programId,
           academicTerm: activeTermLabel,
         },
+      }).finally(() => {
+        // Reset so it can run again if user manually changes it later and we need to re-sync
+        setTimeout(() => { autoSelected.current = false; }, 1000);
       });
     }
   }, [student?.academicTerm, student?.programId, dispatch, activeTermLabel]);  

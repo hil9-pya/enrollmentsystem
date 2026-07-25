@@ -147,7 +147,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
                 {student.firstName} {student.lastName}
               </h2>
               <div className="flex items-center gap-3.5 mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                <span className="font-mono text-slate-400">{student.id}</span>
+                <span className="font-mono text-slate-400">{student.studentId || student.id}</span>
                 <span>&bull;</span>
                 <span className="text-univ-indigo">{program?.name || 'No program selected'}</span>
                 <span>&bull;</span>

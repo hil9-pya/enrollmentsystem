@@ -568,8 +568,7 @@ const approveAdmission = asyncHandler(async (req, res) => {
 
   student.admissionNotes = req.body.notes || '';
   
-  if (!student.studentId) {
-    student.studentId = await generateNextId('STU-');
+  if (!student.schoolEmail) {
     const safeFirst = student.firstName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     const safeLast = student.lastName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     let emailBase = `${safeFirst}.${safeLast}@ncst.edu`;
@@ -583,9 +582,10 @@ const approveAdmission = asyncHandler(async (req, res) => {
     }
     student.schoolEmail = finalEmail;
     
-    // Create user account
+    // Create user account using their APP- ID (student._id) as username
+    // They will log in using this APP- ID until they pay.
     await User.create({
-      username: student.studentId,
+      username: student._id,
       email: finalEmail,
       password: 'NCST2026!', // Default password for demo
       firstName: student.firstName,
@@ -689,6 +689,17 @@ const confirmPayment = asyncHandler(async (req, res) => {
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;
+
+  // Generate STU- ID now that they have paid
+  if (!student.studentId) {
+    student.studentId = await generateNextId('STU-');
+    
+    // Update the existing User account's username from APP- to STU-
+    await User.updateOne(
+      { username: student._id }, // Find by the APP- ID
+      { $set: { username: student.studentId } } // Update to STU- ID
+    );
+  }
 
   await student.save();
   res.json(student);

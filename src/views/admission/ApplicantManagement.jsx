@@ -110,7 +110,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
                         </div>
                         <div>
                           <p className="font-bold text-univ-navy text-xs">{stud.firstName || 'Anonymous'} {stud.lastName || 'Applicant'}</p>
-                          <p className="text-[10px] font-mono text-slate-400 font-bold mt-0.5">{stud.id}</p>
+                          <p className="text-[10px] font-mono text-slate-400 font-bold mt-0.5">{stud.studentId || stud.id}</p>
                         </div>
                       </div>
                     </td>

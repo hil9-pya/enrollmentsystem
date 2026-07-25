@@ -12,14 +12,19 @@ export default function ContinuingEnrollmentStep({ onNext }) {
 
   const selectedProgram = PROGRAMS.find((p) => p.id === selectedProgramId);
 
+  const autoSelected = React.useRef(false);
+
   React.useEffect(() => {
-    if (student && student.academicTerm !== ACTIVE_TERM_ID) {
+    if (student && student.academicTerm !== ACTIVE_TERM_ID && !autoSelected.current) {
+      autoSelected.current = true;
       dispatch({
         type: 'SELECT_PROGRAM',
         payload: {
           programId: selectedProgramId,
           academicTerm: ACTIVE_TERM_ID,
         },
+      }).finally(() => {
+        setTimeout(() => { autoSelected.current = false; }, 1000);
       });
     }
   }, [student?.academicTerm, selectedProgramId, dispatch]);
