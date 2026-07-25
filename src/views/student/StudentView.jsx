@@ -328,7 +328,7 @@ export default function StudentView() {
               <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
                 {student.firstName} {student.lastName}
               </p>
-              <p className="font-mono text-[9px] text-slate-400 mt-1.5">{student.id}</p>
+              <p className="font-mono text-[9px] text-slate-400 mt-1.5">{student.studentId || student.id}</p>
             </div>
             <button
               onClick={() => {

@@ -99,7 +99,7 @@ export default function AdviserDashboard({ students, onNavigate }) {
                            </div>
                            <div>
                              <p className="text-sm font-bold text-slate-900">{student.firstName} {student.lastName}</p>
-                             <p className="text-xs font-medium text-slate-500">{student.id}</p>
+                             <p className="text-xs font-medium text-slate-500">{student.studentId || student.id}</p>
                            </div>
                          </div>
                          <button
@@ -145,7 +145,7 @@ export default function AdviserDashboard({ students, onNavigate }) {
                           {student.firstName || 'Anonymous'} {student.lastName || 'Applicant'}
                         </p>
                         <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
-                          {student.id}
+                          {student.studentId || student.id}
                         </p>
                       </div>
                       <div className="shrink-0">

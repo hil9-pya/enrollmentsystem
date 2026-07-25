@@ -24,7 +24,7 @@ export default function ContactSection() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <h4 className="font-bold text-univ-navy mb-2">Campus Location</h4>
-                <p className="text-sm text-slate-500 font-medium">Amaia Scapes Ave, General Trias, Cavite, Philippines</p>
+                <p className="text-sm text-slate-500 font-medium">Dasmarinas Cavite, Philippines</p>
               </div>
               <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-univ-blue mb-4">
@@ -42,14 +42,6 @@ export default function ContactSection() {
               <div>
                 <h4 className="font-bold text-univ-navy mb-1">Email Us</h4>
                 <a href="mailto:info@ncst.edu.ph" className="text-sm font-medium text-univ-blue hover:underline">info@ncst.edu.ph</a>
-              </div>
-            </div>
-
-            {/* Map Placeholder */}
-            <div className="h-64 bg-slate-200 rounded-3xl overflow-hidden relative border border-slate-200">
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-100">
-                <MapPin className="w-8 h-8 mb-2 opacity-50" />
-                <span className="text-sm font-bold uppercase tracking-widest opacity-50">Interactive Map</span>
               </div>
             </div>
           </div>

@@ -177,7 +177,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     <span className="font-bold text-slate-900 text-sm truncate pr-2">
                       {student.firstName} {student.lastName}
                     </span>
-                    <span className="text-[10px] font-mono font-semibold text-slate-400 shrink-0">{student.id}</span>
+                    <span className="text-[10px] font-mono font-semibold text-slate-400 shrink-0">{student.studentId || student.id}</span>
                   </div>
                   <div className="text-xs font-semibold text-slate-500 truncate mb-2.5">
                     {PROGRAMS.find(p => p.id === student.programId)?.name || '—'}

@@ -14,14 +14,6 @@ export default function FAQSection() {
     {
       question: 'Is there an entrance exam?',
       answer: 'Currently, the entrance examination requirement is waived. Admissions are based on the evaluation of your submitted academic records and credentials.'
-    },
-    {
-      question: 'How long is the approval process?',
-      answer: 'Once all requirements are submitted, the evaluation process typically takes 1 to 3 working days. You will be notified via email and through your applicant portal once your application is approved.'
-    },
-    {
-      question: 'Are there scholarship programs available?',
-      answer: 'Yes, NCST offers various scholarship programs including Academic Scholarships, Athletic Grants, and Financial Assistance for deserving students. You may inquire at the Scholarship Office upon enrollment.'
     }
   ];
 

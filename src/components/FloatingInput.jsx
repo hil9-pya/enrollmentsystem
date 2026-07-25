@@ -34,6 +34,7 @@ export default function FloatingInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
+          autoComplete={type === 'password' ? 'new-password' : 'off'}
           className={`peer w-full px-4 pt-5 pb-2 rounded-xl text-sm font-medium transition-all duration-300 outline-none placeholder-slate-400/70
             ${Icon ? 'pl-11' : ''}
             ${error 

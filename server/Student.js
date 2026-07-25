@@ -82,6 +82,13 @@ const StudentSchema = new mongoose.Schema(
     academicRecord: { type: [AcademicRecordSchema], default: [] },
     holds: { type: [HoldSchema], default: [] },
 
+    // Transferee-specific fields
+    previousSchool: { type: String, default: '' },
+    previousProgram: { type: String, default: '' },
+    yearLevelAtTransfer: { type: String, default: '' },
+    reasonForTransfer: { type: String, default: '' },
+    unitsEarned: { type: String, default: '' },
+
     status: { 
       type: String, 
       enum: [

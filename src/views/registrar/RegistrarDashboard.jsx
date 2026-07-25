@@ -196,7 +196,7 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-mono text-slate-500 font-medium">{student.id}</span>
+                      <span className="font-mono text-slate-500 font-medium">{student.studentId || student.id}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="font-bold text-slate-900">{student.firstName} {student.lastName}</span>
