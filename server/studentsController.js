@@ -641,28 +641,17 @@ const rejectAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  if (student.status !== 'advising_pending') {
-    res.status(400);
-    throw new Error('Invalid action: Student must be pending advising.');
-  }
-
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_rejected';
+  student.subjectChangeRequest = '';
 
   await student.save();
   res.json(student);
 });
 
-// @desc    Adviser: approve academic evaluation / eligibility
-// @route   POST /api/students/:id/approve-advising   body: { notes }
 const approveAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
-
-  if (student.status !== 'advising_pending') {
-    res.status(400);
-    throw new Error('Invalid action: Student must be pending advising.');
-  }
 
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_approved';

@@ -13,6 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { toast } from 'react-hot-toast';
 import StatusBadge from '../../components/StatusBadge';
 import { useConfirm } from '../../context/ConfirmationContext';
+import CourseManagementTab from './CourseManagementTab';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_COLORS = {
@@ -1018,6 +1019,7 @@ const NAV_ITEMS = [
   { id: 'analytics', label: 'Analytics', icon: LayoutDashboard, desc: 'Overview & metrics' },
   { id: 'applicants', label: 'Applicant Directory', icon: UserPlus, desc: 'Manage applicants' },
   { id: 'students', label: 'Student Database', icon: Users, desc: 'Registrar records' },
+  { id: 'courses', label: 'Course Management', icon: BookOpen, desc: 'Sections & offerings' },
   { id: 'trash', label: 'Trash Bin', icon: Trash2, desc: 'Deleted records' },
   { id: 'staff', label: 'Staff Management', icon: UserCog, desc: 'System users' },
   { id: 'settings', label: 'Settings', icon: Settings, desc: 'System configuration' },
@@ -1180,6 +1182,7 @@ export default function DashboardView() {
           {activeTab === 'trash' && <TrashTab />}
           {activeTab === 'staff' && <StaffTab />}
           {activeTab === 'settings' && <SettingsTab />}
+          {activeTab === 'courses' && <CourseManagementTab />}
         </div>
       </main>
     </div>

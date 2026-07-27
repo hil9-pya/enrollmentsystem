@@ -285,6 +285,69 @@ export const SUBJECTS = [
     ],
     fee: 4500,
   },
+  
+  // ── General Electives Pool ─────────────────────────────────────────────────
+  // programId = 'elective' so getCurriculumSubjects includes them for ALL programs
+  {
+    id: 'ge101',
+    code: 'GE 101',
+    name: 'Communication Skills',
+    units: 3,
+    programId: 'elective',
+    yearLevel: null,
+    semester: null,
+    prerequisites: [],
+    sections: [
+      { id: 'ge101-a', code: 'GE 101-A', schedule: { day: 'MWF', time: '7:00 AM - 8:30 AM', room: 'Room 201' }, instructor: 'Prof. Alma Reyes', maxSlots: 45, enrolledCount: 20 },
+      { id: 'ge101-b', code: 'GE 101-B', schedule: { day: 'TTH', time: '7:00 AM - 8:30 AM', room: 'Room 202' }, instructor: 'Prof. Luz Santos', maxSlots: 45, enrolledCount: 15 },
+    ],
+    fee: 3000,
+  },
+  {
+    id: 'ge102',
+    code: 'GE 102',
+    name: 'Philippine History and Culture',
+    units: 3,
+    programId: 'elective',
+    yearLevel: null,
+    semester: null,
+    prerequisites: [],
+    sections: [
+      { id: 'ge102-a', code: 'GE 102-A', schedule: { day: 'TTH', time: '4:30 PM - 6:00 PM', room: 'Room 203' }, instructor: 'Prof. Ernesto Dela Cruz', maxSlots: 45, enrolledCount: 10 },
+      { id: 'ge102-b', code: 'GE 102-B', schedule: { day: 'MWF', time: '4:30 PM - 6:00 PM', room: 'Room 204' }, instructor: 'Prof. Miriam Reyes', maxSlots: 45, enrolledCount: 22 },
+    ],
+    fee: 3000,
+  },
+  {
+    id: 'ge103',
+    code: 'GE 103',
+    name: 'Ethics and Values Education',
+    units: 3,
+    programId: 'elective',
+    yearLevel: null,
+    semester: null,
+    prerequisites: [],
+    sections: [
+      { id: 'ge103-a', code: 'GE 103-A', schedule: { day: 'MWF', time: '11:30 AM - 1:00 PM', room: 'Room 205' }, instructor: 'Prof. Consuelo Valdez', maxSlots: 45, enrolledCount: 30 },
+      { id: 'ge103-b', code: 'GE 103-B', schedule: { day: 'TTH', time: '11:30 AM - 1:00 PM', room: 'Room 206' }, instructor: 'Prof. Benjamin Reyes', maxSlots: 45, enrolledCount: 18 },
+    ],
+    fee: 3000,
+  },
+  {
+    id: 'ge104',
+    code: 'GE 104',
+    name: 'Mathematics in the Modern World',
+    units: 3,
+    programId: 'elective',
+    yearLevel: null,
+    semester: null,
+    prerequisites: [],
+    sections: [
+      { id: 'ge104-a', code: 'GE 104-A', schedule: { day: 'TTH', time: '2:30 PM - 4:00 PM', room: 'Room 207' }, instructor: 'Prof. Florencia Guevara', maxSlots: 45, enrolledCount: 25 },
+      { id: 'ge104-b', code: 'GE 104-B', schedule: { day: 'MWF', time: '2:30 PM - 4:00 PM', room: 'Room 208' }, instructor: 'Prof. Arturo Lacson', maxSlots: 45, enrolledCount: 12 },
+    ],
+    fee: 3000,
+  },
 ];
 
 // ---------------------------------------------------------------------------

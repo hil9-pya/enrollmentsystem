@@ -18,14 +18,14 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
 
   const relevantStudents = useMemo(() => {
     return students.filter(s => 
-      ['advising_pending', 'advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status)
+      ['advising_pending', 'advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status) || !!s.subjectChangeRequest
     );
   }, [students]);
 
   const filteredStudents = useMemo(() => {
     let result = relevantStudents;
-    if (filter === 'pending') result = result.filter(s => s.status === 'advising_pending');
-    else if (filter === 'approved') result = result.filter(s => ['advising_approved', 'payment_pending', 'enrolled'].includes(s.status));
+    if (filter === 'pending') result = result.filter(s => s.status === 'advising_pending' || !!s.subjectChangeRequest);
+    else if (filter === 'approved') result = result.filter(s => ['advising_approved', 'payment_pending', 'enrolled'].includes(s.status) && !s.subjectChangeRequest);
     else if (filter === 'rejected') result = result.filter(s => s.status === 'advising_rejected');
 
     if (searchQuery.trim()) {
@@ -216,6 +216,19 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                   </div>
                   <StatusBadge status={selectedStudent.status} />
                 </div>
+
+                {/* Change Request Alert from Student */}
+                {selectedStudent.subjectChangeRequest && (
+                  <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 mb-6 shadow-sm">
+                    <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm mb-2">
+                      <FileWarning className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span>Student Request for Change:</span>
+                    </div>
+                    <p className="text-xs font-semibold text-amber-900 bg-white/90 p-3 rounded-lg border border-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
+                      "{selectedStudent.subjectChangeRequest}"
+                    </p>
+                  </div>
+                )}
                 
                 {selectedStudent.status === 'advising_pending' && (selectedStudent.enrollmentType === 'transfer' || selectedStudent.enrollmentType === 'returning' || selectedStudent.enrollmentType === 'continuing') && (
                   <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">

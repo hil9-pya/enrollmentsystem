@@ -210,6 +210,15 @@ export function EnrollmentProvider({ children }) {
         updatedStudent = await safeJson(res);
       } 
       
+      else if (type === 'SET_SELECTED_SUBJECTS') {
+        // Used by the scheduler: the server already validated and persisted the
+        // new selectedSubjects array; just update local state to stay in sync.
+        const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
+        if (currentStudent) {
+          updatedStudent = { ...currentStudent, selectedSubjects: payload };
+        }
+      } 
+      
       else if (type === 'SET_PAYMENT_METHOD') {
         const res = await authFetch(`/api/students/${activeStudentId}`, {
           method: 'PUT',

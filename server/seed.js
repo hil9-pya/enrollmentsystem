@@ -238,7 +238,7 @@ export async function seedUsers() {
   ];
 
   for (const userData of usersToSeed) {
-    const exists = await User.exists({ username: userData.username });
+    const exists = await User.exists({ $or: [{ username: userData.username }, { email: userData.email }] });
     if (!exists) {
       await User.collection.insertOne(userData);
       console.log(`Seeded user account: ${userData.username}`);
