@@ -18,9 +18,38 @@ const PROGRAMS = [
 const DAYS_OPTIONS = ['MWF', 'TTH', 'MTWTHF', 'M', 'T', 'W', 'TH', 'F', 'S', 'TTHF'];
 const ROOM_CODE_LENGTH = 4;
 const ROOM_CODE_PATTERN = /^[12][1-3](?:0[1-9]|10)$/;
+const SECTION_CODE_PATTERN = /^(CS|BA|NU)-[1-3]1[MAE][1-4]$/;
+const PROGRAM_CODE_BY_ID = { bscs: 'CS', bsba: 'BA', bsn: 'NU' };
+const YEAR_ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd' };
 
 function sanitizeRoomCode(value = '') {
   return value.replace(/\D/g, '').slice(0, ROOM_CODE_LENGTH);
+}
+
+function formatSectionCode(value = '') {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (compact.length < 3) return compact;
+  return `${compact.slice(0, 2)}-${compact.slice(2)}`;
+}
+
+function getSectionCodeError(sectionCode, subject) {
+  if (!sectionCode) return 'Enter a section code.';
+  if (sectionCode.length > 4 && sectionCode[4] !== '1') {
+    return 'This subject is for 1st semester only.';
+  }
+  if (!SECTION_CODE_PATTERN.test(sectionCode)) {
+    return 'Use CS-11M1: program, year 1-3, semester 1, M/A/E, section 1-4.';
+  }
+  if (!subject || subject.programId === 'elective') return '';
+
+  const expectedProgram = PROGRAM_CODE_BY_ID[subject.programId];
+  if (sectionCode.slice(0, 2) !== expectedProgram) {
+    return `Section code must use ${expectedProgram} for this subject.`;
+  }
+  if (Number(sectionCode[3]) !== subject.yearLevel) {
+    return `Selected subject is for ${YEAR_ORDINALS[subject.yearLevel]} year only.`;
+  }
+  return '';
 }
 
 function SubjectFormModal({ isOpen, onClose, onSave }) {
@@ -200,6 +229,12 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
+    const sectionCodeError = getSectionCodeError(form.sectionCode, selectedSubject);
+    if (sectionCodeError) {
+      toast.error(sectionCodeError);
+      return;
+    }
     if (!roomCodeIsValid) {
       toast.error('Room must be a 4-digit code like 1101.');
       return;
@@ -257,6 +292,9 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
     && form.room.length === ROOM_CODE_LENGTH
     && !ROOM_CODE_PATTERN.test(form.room);
 
+  const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
+  const sectionCodeError = getSectionCodeError(form.sectionCode, selectedSubject);
+
   // Both room and instructor time conflicts block saving.
   // A teacher cannot teach two sections at the same time,
   // and a room cannot have two sections at the same time.
@@ -293,9 +331,20 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             {/* Section Code */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Section Code *</label>
-              <input type="text" value={form.sectionCode} onChange={(e) => setForm({ ...form, sectionCode: e.target.value })}
-                required placeholder="e.g. CS 101-C" disabled={!!initialData?.id}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input
+                type="text"
+                value={form.sectionCode}
+                onChange={(e) => setForm({ ...form, sectionCode: formatSectionCode(e.target.value) })}
+                required
+                maxLength={7}
+                autoComplete="off"
+                placeholder="e.g. CS-11M1"
+                disabled={!!initialData?.id}
+                className={`w-full px-3 py-2 text-xs border rounded-xl font-mono focus:outline-none focus:ring-2 ${sectionCodeError && form.sectionCode ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-200 focus:ring-indigo-500'}`}
+              />
+              <p className={`mt-1 text-[10px] ${sectionCodeError && form.sectionCode ? 'text-rose-600 font-semibold' : 'text-slate-400'}`}>
+                {sectionCodeError && form.sectionCode ? sectionCodeError : 'Format: CS-11M1. Semester is always 1; M, A, E; sections 1-4.'}
+              </p>
             </div>
 
             {/* Days */}
@@ -471,7 +520,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CourseManagementTab() {
   const { confirm } = useConfirm();
-  const { token: ctxToken } = useAuth();
+  const { token: ctxToken, logout } = useAuth();
 
   const authFetch = useCallback((url, options = {}) => {
     // Use context token if available, otherwise fall back to localStorage
@@ -501,14 +550,22 @@ export default function CourseManagementTab() {
       ]);
       const subData = await subRes.json();
       const secData = await secRes.json();
-      if (subData.success) setSubjects(subData.data);
-      if (secData.success) setSections(secData.data);
-    } catch {
-      toast.error('Failed to load course data.');
+      if (subRes.status === 401 || secRes.status === 401) {
+        toast.error('Session expired. Please sign in again.');
+        logout();
+        return;
+      }
+      if (!subRes.ok || !subData.success || !secRes.ok || !secData.success) {
+        throw new Error(subData.message || secData.message || 'Failed to load course data.');
+      }
+      setSubjects(subData.data);
+      setSections(secData.data);
+    } catch (error) {
+      toast.error(error.message || 'Failed to load course data.');
     } finally {
       setLoading(false);
     }
-  }, [authFetch]);
+  }, [authFetch, logout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

@@ -4,6 +4,29 @@ import Subject from './models/Subject.js';
 import { SUBJECTS_CATALOG, addSubjectToCache } from './subjectsCatalog.js';
 import { validateSectionConflict } from './services/schedulerService.js';
 
+const SECTION_CODE_PATTERN = /^(CS|BA|NU)-[1-3]1[MAE][1-4]$/;
+const PROGRAM_CODE_BY_ID = { bscs: 'CS', bsba: 'BA', bsn: 'NU' };
+const YEAR_ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd' };
+
+function validateSectionCode(sectionCode, subject) {
+  if (sectionCode.length > 4 && sectionCode[4] !== '1') {
+    return 'This subject is for 1st semester only.';
+  }
+  if (!SECTION_CODE_PATTERN.test(sectionCode)) {
+    return 'Section code must use CS-11M1 format: program, year 1-3, semester 1, M/A/E, section 1-4.';
+  }
+  if (subject.programId === 'elective') return null;
+
+  const expectedProgram = PROGRAM_CODE_BY_ID[subject.programId];
+  if (sectionCode.slice(0, 2) !== expectedProgram) {
+    return `Section code must use ${expectedProgram} for this subject.`;
+  }
+  if (Number(sectionCode[3]) !== subject.yearLevel) {
+    return `Selected subject is for ${YEAR_ORDINALS[subject.yearLevel]} year only.`;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/admin/scheduler/sections
 // List all sections (with optional ?subjectId filter)
@@ -49,24 +72,30 @@ export const createSection = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Subject not found in catalog.' });
   }
 
+  const normalizedSectionCode = String(sectionCode).trim().toUpperCase();
+  const sectionCodeError = validateSectionCode(normalizedSectionCode, subject);
+  if (sectionCodeError) {
+    return res.status(400).json({ success: false, message: sectionCodeError });
+  }
+
   // Check for room/instructor conflicts
-  const { valid, error } = await validateSectionConflict({ subjectId, sectionCode, days, time, room, instructor });
+  const { valid, error } = await validateSectionConflict({ subjectId, sectionCode: normalizedSectionCode, days, time, room, instructor });
   if (!valid) {
     return res.status(409).json({ success: false, message: error });
   }
 
   // Check duplicate sectionCode for same subject
-  const existing = await Section.findOne({ subjectId, sectionCode });
+  const existing = await Section.findOne({ subjectId, sectionCode: normalizedSectionCode });
   if (existing) {
     return res.status(409).json({
       success: false,
-      message: `Section ${sectionCode} already exists for this subject.`,
+      message: `Section ${normalizedSectionCode} already exists for this subject.`,
     });
   }
 
   const section = await Section.create({
     subjectId,
-    sectionCode,
+    sectionCode: normalizedSectionCode,
     days,
     time,
     room: room || '',
@@ -136,13 +165,16 @@ export const deleteSection = asyncHandler(async (req, res) => {
 // ---------------------------------------------------------------------------
 export const listSubjectsForAdmin = asyncHandler(async (req, res) => {
   const sections = await Section.find({}).lean();
+  const storedSubjects = await Subject.find({}).lean();
+  // DB is source of truth so admin catalog updates appear without a server restart.
+  const catalog = storedSubjects.length > 0 ? storedSubjects : SUBJECTS_CATALOG;
   const sectionsBySubject = new Map();
   for (const sec of sections) {
     if (!sectionsBySubject.has(sec.subjectId)) sectionsBySubject.set(sec.subjectId, []);
     sectionsBySubject.get(sec.subjectId).push(sec);
   }
 
-  const result = SUBJECTS_CATALOG.map((sub) => ({
+  const result = catalog.map((sub) => ({
     ...sub,
     liveSections: sectionsBySubject.get(sub.id) || [],
   }));
