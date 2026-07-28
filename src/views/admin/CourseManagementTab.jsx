@@ -16,6 +16,12 @@ const PROGRAMS = [
 ];
 
 const DAYS_OPTIONS = ['MWF', 'TTH', 'MTWTHF', 'M', 'T', 'W', 'TH', 'F', 'S', 'TTHF'];
+const ROOM_CODE_LENGTH = 4;
+const ROOM_CODE_PATTERN = /^[12][1-3](?:0[1-9]|10)$/;
+
+function sanitizeRoomCode(value = '') {
+  return value.replace(/\D/g, '').slice(0, ROOM_CODE_LENGTH);
+}
 
 function SubjectFormModal({ isOpen, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -194,6 +200,10 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!roomCodeIsValid) {
+      toast.error('Room must be a 4-digit code like 1101.');
+      return;
+    }
     setSaving(true);
     await onSave({ ...form, time: `${form.startTime} - ${form.endTime}` });
     setSaving(false);
@@ -237,6 +247,15 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
       sec._id !== initialData?.id
     );
   }, [form.instructor, allSections, initialData]);
+
+  const roomCodeIsValid = !form.room?.trim()
+    || form.room === initialData?.room
+    || ROOM_CODE_PATTERN.test(form.room);
+
+  const roomFormatError = !!form.room?.trim()
+    && form.room !== initialData?.room
+    && form.room.length === ROOM_CODE_LENGTH
+    && !ROOM_CODE_PATTERN.test(form.room);
 
   // Both room and instructor time conflicts block saving.
   // A teacher cannot teach two sections at the same time,
@@ -324,9 +343,28 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             {/* Room */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Room</label>
-              <input type="text" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })}
-                placeholder="e.g. Room 301"
-                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none focus:ring-2 ${roomConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`} />
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={ROOM_CODE_LENGTH}
+                value={form.room}
+                onChange={(e) => setForm({ ...form, room: sanitizeRoomCode(e.target.value) })}
+                placeholder="e.g. 1101"
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none focus:ring-2 ${
+                  roomFormatError || roomConflicts.length > 0
+                    ? 'border-rose-400 focus:ring-rose-400 bg-rose-50'
+                    : 'border-slate-200 focus:ring-indigo-500'
+                }`}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                4 digits only. Format: building, floor, room. Example: 1101.
+              </p>
+              {roomFormatError && (
+                <p className="text-[10px] text-rose-600 font-bold mt-1">
+                  Room code must follow BFRR: building 1-2, floor 1-3, room 01-10.
+                </p>
+              )}
               {roomConflicts.length > 0 && (
                 <p className="text-[10px] text-rose-600 font-bold mt-1">⚠ Room conflict with {roomConflicts.length} section(s)</p>
               )}
