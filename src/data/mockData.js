@@ -24,7 +24,7 @@ export const ACTIVE_TERM_ID = '1s-2026';
 // ---------------------------------------------------------------------------
 // 3. SUBJECTS
 // ---------------------------------------------------------------------------
-export const SUBJECTS = [
+const BASE_SUBJECTS = [
   // ── BSCS Subjects ──────────────────────────────────────────────────────
   {
     id: 'cs101',
@@ -349,6 +349,31 @@ export const SUBJECTS = [
     fee: 3000,
   },
 ];
+
+const DEMO_INSTRUCTORS = ['Lebron James', 'Paul Solancho', 'Aeron Ortillo'];
+
+function pickDemoInstructor(seed = '') {
+  const text = String(seed || 'demo');
+  let hash = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash * 31) + text.charCodeAt(i)) >>> 0;
+  }
+
+  return DEMO_INSTRUCTORS[hash % DEMO_INSTRUCTORS.length];
+}
+
+function normalizeSubjectCatalog(catalog = []) {
+  return catalog.map((subject) => ({
+    ...subject,
+    sections: (subject.sections || []).map((section, index) => ({
+      ...section,
+      instructor: pickDemoInstructor(`${subject.id}:${section.code || section.id || index}`),
+    })),
+  }));
+}
+
+export const SUBJECTS = normalizeSubjectCatalog(BASE_SUBJECTS);
 
 // ---------------------------------------------------------------------------
 // 4. REQUIRED DOCUMENTS

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
 import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, ChevronDown } from 'lucide-react';
@@ -11,7 +11,7 @@ const sanitizeInput = (value, maxLen = 300) => {
 };
 
 const TRANSFER_REASONS = [
-  { value: '', label: '— Select a reason —' },
+  { value: '', label: 'Select a reason' },
   { value: 'financial', label: 'Financial Reasons' },
   { value: 'relocation', label: 'Relocation / Change of Residence' },
   { value: 'academic_program', label: 'Better Academic Program / Curriculum' },
@@ -23,13 +23,50 @@ const TRANSFER_REASONS = [
 ];
 
 const YEAR_LEVELS = [
-  { value: '', label: '— Select year level —' },
+  { value: '', label: 'Select year level' },
   { value: '1', label: '1st Year' },
   { value: '2', label: '2nd Year' },
   { value: '3', label: '3rd Year' },
   { value: '4', label: '4th Year' },
   { value: '5', label: '5th Year' },
 ];
+
+function getInitialDraft(student) {
+  return {
+    firstName: student?.firstName || '',
+    lastName: student?.lastName || '',
+    email: student?.email || '',
+    phone: student?.phone || '',
+    birthDate: student?.birthDate || '',
+    address: student?.address || '',
+    previousSchool: student?.previousSchool || '',
+    previousProgram: student?.previousProgram || '',
+    yearLevelAtTransfer: student?.yearLevelAtTransfer || '',
+    unitsEarned: student?.unitsEarned || '',
+    reasonForTransfer: student?.reasonForTransfer || '',
+  };
+}
+
+function buildPersistPayload(draft, isTransferee) {
+  const payload = {
+    firstName: draft.firstName,
+    lastName: draft.lastName,
+    email: draft.email,
+    phone: draft.phone,
+    birthDate: draft.birthDate,
+    address: draft.address,
+  };
+
+  if (isTransferee) {
+    payload.previousSchool = draft.previousSchool;
+    payload.previousProgram = draft.previousProgram;
+    payload.yearLevelAtTransfer = draft.yearLevelAtTransfer;
+    payload.unitsEarned = draft.unitsEarned;
+    payload.reasonForTransfer = draft.reasonForTransfer;
+  }
+
+  return payload;
+}
 
 function SelectField({ label, id, icon: Icon, value, onChange, options, error, required }) {
   return (
@@ -81,16 +118,46 @@ export default function RegistrationStep({ onNext, onBack }) {
   const isTransferee = enrollmentType === 'transfer';
 
   const [errors, setErrors] = useState({});
+  const [draft, setDraft] = useState(() => getInitialDraft(student));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const saveTimerRef = useRef(null);
+  const dirtyRef = useRef(false);
+
+  useEffect(() => {
+    setDraft(getInitialDraft(student));
+    setErrors({});
+    dirtyRef.current = false;
+  }, [student?.id]);
+
+  useEffect(() => {
+    if (!student?.id || !dirtyRef.current) return;
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = setTimeout(() => {
+      dispatch({
+        type: 'UPDATE_ACTIVE_STUDENT',
+        payload: buildPersistPayload(draft, isTransferee),
+      });
+    }, 350);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [draft, dispatch, isTransferee, student?.id]);
 
   const validate = () => {
     const newErrors = {};
     const today = new Date();
 
     const nameValidationRegex = /^[a-zA-Z\s\-\.]+$/;
-    const sanitizedFirst = sanitizeInput(student?.firstName?.trim() || '', 100);
-    const sanitizedLast = sanitizeInput(student?.lastName?.trim() || '', 100);
+    const sanitizedFirst = sanitizeInput(draft.firstName.trim() || '', 100);
+    const sanitizedLast = sanitizeInput(draft.lastName.trim() || '', 100);
 
     if (!sanitizedFirst || sanitizedFirst.length < 2) {
       newErrors.firstName = 'First name must be at least 2 characters.';
@@ -104,21 +171,21 @@ export default function RegistrationStep({ onNext, onBack }) {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const sanitizedEmail = sanitizeInput(student?.email?.trim() || '', 254);
+    const sanitizedEmail = sanitizeInput(draft.email.trim() || '', 254);
     if (!sanitizedEmail || !emailRegex.test(sanitizedEmail)) {
       newErrors.email = 'Please enter a valid email address.';
     }
 
     const phoneRegex = /^09\d{2}[-\s]?\d{3}[-\s]?\d{4}$/;
-    const sanitizedPhone = sanitizeInput(student?.phone?.trim() || '', 20);
+    const sanitizedPhone = sanitizeInput(draft.phone.trim() || '', 20);
     if (!sanitizedPhone || !phoneRegex.test(sanitizedPhone)) {
       newErrors.phone = 'Please enter a valid PH phone number (e.g., 0917-123-4567).';
     }
 
-    if (!student?.birthDate) {
+    if (!draft.birthDate) {
       newErrors.birthDate = 'Birth date is required.';
     } else {
-      const birthDate = new Date(student.birthDate);
+      const birthDate = new Date(draft.birthDate);
       let age = today.getFullYear() - birthDate.getFullYear();
       const m = today.getMonth() - birthDate.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
@@ -129,25 +196,24 @@ export default function RegistrationStep({ onNext, onBack }) {
       }
     }
 
-    const sanitizedAddress = sanitizeInput(student?.address?.trim() || '', 500);
+    const sanitizedAddress = sanitizeInput(draft.address.trim() || '', 500);
     if (!sanitizedAddress || sanitizedAddress.length < 10) {
       newErrors.address = 'Please enter a complete address (min. 10 characters).';
     }
 
-    // Transferee-specific validations
     if (isTransferee) {
-      const sanitizedSchool = sanitizeInput(student?.previousSchool?.trim() || '', 200);
+      const sanitizedSchool = sanitizeInput(draft.previousSchool.trim() || '', 200);
       if (!sanitizedSchool || sanitizedSchool.length < 3) {
         newErrors.previousSchool = 'Please enter your previous school name.';
       }
-      const sanitizedProgram = sanitizeInput(student?.previousProgram?.trim() || '', 200);
+      const sanitizedProgram = sanitizeInput(draft.previousProgram.trim() || '', 200);
       if (!sanitizedProgram || sanitizedProgram.length < 2) {
         newErrors.previousProgram = 'Please enter your previous program/course.';
       }
-      if (!student?.yearLevelAtTransfer) {
+      if (!draft.yearLevelAtTransfer) {
         newErrors.yearLevelAtTransfer = 'Please select your year level at transfer.';
       }
-      if (!student?.reasonForTransfer) {
+      if (!draft.reasonForTransfer) {
         newErrors.reasonForTransfer = 'Please select your reason for transfer.';
       }
     }
@@ -170,16 +236,26 @@ export default function RegistrationStep({ onNext, onBack }) {
 
   function handleChange(field, rawValue, maxLen = 300) {
     const value = sanitizeInput(rawValue, maxLen);
-    dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { [field]: value } });
+    dirtyRef.current = true;
+    setDraft(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
   }
 
-  const handleNext = () => {
+  const flushDraft = async () => {
+    if (!student?.id) return;
+    await dispatch({
+      type: 'UPDATE_ACTIVE_STUDENT',
+      payload: buildPersistPayload(draft, isTransferee),
+    });
+  };
+
+  const handleNext = async () => {
     if (validate()) {
+      await flushDraft();
       if (password) {
-        dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { applicantPassword: password } });
+        await dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { applicantPassword: password } });
       }
       onNext();
     }
@@ -193,10 +269,9 @@ export default function RegistrationStep({ onNext, onBack }) {
     <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-premium">
       <h1 className="text-2xl font-heading font-extrabold text-univ-navy mb-1">Student Registration</h1>
       <p className="text-sm text-slate-500 mb-8 font-medium">
-        Please fill in your correct personal details below. Fields marked with an asterisk (*) are mandatory.
+        Please fill in your correct personal details below.
       </p>
 
-      {/* Transferee notice */}
       {isTransferee && (
         <div className="flex items-start gap-3 bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 shadow-sm">
           <ArrowRightLeft className="h-5 w-5 text-slate-900 flex-shrink-0 mt-0.5" />
@@ -210,7 +285,6 @@ export default function RegistrationStep({ onNext, onBack }) {
       )}
 
       <div className="space-y-1">
-        {/* Personal Info Section */}
         <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Personal Information</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -218,7 +292,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             label="First Name"
             id="firstName"
             icon={User}
-            value={student?.firstName || ''}
+            value={draft.firstName}
             onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s\-\.]/g, ''), 100)}
             error={errors.firstName}
             required
@@ -228,7 +302,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             label="Last Name"
             id="lastName"
             icon={User}
-            value={student?.lastName || ''}
+            value={draft.lastName}
             onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s\-\.]/g, ''), 100)}
             error={errors.lastName}
             required
@@ -241,7 +315,7 @@ export default function RegistrationStep({ onNext, onBack }) {
           id="email"
           type="email"
           icon={Mail}
-          value={student?.email || ''}
+          value={draft.email}
           onChange={(e) => handleChange('email', e.target.value, 254)}
           error={errors.email}
           required
@@ -253,7 +327,7 @@ export default function RegistrationStep({ onNext, onBack }) {
           id="phone"
           type="tel"
           icon={Phone}
-          value={student?.phone || ''}
+          value={draft.phone}
           onChange={(e) => handleChange('phone', e.target.value.replace(/[^0-9\-\s+]/g, ''), 20)}
           error={errors.phone}
           required
@@ -265,7 +339,7 @@ export default function RegistrationStep({ onNext, onBack }) {
           id="birthDate"
           type="date"
           icon={Calendar}
-          value={student?.birthDate || ''}
+          value={draft.birthDate}
           onChange={(e) => handleChange('birthDate', e.target.value)}
           error={errors.birthDate}
           required
@@ -277,14 +351,13 @@ export default function RegistrationStep({ onNext, onBack }) {
           label="Home Address"
           id="address"
           icon={MapPin}
-          value={student?.address || ''}
+          value={draft.address}
           onChange={(e) => handleChange('address', e.target.value, 500)}
           error={errors.address}
           required
           placeholder="123 Rizal St., Quezon City"
         />
 
-        {/* Transferee Academic History Section */}
         {isTransferee && (
           <>
             <div className="pt-6 mt-2 border-t border-slate-100">
@@ -296,7 +369,7 @@ export default function RegistrationStep({ onNext, onBack }) {
                   label="Previous School / University Name"
                   id="previousSchool"
                   icon={School}
-                  value={student?.previousSchool || ''}
+                  value={draft.previousSchool}
                   onChange={(e) => handleChange('previousSchool', e.target.value, 200)}
                   error={errors.previousSchool}
                   required
@@ -307,7 +380,7 @@ export default function RegistrationStep({ onNext, onBack }) {
                   label="Previous Program / Course"
                   id="previousProgram"
                   icon={BookOpen}
-                  value={student?.previousProgram || ''}
+                  value={draft.previousProgram}
                   onChange={(e) => handleChange('previousProgram', e.target.value, 200)}
                   error={errors.previousProgram}
                   required
@@ -319,9 +392,10 @@ export default function RegistrationStep({ onNext, onBack }) {
                     label="Year Level at Time of Transfer"
                     id="yearLevelAtTransfer"
                     icon={Hash}
-                    value={student?.yearLevelAtTransfer || ''}
+                    value={draft.yearLevelAtTransfer}
                     onChange={(e) => {
-                      dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { yearLevelAtTransfer: e.target.value } });
+                      dirtyRef.current = true;
+                      setDraft(prev => ({ ...prev, yearLevelAtTransfer: e.target.value }));
                       if (errors.yearLevelAtTransfer) setErrors(prev => ({ ...prev, yearLevelAtTransfer: undefined }));
                     }}
                     options={YEAR_LEVELS}
@@ -333,7 +407,7 @@ export default function RegistrationStep({ onNext, onBack }) {
                     label="Total Units Earned (approx.)"
                     id="unitsEarned"
                     icon={Hash}
-                    value={student?.unitsEarned || ''}
+                    value={draft.unitsEarned}
                     onChange={(e) => handleChange('unitsEarned', e.target.value.replace(/[^0-9]/g, ''), 3)}
                     error={errors.unitsEarned}
                     placeholder="e.g., 48"
@@ -344,9 +418,10 @@ export default function RegistrationStep({ onNext, onBack }) {
                   label="Reason for Transfer"
                   id="reasonForTransfer"
                   icon={ArrowRightLeft}
-                  value={student?.reasonForTransfer || ''}
+                  value={draft.reasonForTransfer}
                   onChange={(e) => {
-                    dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { reasonForTransfer: e.target.value } });
+                    dirtyRef.current = true;
+                    setDraft(prev => ({ ...prev, reasonForTransfer: e.target.value }));
                     if (errors.reasonForTransfer) setErrors(prev => ({ ...prev, reasonForTransfer: undefined }));
                   }}
                   options={TRANSFER_REASONS}
@@ -358,7 +433,6 @@ export default function RegistrationStep({ onNext, onBack }) {
           </>
         )}
 
-        {/* Password Section */}
         <div className="pt-6 mt-4 border-t border-slate-100">
           <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Account Security</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -397,7 +471,6 @@ export default function RegistrationStep({ onNext, onBack }) {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center justify-between mt-8 border-t border-slate-100 pt-6">
         <button
           type="button"

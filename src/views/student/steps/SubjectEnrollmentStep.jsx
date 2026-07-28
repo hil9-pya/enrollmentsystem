@@ -9,6 +9,7 @@ import {
 import SearchInput from '../../../components/SearchInput';
 import Modal from '../../../components/Modal';
 import ScheduleGrid from '../../../components/ScheduleGrid';
+import { ACADEMIC_TERMS } from '../../../data/mockData';
 
 // ─── View Modes ──────────────────────────────────────────────────────────────
 const VIEW_LIST = 'list';
@@ -98,6 +99,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
 
   const studentId = student?._id || student?.id;
   const selectedSubjects = student?.selectedSubjects || [];
+  const academicTermLabel = ACADEMIC_TERMS.find((term) => term.id === student?.academicTerm)?.label || student?.academicTerm;
 
   // ── Fetch curriculum subjects from API ────────────────────────────────────
   const fetchSubjects = useCallback(async () => {
@@ -151,9 +153,9 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
       .map((s) => {
         const sub = subjects.find((x) => x.id === s.subjectId) || getSubjectById(s.subjectId);
         if (!sub) return null;
-        // Try to match by id first; fall back to any section (handles MongoDB _id)
-        const sec = (sub.sections || []).find((x) => x.id === s.sectionId)
-          || (sub.sections || [])[0];
+        const sec = (sub.sections || []).find(
+          (x) => x.id === s.sectionId || x._id === s.sectionId
+        );
         if (!sec) return null;
         const schedule = sec.schedule || { day: sec.days, time: sec.time, room: sec.room };
         return {
@@ -308,7 +310,9 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                 {selectedSubjects.map((s) => {
                   const sub = subjects.find((x) => x.id === s.subjectId) || getSubjectById(s.subjectId);
                   if (!sub) return null;
-                  const sec = (sub.sections || []).find((x) => x.id === s.sectionId || x._id === s.sectionId) || (sub.sections || [])[0];
+                  const sec = (sub.sections || []).find(
+                    (x) => x.id === s.sectionId || x._id === s.sectionId
+                  );
                   const sched = sec?.schedule || { day: sec?.days, time: sec?.time, room: sec?.room };
                   return (
                     <tr key={s.subjectId} className="hover:bg-slate-50/50 transition-colors">
@@ -375,8 +379,8 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
             <h2 className="text-2xl font-heading font-extrabold text-univ-navy mb-1">Subject Enrollment</h2>
             <p className="text-sm text-slate-500 font-medium leading-relaxed">
               Select subjects and sections for your curriculum.
-              {student?.academicTerm && (
-                <span className="ml-1 font-extrabold text-univ-blue">{student.academicTerm}</span>
+              {academicTermLabel && (
+                <span className="ml-1 font-extrabold text-univ-blue">{academicTermLabel}</span>
               )}
             </p>
           </div>
@@ -482,11 +486,6 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
                                 {sub.units} Units
                               </span>
-                              {sub.isElective && (
-                                <span className="text-[9px] font-extrabold text-violet-600 bg-violet-50 border border-violet-100 px-1.5 py-0.5 rounded-md uppercase">
-                                  GE Elective
-                                </span>
-                              )}
                             </div>
                             <h4 className="text-sm font-extrabold text-univ-navy leading-snug">{sub.name}</h4>
                           </div>
@@ -629,7 +628,9 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                   selectedSubjects.map((s) => {
                     const sub = subjects.find((x) => x.id === s.subjectId) || getSubjectById(s.subjectId);
                     if (!sub) return null;
-                    const sec = (sub.sections || []).find((x) => x.id === s.sectionId || x._id === s.sectionId) || (sub.sections || [])[0];
+                    const sec = (sub.sections || []).find(
+                      (x) => x.id === s.sectionId || x._id === s.sectionId
+                    );
                     const sched = sec?.schedule || { day: sec?.days, time: sec?.time, room: sec?.room };
                     const isRemoving = removingId === s.subjectId;
 

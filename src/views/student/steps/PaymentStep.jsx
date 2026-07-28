@@ -199,7 +199,7 @@ export default function PaymentStep({ onNext, onBack }) {
             />
             <div className="grid grid-cols-2 gap-4">
               <FloatingInput
-                label="Expiration Date (MM/YY)"
+                label="Expiration Date"
                 id="cardExpiry"
                 icon={Calendar}
                 value={formValues.cardExpiry}
@@ -499,18 +499,15 @@ export default function PaymentStep({ onNext, onBack }) {
       {showValidationModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-premium-lg max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 text-[9px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded uppercase tracking-wider">Secure Payment</span>
-                <h3 className="text-sm font-extrabold text-univ-navy">Enter Payment Details</h3>
-              </div>
+            <div className="relative flex items-center justify-center border-b border-slate-100 bg-slate-50 p-6">
+              <h3 className="text-center text-sm font-extrabold text-univ-navy">Enter Payment Details</h3>
               <button 
                 type="button"
                 onClick={() => {
                   setShowValidationModal(false);
                   setErrors({});
                 }} 
-                className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-all cursor-pointer"
+                className="absolute right-6 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-all cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>

@@ -13,10 +13,12 @@ export default function AdmissionView() {
   const [selectedStudentId, setSelectedStudentId] = useState(null);
 
   // Compute notification badges
-  const validStudents = useMemo(() => students.filter(s => s.firstName?.trim() || s.lastName?.trim()), [students]);
+  const validStudents = useMemo(
+    () => students.filter((student) => student.status !== 'registration' && (student.firstName?.trim() || student.lastName?.trim())),
+    [students],
+  );
 
-  const pendingCount = validStudents.filter(s => s.status === 'registration').length;
-  const incompleteCount = validStudents.filter(s => s.status === 'documents_submitted').length; // Waiting for verification
+  const reviewCount = validStudents.filter(s => s.status === 'documents_submitted').length;
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
@@ -41,9 +43,6 @@ export default function AdmissionView() {
       case 'dashboard':
       case 'reports':
         return <DashboardOverview students={validStudents} onNavigate={handleTabChange} />;
-      
-      case 'pending':
-        return <ApplicantManagement students={validStudents} initialFilter="pending" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="pending" />;
       
       case 'approved':
         return <ApplicantManagement students={validStudents} initialFilter="approved" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="approved" />;
@@ -75,8 +74,7 @@ export default function AdmissionView() {
       <AdmissionSidebar 
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
-        pendingCount={pendingCount}
-        incompleteCount={incompleteCount}
+        reviewCount={reviewCount}
       />
       
       <main className="flex-1 overflow-hidden flex flex-col">

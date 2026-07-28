@@ -109,6 +109,26 @@ export async function enrichSubjectWithLiveSections(subject) {
   const liveSections = await Section.find({ subjectId: subject.id, isActive: { $ne: false } }).lean();
   const liveMap = new Map(liveSections.map((s) => [s.sectionCode, s]));
 
+  // Once admin creates live sections, those are the schedule source of truth.
+  // Do not show legacy static sections beside the premade live schedule.
+  if (liveSections.length > 0) {
+    return {
+      ...subject,
+      sections: liveSections.map((live) => ({
+        id: live._id.toString(),
+        code: live.sectionCode,
+        instructor: live.instructor || '',
+        maxSlots: live.maxSlots ?? 40,
+        enrolledCount: live.enrolledCount ?? 0,
+        schedule: {
+          day: live.days,
+          time: live.time,
+          room: live.room || '',
+        },
+      })),
+    };
+  }
+
   // Track which live sectionCodes were matched to a static entry
   const matchedLiveCodes = new Set();
 
@@ -181,16 +201,27 @@ async function resolveSection(subjectId, sectionId) {
 
   if (staticSection) {
     liveSection = await Section.findOne({ subjectId: subject.id, sectionCode: staticSection.code }).lean();
+    if (!liveSection) {
+      const hasLiveSchedule = await Section.exists({
+        subjectId: subject.id,
+        isActive: { $ne: false },
+      });
+      if (hasLiveSchedule) return null;
+    }
   } else {
     // 2. Try MongoDB Section collection by _id or sectionCode
-    try {
-      liveSection = await Section.findOne({
-        $or: [
-          { _id: sectionId },
-          { subjectId: subject.id, sectionCode: sectionId },
-        ],
-      }).lean();
-    } catch (_) { /* invalid ObjectId shape */ }
+    liveSection = await Section.findOne({
+      subjectId: subject.id,
+      sectionCode: sectionId,
+    }).lean();
+
+    if (!liveSection) {
+      try {
+        liveSection = await Section.findById(sectionId).lean();
+      } catch {
+        // sectionId is not a MongoDB ObjectId
+      }
+    }
 
     if (liveSection) {
       staticSection = (subject.sections || []).find((s) => s.code === liveSection.sectionCode) || {
@@ -202,16 +233,7 @@ async function resolveSection(subjectId, sectionId) {
         enrolledCount: liveSection.enrolledCount,
       };
     } else {
-      // 3. Fallback: synthesize section for auto-assigned default section IDs (e.g., 'cs101-a')
-      const codeLabel = (sectionId || 'A').toUpperCase();
-      staticSection = {
-        id: sectionId || `${subject.id}-a`,
-        code: codeLabel.includes('-') ? codeLabel : `${subject.code || subject.id}-${codeLabel}`,
-        schedule: { day: 'TBA', time: 'TBA', room: 'TBA' },
-        instructor: 'TBA',
-        maxSlots: 40,
-        enrolledCount: 0,
-      };
+      return null;
     }
   }
 
@@ -220,6 +242,40 @@ async function resolveSection(subjectId, sectionId) {
     : staticSection.schedule || { day: 'TBA', time: 'TBA' };
 
   return { subject, staticSection, liveSection, schedule };
+}
+
+/**
+ * Resolve only sections saved on a student's enrollment record.
+ * This prevents document generation from guessing a section when IDs no
+ * longer match the current curriculum response.
+ */
+export async function getResolvedEnrolledSchedule(selectedSubjects = []) {
+  const rows = await Promise.all(
+    selectedSubjects.map(async ({ subjectId, sectionId }) => {
+      const resolved = await resolveSection(subjectId, sectionId);
+      if (!resolved) return null;
+
+      const { subject, staticSection, liveSection, schedule } = resolved;
+      const sectionCode = liveSection?.sectionCode || staticSection?.code || sectionId;
+
+      return {
+        subjectId: subject.id,
+        subjectCode: subject.code,
+        subjectName: subject.name,
+        units: subject.units,
+        sectionId,
+        sectionCode,
+        schedule: {
+          day: schedule?.day || 'TBA',
+          time: schedule?.time || 'TBA',
+          room: schedule?.room || liveSection?.room || staticSection?.room || 'TBA',
+        },
+        instructor: liveSection?.instructor || staticSection?.instructor || 'TBA',
+      };
+    })
+  );
+
+  return rows.filter(Boolean);
 }
 
 export async function validateAddSection(

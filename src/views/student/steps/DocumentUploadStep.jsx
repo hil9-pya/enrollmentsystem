@@ -158,7 +158,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
   const docsToUploadOnline = requiredDocs.filter((d) => {
     if (submitOnCampus) {
       if (enrollmentType === 'new') return d.id === 'form-138';
-      if (enrollmentType === 'transfer') return d.id === 'transfer-credentials';
+      if (enrollmentType === 'transfer') return d.id === 'honorable-dismissal';
       if (enrollmentType === 'returning') return d.id === 'readmission-form';
       return false;
     }

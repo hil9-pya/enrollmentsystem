@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Users, FileText, Settings, PieChart, Inbox, FileWarning, FolderCheck } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, FileWarning, FolderCheck } from 'lucide-react';
 
-export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount, incompleteCount }) {
+export default function AdmissionSidebar({ activeTab, onTabChange, reviewCount }) {
   const tabs = [
     {
       group: 'Dashboard',
@@ -12,9 +12,9 @@ export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount,
     {
       group: 'Applications',
       items: [
-        { id: 'pending', label: 'Pending Applications', icon: Inbox, badge: pendingCount },
+        { id: 'verification', label: 'Applications for Review', icon: FileText, badge: reviewCount },
         { id: 'approved', label: 'Approved Applications', icon: FolderCheck },
-        { id: 'rejected', label: 'Rejected Applications', icon: FileWarning },
+        { id: 'rejected', label: 'Incomplete / Resubmission Required', icon: FileWarning },
       ],
     },
     {
@@ -23,13 +23,6 @@ export default function AdmissionSidebar({ activeTab, onTabChange, pendingCount,
         { id: 'management', label: 'All Applicants', icon: Users },
       ],
     },
-    {
-      group: 'Documents',
-      items: [
-        { id: 'verification', label: 'Document Verification', icon: FileText, badge: incompleteCount },
-      ],
-    },
-
     {
       group: 'Settings',
       items: [

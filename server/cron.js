@@ -9,7 +9,7 @@ export const startCleanupTask = () => {
       
       const result = await Student.deleteMany({
         status: 'registration',
-        createdAt: { $lt: thirtyDaysAgo }
+        updatedAt: { $lt: thirtyDaysAgo }
       });
 
       if (result.deletedCount > 0) {

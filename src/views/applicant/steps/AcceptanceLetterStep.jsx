@@ -99,7 +99,7 @@ export default function AcceptanceLetterStep() {
           <button
             onClick={() => {
               // Redirect to student portal
-              window.location.href = '/?portal=student';
+              window.location.href = '/?portal=gateway&tab=student';
             }}
             className="flex items-center gap-2 px-6 py-3 bg-univ-navy hover:bg-univ-navy/90 text-white rounded-xl font-bold transition-all shadow-sm group"
           >

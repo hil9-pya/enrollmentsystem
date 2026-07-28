@@ -3,8 +3,8 @@ import { Briefcase, ArrowLeft } from 'lucide-react';
 import LoginView from '../auth/LoginView';
 import ApplicantPortalAccess from '../applicant/ApplicantPortalAccess';
 
-export default function GatewayView({ onVerified, onBack }) {
-  const [viewMode, setViewMode] = useState('applicant'); // 'applicant', 'student', 'staff', 'admin'
+export default function GatewayView({ onVerified, onBack, initialView = 'applicant' }) {
+  const [viewMode, setViewMode] = useState(initialView); // 'applicant', 'student', 'staff', 'admin'
 
   return (
     <div className="flex h-screen w-full overflow-hidden font-sans bg-[#f4f6fb]">
