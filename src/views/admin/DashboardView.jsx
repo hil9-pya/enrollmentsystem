@@ -2,18 +2,19 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import {
-  Users, FileCheck, DollarSign, Clock, Search, Trash2, ShieldAlert,
-  CheckCircle, Sliders, RotateCcw, BarChart2, Settings, UserPlus,
-  Edit3, X, Save, Eye, Download, AlertTriangle, ChevronRight,
-  Shield, BookOpen, CreditCard, GraduationCap, TrendingUp, Activity,
-  BellRing, Lock, Unlock, Calendar, Bell, Plus, Loader2, FileText,
-  UserCog, Building2, RefreshCw, ExternalLink, ArrowRight, LayoutDashboard,
+  Users, FileCheck, DollarSign, Search, Trash2,
+  CheckCircle, Sliders, RotateCcw, BarChart2,
+  Edit3, X, Save, Download, AlertTriangle,
+  BookOpen, CreditCard, GraduationCap, TrendingUp, Activity,
+  Unlock, Calendar, Bell, Plus, Loader2, FileText,
+  Building2, ArrowRight,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { toast } from 'react-hot-toast';
 import StatusBadge from '../../components/StatusBadge';
 import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
+import AdminSidebar from './AdminSidebar';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_COLORS = {
@@ -33,7 +34,7 @@ const authFetch = (url, options = {}) => {
 const safeJson = async (res) => {
   if (!res.ok) {
     let errorMsg = `Server error (Status ${res.status})`;
-    try { const d = await res.json(); errorMsg = d.error || d.message || errorMsg; } catch (_) {}
+    try { const d = await res.json(); errorMsg = d.error || d.message || errorMsg; } catch {}
     throw new Error(errorMsg);
   }
   return res.json();
@@ -57,9 +58,16 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
   }, [visibleStudents]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Administration Overview</h1>
+        <p className="text-sm font-medium text-slate-500 mt-1">
+          Monitor enrollment operations, student activity, and system performance.
+        </p>
+      </div>
+
       {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           title="Total Enrolled" value={metrics.totalEnrolled}
           icon={<GraduationCap className="w-5 h-5" />} gradient="from-indigo-500 to-indigo-600"
@@ -88,7 +96,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Enrollment by Program */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="lg:col-span-2 bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Enrollments by Program</h2>
@@ -112,7 +120,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
         </div>
 
         {/* Pipeline Status */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Pipeline Status</h2>
@@ -146,7 +154,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
 
       {/* Monthly trend */}
       {monthlyData.length > 1 && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Registration Trend</h2>
@@ -175,7 +183,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
       )}
 
       {/* Recent Enrollees */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Recently Enrolled</h2>
           <button onClick={() => { setActiveTab('students'); setStatusFilter('enrolled'); }} className="text-xs text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1 cursor-pointer">
@@ -186,7 +194,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
           {recentEnrollees.length > 0 ? recentEnrollees.map((s) => (
             <div key={s.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                <div className="w-9 h-9 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
                   {(s.firstName?.[0] || 'S')}{(s.lastName?.[0] || 'T')}
                 </div>
                 <div>
@@ -241,10 +249,10 @@ function StudentEditModal({ student, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 bg-indigo-100 rounded-md flex items-center justify-center">
               <Edit3 className="w-4 h-4 text-indigo-600" />
             </div>
             <div>
@@ -258,25 +266,25 @@ function StudentEditModal({ student, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">First Name</label>
-              <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
+              <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Last Name</label>
-              <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
+              <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Email Address</label>
-            <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
+            <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Phone</label>
-              <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
+              <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Program</label>
-              <select value={form.programId} onChange={e => setForm(p => ({ ...p, programId: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+              <select value={form.programId} onChange={e => setForm(p => ({ ...p, programId: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="">— Not Selected —</option>
                 {PROGRAMS.map(prog => <option key={prog.id} value={prog.id}>{prog.id.toUpperCase()} – {prog.name}</option>)}
               </select>
@@ -284,12 +292,12 @@ function StudentEditModal({ student, onClose, onSave }) {
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Home Address</label>
-            <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
+            <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Enrollment Type</label>
-              <select value={form.enrollmentType} onChange={e => setForm(p => ({ ...p, enrollmentType: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+              <select value={form.enrollmentType} onChange={e => setForm(p => ({ ...p, enrollmentType: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="">— None —</option>
                 <option value="new">New Student</option>
                 <option value="transferee">Transferee</option>
@@ -299,7 +307,7 @@ function StudentEditModal({ student, onClose, onSave }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Payment Status</label>
-              <select value={form.paymentStatus} onChange={e => setForm(p => ({ ...p, paymentStatus: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+              <select value={form.paymentStatus} onChange={e => setForm(p => ({ ...p, paymentStatus: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="unpaid">Unpaid</option>
                 <option value="pending">Pending</option>
                 <option value="processing">Processing</option>
@@ -309,7 +317,7 @@ function StudentEditModal({ student, onClose, onSave }) {
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Enrollment Status</label>
-            <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+            <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
               <option value="registration">Registration</option>
               <option value="documents_submitted">Documents Submitted</option>
               <option value="documents_approved">Documents Approved</option>
@@ -328,7 +336,7 @@ function StudentEditModal({ student, onClose, onSave }) {
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Submitted Documents</label>
               <div className="space-y-2">
                 {student.documents.map((doc, i) => (
-                  <div key={i} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                  <div key={i} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
                       <FileText className="w-4 h-4 text-indigo-400 flex-shrink-0" />
                       <div>
@@ -348,8 +356,8 @@ function StudentEditModal({ student, onClose, onSave }) {
           )}
         </div>
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <button onClick={onClose} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all cursor-pointer disabled:opacity-60 shadow-sm shadow-indigo-200">
+          <button onClick={onClose} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Save Changes
           </button>
@@ -360,7 +368,7 @@ function StudentEditModal({ student, onClose, onSave }) {
 }
 
 // ─── Directory Tab ─────────────────────────────────────────────────────────────
-function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) {
+function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentUpdated, dispatch }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [programFilter, setProgramFilter] = useState('');
@@ -409,7 +417,7 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
+    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
       {editingStudent && (
         <StudentEditModal
           student={editingStudent}
@@ -418,14 +426,19 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
         />
       )}
 
+      <div>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h1>
+        <p className="text-sm font-medium text-slate-500 mt-1">{description}</p>
+      </div>
+
       {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch gap-3">
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text" placeholder="Search by name, email or student ID…"
             value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -435,13 +448,13 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
             { value: programFilter, onChange: setProgramFilter, options: [['', 'All Programs'], ...PROGRAMS.map(p => [p.id, p.id.toUpperCase()])] },
           ].map((sel, i) => (
             <select key={i} value={sel.value} onChange={e => sel.onChange(e.target.value)}
-              className="border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all">
+              className="border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all">
               {sel.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </select>
           ))}
           {(statusFilter || programFilter || paymentFilter || searchQuery) && (
             <button onClick={() => { setStatusFilter(''); setProgramFilter(''); setPaymentFilter(''); setSearchQuery(''); }}
-              className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
+              className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-all cursor-pointer flex items-center gap-1.5">
               <X className="w-3 h-3" /> Clear
             </button>
           )}
@@ -455,7 +468,7 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
         <table className="w-full text-left text-xs min-w-[960px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
@@ -478,7 +491,7 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
                 <tr key={stud.id} className="hover:bg-slate-50/60 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                      <div className="w-9 h-9 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                         {(stud.firstName?.[0] || 'S')}{(stud.lastName?.[0] || 'T')}
                       </div>
                       <div>
@@ -533,12 +546,12 @@ function DirectoryTab({ visibleStudents, onTrash, onStudentUpdated, dispatch }) 
                     </div>
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button onClick={() => setEditingStudent(stud)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer" title="Edit student record">
+                    <button onClick={() => setEditingStudent(stud)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit student record">
                       <Edit3 className="w-4 h-4" />
                     </button>
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button onClick={() => onTrash(stud.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer" title="Move to trash">
+                    <button onClick={() => onTrash(stud.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Move to trash">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -570,7 +583,7 @@ function ActionBtn({ color, onClick, label }) {
 }
 
 // ─── Trash Tab ─────────────────────────────────────────────────────────────────
-function TrashTab({ token }) {
+function TrashTab() {
   const { confirm } = useConfirm();
   const [trashedStudents, setTrashedStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -580,7 +593,7 @@ function TrashTab({ token }) {
       const res = await authFetch('/api/admin/students/deleted');
       const data = await safeJson(res);
       setTrashedStudents(data);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load trash');
     } finally { setLoading(false); }
   }, []);
@@ -611,9 +624,16 @@ function TrashTab({ token }) {
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center gap-3">
-        <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0" />
+    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Trash Bin</h1>
+        <p className="text-sm font-medium text-slate-500 mt-1">
+          Restore deleted student records or remove them permanently.
+        </p>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 flex items-center gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
         <div>
           <p className="text-sm font-bold text-amber-900">Trash Bin</p>
           <p className="text-xs text-amber-700 mt-0.5">Deleted students are stored here. You can restore them or permanently delete them from the database.</p>
@@ -623,7 +643,7 @@ function TrashTab({ token }) {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
@@ -639,12 +659,11 @@ function TrashTab({ token }) {
               {trashedStudents.length === 0 ? (
                 <tr><td colSpan={6} className="py-16 text-center text-slate-400">Trash bin is empty.</td></tr>
               ) : trashedStudents.map((stud) => {
-                const prog = PROGRAMS.find(p => p.id === stud.programId);
                 return (
                   <tr key={stud.id} className="hover:bg-slate-50/40 transition-colors opacity-75">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs">
+                        <div className="w-9 h-9 rounded-md bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs">
                           {(stud.firstName?.[0] || 'S')}{(stud.lastName?.[0] || 'T')}
                         </div>
                         <div>
@@ -659,12 +678,12 @@ function TrashTab({ token }) {
                       <span className="px-2 py-0.5 text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded-lg uppercase">{stud.paymentStatus || 'unpaid'}</span>
                     </td>
                     <td className="px-5 py-4 text-center">
-                      <button onClick={() => handleRestore(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                      <button onClick={() => handleRestore(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-bold transition-all cursor-pointer">
                         <RotateCcw className="w-3.5 h-3.5" /> Restore
                       </button>
                     </td>
                     <td className="px-5 py-4 text-center">
-                      <button onClick={() => handlePermanentDelete(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                      <button onClick={() => handlePermanentDelete(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-xs font-bold transition-all cursor-pointer">
                         <Trash2 className="w-3.5 h-3.5" /> Delete Forever
                       </button>
                     </td>
@@ -694,7 +713,7 @@ function StaffTab() {
       const res = await authFetch('/api/admin/users');
       const data = await safeJson(res);
       setUsers(data);
-    } catch (err) { toast.error('Failed to load staff'); }
+    } catch { toast.error('Failed to load staff'); }
     finally { setLoading(false); }
   }, []);
 
@@ -743,24 +762,24 @@ function StaffTab() {
     } catch (err) { toast.error(err.message || 'Failed to delete'); }
   };
 
-  const roleIcons = { admin: Shield, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
+  const roleIcons = { admin: Building2, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300">
+    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Staff Accounts</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Manage all system users and their department access levels.</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Accounts</h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">Manage all system users and their department access levels.</p>
         </div>
         <button onClick={() => { setEditingUser(null); setForm({ username: '', email: '', firstName: '', lastName: '', role: 'admission', password: '' }); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm shadow-indigo-200">
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-md transition-colors cursor-pointer shadow-sm">
           <Plus className="w-4 h-4" /> Add Staff Account
         </button>
       </div>
 
       {/* Create / Edit Form */}
       {showForm && (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 animate-in slide-in-from-top-2 duration-200">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-sm font-bold text-slate-900">{editingUser ? 'Edit Staff Account' : 'Create New Staff Account'}</h3>
             <button onClick={() => { setShowForm(false); setEditingUser(null); }} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer transition-all"><X className="w-4 h-4" /></button>
@@ -776,13 +795,13 @@ function StaffTab() {
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{f.label}</label>
                 <input type={f.type || 'text'} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all" />
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all" />
               </div>
             ))}
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Role / Department *</label>
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="admin">Admin (Superuser)</option>
                 <option value="admission">Admission Office</option>
                 <option value="adviser">Academic Adviser</option>
@@ -796,13 +815,13 @@ function StaffTab() {
               </label>
               <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                 placeholder={editingUser ? '••••••••' : 'Min. 6 characters'}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all" />
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all" />
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-5 pt-5 border-t border-slate-100">
-            <button onClick={() => { setShowForm(false); setEditingUser(null); }} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition-all">Cancel</button>
+            <button onClick={() => { setShowForm(false); setEditingUser(null); }} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 cursor-pointer transition-colors">Cancel</button>
             <button onClick={handleSubmit} disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-indigo-200">
+              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md cursor-pointer transition-colors disabled:opacity-60 shadow-sm">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               {editingUser ? 'Save Changes' : 'Create Account'}
             </button>
@@ -814,7 +833,7 @@ function StaffTab() {
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[600px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
@@ -834,7 +853,7 @@ function StaffTab() {
                   <tr key={user._id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        <div className="w-9 h-9 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                           {(user.firstName?.[0] || user.username?.[0] || 'U').toUpperCase()}
                         </div>
                         <div>
@@ -853,10 +872,10 @@ function StaffTab() {
                     <td className="px-5 py-4 text-slate-500">{user.email}</td>
                     <td className="px-5 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer" title="Edit account">
+                        <button onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit account">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer" title="Delete account">
+                        <button onClick={() => handleDelete(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Delete account">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -903,16 +922,17 @@ function SettingsTab() {
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-300 max-w-2xl">
+    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
       <div>
-        <h2 className="text-sm font-bold text-slate-900">System Configuration</h2>
-        <p className="text-xs text-slate-400 mt-0.5">Configure global enrollment settings and system parameters.</p>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">System Configuration</h1>
+        <p className="text-sm font-medium text-slate-500 mt-1">Configure global enrollment settings and system parameters.</p>
       </div>
 
+      <div className="max-w-3xl space-y-5">
       {/* Term Settings */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-5">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
+          <div className="w-8 h-8 bg-indigo-100 rounded-md flex items-center justify-center">
             <Calendar className="w-4 h-4 text-indigo-600" />
           </div>
           <div>
@@ -923,7 +943,7 @@ function SettingsTab() {
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Active Academic Term</label>
           <select value={settings.activeTerm} onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
-            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
             <option value="1st Semester">1st Semester</option>
             <option value="2nd Semester">2nd Semester</option>
           </select>
@@ -931,9 +951,9 @@ function SettingsTab() {
       </div>
 
       {/* Toggles */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-5">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
+          <div className="w-8 h-8 bg-amber-100 rounded-md flex items-center justify-center">
             <Sliders className="w-4 h-4 text-amber-600" />
           </div>
           <div>
@@ -968,9 +988,9 @@ function SettingsTab() {
       </div>
 
       {/* Announcement */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-8 h-8 bg-rose-100 rounded-xl flex items-center justify-center">
+          <div className="w-8 h-8 bg-rose-100 rounded-md flex items-center justify-center">
             <Bell className="w-4 h-4 text-rose-600" />
           </div>
           <div>
@@ -982,58 +1002,56 @@ function SettingsTab() {
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Announcement Message</label>
           <textarea value={settings.announcement} onChange={e => setSettings(p => ({ ...p, announcement: e.target.value }))}
             rows={4} placeholder="Enter an important system-wide notice here…"
-            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all resize-none" />
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all resize-none" />
           <p className="text-[10px] text-slate-400 mt-1">Leave blank to hide announcement banner.</p>
         </div>
       </div>
 
       <button onClick={handleSave} disabled={saving}
-        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-all cursor-pointer disabled:opacity-60 shadow-sm shadow-indigo-200">
+        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Save Settings
       </button>
+      </div>
     </div>
   );
 }
 
 // ─── Metric Card ───────────────────────────────────────────────────────────────
 function MetricCard({ title, value, icon, gradient, sub, onClick }) {
+  const iconTone = gradient.includes('amber')
+    ? 'text-amber-600 bg-amber-50'
+    : gradient.includes('blue')
+      ? 'text-blue-600 bg-blue-50'
+      : gradient.includes('emerald')
+        ? 'text-emerald-600 bg-emerald-50'
+        : 'text-univ-indigo bg-indigo-50';
+
   return (
     <div onClick={onClick}
-      className="relative bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group overflow-hidden">
+      className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between gap-3 cursor-pointer hover:border-slate-300 hover:shadow transition-all">
       <div className="flex items-start justify-between">
-        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{title}</p>
-        <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white shadow-sm`}>
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">{title}</p>
+        <div className={`p-1.5 rounded-md shrink-0 ${iconTone}`}>
           {icon}
         </div>
       </div>
-      <p className="text-2xl font-extrabold text-slate-900 tracking-tight leading-none">{value}</p>
+      <p className="text-2xl font-extrabold text-slate-900 leading-none mt-1">{value}</p>
       <p className="text-[10px] text-slate-400 font-medium">{sub}</p>
-      <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
     </div>
   );
 }
 
 // ─── Navigation items ──────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { id: 'analytics', label: 'Analytics', icon: LayoutDashboard, desc: 'Overview & metrics' },
-  { id: 'applicants', label: 'Applicant Directory', icon: UserPlus, desc: 'Manage applicants' },
-  { id: 'students', label: 'Student Database', icon: Users, desc: 'Registrar records' },
-  { id: 'courses', label: 'Course Management', icon: BookOpen, desc: 'Sections & offerings' },
-  { id: 'trash', label: 'Trash Bin', icon: Trash2, desc: 'Deleted records' },
-  { id: 'staff', label: 'Staff Management', icon: UserCog, desc: 'System users' },
-  { id: 'settings', label: 'Settings', icon: Settings, desc: 'System configuration' },
-];
-
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function DashboardView() {
   const { state, dispatch } = useEnrollment();
   const { confirm } = useConfirm();
   const { students } = state;
   const [activeTab, setActiveTab] = useState('analytics');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [programFilter, setProgramFilter] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState('');
+  const [, setStatusFilter] = useState('');
+  const [, setProgramFilter] = useState('');
+  const [, setPaymentFilter] = useState('');
 
   const visibleStudents = useMemo(() => students.filter(s => !s.isDeleted && (s.firstName?.trim() || s.lastName?.trim())), [students]);
 
@@ -1071,88 +1089,15 @@ export default function DashboardView() {
     }
   };
 
-  const handleStudentUpdated = (updated) => {
+  const handleStudentUpdated = () => {
     // The context's polling will re-fetch automatically, but we can trigger local update
   };
 
-  const activeNav = NAV_ITEMS.find(n => n.id === activeTab);
-
   return (
-    <div className="flex h-full overflow-hidden bg-slate-50">
-      {/* Sidebar Navigation */}
-      <aside className="w-56 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
-        {/* Portal header */}
-        <div className="px-5 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-slate-900">Admin Portal</p>
-              <p className="text-[10px] text-slate-400">NCST Enrollment System</p>
-            </div>
-          </div>
-        </div>
+    <div className="flex h-full bg-[#f4f6fb]">
+      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* Nav items */}
-        <nav className="flex-1 p-3 space-y-1">
-          {NAV_ITEMS.map(item => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button key={item.id} onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group ${
-                  isActive ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}>
-                <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
-                <div className="min-w-0">
-                  <p className={`text-xs font-semibold truncate ${isActive ? 'text-white' : ''}`}>{item.label}</p>
-                  <p className={`text-[9px] truncate ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}>{item.desc}</p>
-                </div>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Quick stats footer */}
-        <div className="p-3 border-t border-slate-100 space-y-2">
-          <div className="bg-slate-50 rounded-xl px-3 py-2.5">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Enrolled</span>
-              <span className="text-xs font-extrabold text-indigo-600">{metrics.totalEnrolled}</span>
-            </div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending</span>
-              <span className="text-xs font-extrabold text-amber-600">{metrics.pendingValidation}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Processing</span>
-              <span className="text-xs font-extrabold text-blue-600">{metrics.activeProcessing}</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto">
-        {/* Top bar */}
-        <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium mb-1">
-              <span>Admin Portal</span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-indigo-600 font-semibold">{activeNav?.label}</span>
-            </div>
-            <h1 className="text-base font-extrabold text-slate-900">{activeNav?.label}</h1>
-          </div>
-          <div className="flex items-center gap-2 text-[10px] text-slate-400">
-            <Activity className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="font-medium">{visibleStudents.length} active students</span>
-          </div>
-        </div>
-
-        {/* Tab content */}
-        <div className="p-8">
+      <main className="flex-1 overflow-hidden flex flex-col">
           {activeTab === 'analytics' && (
             <AnalyticsTab
               metrics={metrics}
@@ -1165,6 +1110,8 @@ export default function DashboardView() {
           )}
           {activeTab === 'applicants' && (
             <DirectoryTab
+              title="Applicant Directory"
+              description="Review applicant records and manage enrollment progress."
               visibleStudents={visibleStudents.filter(s => s.id?.startsWith('APP-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
@@ -1173,6 +1120,8 @@ export default function DashboardView() {
           )}
           {activeTab === 'students' && (
             <DirectoryTab
+              title="Student Database"
+              description="Manage official student records, statuses, and account details."
               visibleStudents={visibleStudents.filter(s => s.id?.startsWith('STU-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
@@ -1183,7 +1132,6 @@ export default function DashboardView() {
           {activeTab === 'staff' && <StaffTab />}
           {activeTab === 'settings' && <SettingsTab />}
           {activeTab === 'courses' && <CourseManagementTab />}
-        </div>
       </main>
     </div>
   );
