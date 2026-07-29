@@ -245,7 +245,7 @@ export default function ApplicantView() {
                 getStatusRank(student?.status) >= 2
                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/40'
                   : 'bg-univ-blue/10 text-univ-blue border border-univ-blue/20'
-              }`}>{getStatusRank(student?.status) >= 2 ? '✓ Approved Applicant' : 'Active Applicant'}</span>
+              }`}>{getStatusRank(student?.status) >= 2 ? 'Approved' : 'Active Applicant'}</span>
               <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
                 {student.firstName} {student.lastName}
               </p>

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ArrowRight, Inbox, Activity, CheckCircle, Clock, Users } from 'lucide-react';
+import { ArrowRight, Inbox, Activity, CheckCircle, Clock } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
@@ -8,7 +8,6 @@ export default function DashboardOverview({ students, onNavigate }) {
   const metrics = useMemo(() => {
     const totalApplicants = students.length;
     const pendingReview = students.filter(s => s.status === 'documents_submitted');
-    const justRegistered = students.filter(s => s.status === 'registration');
     const approved = students.filter(s => [
       'documents_approved',
       'advising_pending',
@@ -19,11 +18,10 @@ export default function DashboardOverview({ students, onNavigate }) {
     ].includes(s.status));
 
     const recentSubmissions = [...students]
-      .filter(s => s.status !== 'registration')
       .sort((a, b) => b.id.localeCompare(a.id))
       .slice(0, 8); // increased to 8 since rows are tighter
 
-    return { totalApplicants, pendingReview, justRegistered, approved, recentSubmissions };
+    return { totalApplicants, pendingReview, approved, recentSubmissions };
   }, [students]);
 
   return (
@@ -80,15 +78,7 @@ export default function DashboardOverview({ students, onNavigate }) {
                Applicant Pipeline
             </h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <PipelineStat 
-                title="Registered" 
-                count={metrics.justRegistered.length} 
-                total={metrics.totalApplicants}
-                icon={<Users className="w-4 h-4" />}
-                colorClass="text-slate-600 bg-slate-100"
-                barColorClass="bg-slate-300"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <PipelineStat 
                 title="Awaiting Review" 
                 count={metrics.pendingReview.length} 

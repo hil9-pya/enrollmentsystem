@@ -108,6 +108,7 @@ const StudentSchema = new mongoose.Schema(
     },
 
     documents: { type: [DocumentSchema], default: [] },
+    approvedSubjectIds: { type: [String], default: [] },
     selectedSubjects: { type: [SelectedSubjectSchema], default: [] },
     tuitionBreakdown: { type: [TuitionLineSchema], default: [] },
     totalTuition: { type: Number, default: 0 },
@@ -119,6 +120,7 @@ const StudentSchema = new mongoose.Schema(
     scheduleGenerated: { type: Boolean, default: false },
     registrationFormGenerated: { type: Boolean, default: false },
     receiptGenerated: { type: Boolean, default: false },
+    enrolledAt: { type: Date, default: null },
 
     admissionNotes: { type: String, default: '' },
     adviserNotes: { type: String, default: '' },

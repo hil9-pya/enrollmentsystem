@@ -30,7 +30,7 @@ const safeJson = async (res) => {
 
 
 export function EnrollmentProvider({ children }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [currentRole, setRole] = useState('student');
   const [students, setStudents] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -84,7 +84,9 @@ export function EnrollmentProvider({ children }) {
   // 1b. Fetch active student profile from backend when activeStudentId changes and poll periodically
   useEffect(() => {
     async function loadActiveStudent() {
-      if (!activeStudentId) return;
+      // Staff data comes only from the protected staff list. Do not re-add an
+      // applicant draft retained in browser storage after staff sign-in.
+      if (!activeStudentId || (token && user?.role !== 'student')) return;
       try {
         const res = await fetch(`/api/students/${activeStudentId}`);
         const data = await safeJson(res);
@@ -106,11 +108,12 @@ export function EnrollmentProvider({ children }) {
 
     const interval = setInterval(loadActiveStudent, 2000);
     return () => clearInterval(interval);
-  }, [activeStudentId]);
+  }, [activeStudentId, token, user?.role]);
 
   // 2. Custom Dispatch Interceptor to handle async HTTP calls and synchronize state
   const dispatch = useCallback(async (action) => {
     const { type, payload } = action;
+    const isSilentUpdate = type === 'UPDATE_ACTIVE_STUDENT';
 
     // A. Handle Synchronous UI actions locally
     if (type === 'SET_ROLE') {
@@ -124,7 +127,9 @@ export function EnrollmentProvider({ children }) {
 
     // B. Handle Database mutations over REST API
     try {
-      setIsLoading(true);
+      if (!isSilentUpdate) {
+        setIsLoading(true);
+      }
       let updatedStudent = null;
 
       if (type === 'SET_ENROLLMENT_TYPE') {
@@ -212,10 +217,18 @@ export function EnrollmentProvider({ children }) {
       
       else if (type === 'SET_SELECTED_SUBJECTS') {
         // Used by the scheduler: the server already validated and persisted the
-        // new selectedSubjects array; just update local state to stay in sync.
+        // new selectedSubjects array and refreshed tuition fields.
         const currentStudent = students.find(s => s.id === activeStudentId || s.studentId === activeStudentId);
         if (currentStudent) {
-          updatedStudent = { ...currentStudent, selectedSubjects: payload };
+          const selectedSubjects = Array.isArray(payload)
+            ? payload
+            : (payload?.selectedSubjects || currentStudent.selectedSubjects || []);
+          updatedStudent = {
+            ...currentStudent,
+            selectedSubjects,
+            tuitionBreakdown: payload?.tuitionBreakdown ?? currentStudent.tuitionBreakdown,
+            totalTuition: payload?.totalTuition ?? currentStudent.totalTuition,
+          };
         }
       } 
       
@@ -303,10 +316,11 @@ export function EnrollmentProvider({ children }) {
       } 
       
       else if (type === 'UPDATE_STUDENT_SUBJECTS') {
-        // Ensure subjects are formatted as { subjectId, sectionId }
+        // Adviser assigns subjects only. Student selects concrete sections
+        // later in the scheduler.
         const subjects = payload.subjects.map(s => ({
           subjectId: s.subjectId,
-          sectionId: s.sectionId || `${s.subjectId}-a` // default to section A if not specified
+          ...(s.sectionId ? { sectionId: s.sectionId } : {}),
         }));
         const res = await authFetch(`/api/admin/students/${payload.studentId}/subjects`, {
           method: 'POST',
@@ -361,7 +375,9 @@ export function EnrollmentProvider({ children }) {
       console.error('Failed to sync action with backend database:', err);
       toast.error(err.message || 'Network Error: Could not connect to enrollment server.');
     } finally {
-      setIsLoading(false);
+      if (!isSilentUpdate) {
+        setIsLoading(false);
+      }
     }
   }, [students, activeStudentId]);
 

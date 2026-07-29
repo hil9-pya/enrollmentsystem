@@ -17,9 +17,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
         (s.email && s.email.toLowerCase().includes(q));
 
       let matchesStatus = true;
-      if (statusFilter === 'pending') {
-        matchesStatus = s.status === 'registration';
-      } else if (statusFilter === 'approved') {
+      if (statusFilter === 'approved') {
         matchesStatus = [
           'documents_approved', 
           'advising_pending', 
@@ -72,8 +70,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
             className="flex-1 md:flex-none border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-univ-indigo cursor-pointer"
           >
             <option value="">All Applicants</option>
-            <option value="pending">Pending Applications</option>
-            <option value="documents_submitted">Documents Submitted</option>
+            <option value="documents_submitted">Applications for Review</option>
             <option value="approved">Approved Applications</option>
             <option value="rejected">Incomplete / Rejected</option>
           </select>

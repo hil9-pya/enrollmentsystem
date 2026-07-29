@@ -41,7 +41,11 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   useEffect(() => {
     if (selectedStudent) {
       setAcademicRecord(selectedStudent.academicRecord || []);
-      setSelectedSubjects(selectedStudent.selectedSubjects?.map(s => s.subjectId) || []);
+      setSelectedSubjects(
+        selectedStudent.approvedSubjectIds?.length > 0
+          ? selectedStudent.approvedSubjectIds
+          : selectedStudent.selectedSubjects?.map(s => s.subjectId) || []
+      );
       setAdviserNotes(selectedStudent.adviserNotes || '');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

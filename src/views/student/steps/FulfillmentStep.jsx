@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { CheckCircle, FileDown, Clock, ShieldCheck, Printer, Download, Home, ArrowRight } from 'lucide-react';
+import { CheckCircle, FileDown, Clock, ShieldCheck, Printer, Home } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import { ACADEMIC_TERMS, PROGRAMS } from '../../../data/mockData';
 
 // Helper to preload the university logo image
 const loadLogo = () => {
@@ -79,18 +80,163 @@ const drawFooter = (doc, pageNum) => {
   doc.text(`Page ${pageNum}`, 195, 281, { align: 'right' });
 };
 
+function findMatchingSection(subject, selectedSectionId) {
+  const sections = subject?.sections || [];
+  if (sections.length === 0) return null;
+
+  const target = String(selectedSectionId || '').trim().toLowerCase();
+  const match = sections.find((section) => {
+    const candidates = [section.id, section._id, section.code, section.sectionCode];
+    return candidates.some((candidate) => String(candidate || '').trim().toLowerCase() === target);
+  });
+
+  return match || null;
+}
+
+function getSectionSchedule(section) {
+  if (!section) {
+    return { day: '—', time: '—', room: '—' };
+  }
+
+  return section.schedule || {
+    day: section.days || '—',
+    time: section.time || '—',
+    room: section.room || '—',
+  };
+}
+
+function getAcademicTermLabel(academicTerm) {
+  const term = ACADEMIC_TERMS.find(
+    (item) => item.id === academicTerm || item.label === academicTerm
+  );
+  return term?.label || academicTerm || '—';
+}
+
+function getProgramLabel(programId) {
+  return PROGRAMS.find((program) => program.id === programId)?.name
+    || String(programId || '—').toUpperCase();
+}
+
+function getEnrollmentDate(student) {
+  const value = student?.enrolledAt || student?.updatedAt;
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+}
+
+function truncatePdfText(value, maxLength = 24) {
+  const text = String(value || '—');
+  return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+}
+
 export default function FulfillmentStep({ onReturnToGateway }) {
   const { getActiveStudent, getSubjectById } = useEnrollment();
   const student = getActiveStudent();
+  const [logoImg, setLogoImg] = useState(null);
+  const [scheduleSubjects, setScheduleSubjects] = useState([]);
+  const [enrolledSchedule, setEnrolledSchedule] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+
+    loadLogo().then((img) => {
+      if (active) setLogoImg(img);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!student?.id) {
+      setScheduleSubjects([]);
+      setEnrolledSchedule([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadScheduleSubjects = async () => {
+      try {
+        const [subjectsRes, enrolledRes] = await Promise.all([
+          fetch(`/api/scheduler/${student.id}/subjects`),
+          fetch(`/api/scheduler/${student.id}/enrolled`),
+        ]);
+        const [subjectsData, enrolledData] = await Promise.all([
+          subjectsRes.json(),
+          enrolledRes.json(),
+        ]);
+        if (active) {
+          setScheduleSubjects(subjectsData?.success ? subjectsData.data || [] : []);
+          setEnrolledSchedule(enrolledData?.success ? enrolledData.data || [] : []);
+        }
+      } catch {
+        if (active) {
+          setScheduleSubjects([]);
+          setEnrolledSchedule([]);
+        }
+      }
+    };
+
+    loadScheduleSubjects();
+
+    return () => {
+      active = false;
+    };
+  }, [student?.id, student?.programId, student?.yearLevel, student?.academicTerm]);
 
   const isEnrolled = student?.status === 'enrolled';
+  const scheduleSubjectIndex = useMemo(
+    () => new Map(scheduleSubjects.map((subject) => [subject.id, subject])),
+    [scheduleSubjects]
+  );
+
+  const resolveSubject = (subjectId) => {
+    return scheduleSubjectIndex.get(subjectId) || getSubjectById(subjectId);
+  };
+
+  const localScheduleRows = useMemo(
+    () => (student?.selectedSubjects || []).map((selection) => {
+      const subject = scheduleSubjectIndex.get(selection.subjectId)
+        || getSubjectById(selection.subjectId);
+      const section = findMatchingSection(subject, selection.sectionId);
+      if (!subject || !section) return null;
+
+      return {
+        subjectId: subject.id,
+        subjectCode: subject.code,
+        subjectName: subject.name,
+        units: subject.units,
+        sectionId: selection.sectionId,
+        sectionCode: section.code || section.sectionCode,
+        schedule: getSectionSchedule(section),
+        instructor: section.instructor || subject.instructor || '—',
+      };
+    }).filter(Boolean),
+    [student?.selectedSubjects, scheduleSubjectIndex, getSubjectById]
+  );
+
+  const getDownloadSchedule = async () => {
+    try {
+      const res = await fetch(`/api/scheduler/${student.id}/enrolled`, { cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok && data?.success && Array.isArray(data.data)) {
+        setEnrolledSchedule(data.data);
+        return data.data;
+      }
+    } catch {
+      // Use already loaded exact rows if the network request fails.
+    }
+    return enrolledSchedule.length > 0 ? enrolledSchedule : localScheduleRows;
+  };
 
   const handleDownloadSchedule = async () => {
     if (!student) return;
+    const scheduleRows = await getDownloadSchedule();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const logoImg = await loadLogo();
+    const pdfLogo = logoImg;
     
-    drawHeader(doc, logoImg, 'Official Class Schedule');
+    drawHeader(doc, pdfLogo, 'Official Class Schedule');
     drawFooter(doc, 1);
 
     // Student details block
@@ -111,7 +257,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'normal');
     doc.text(student.studentId || student.id, 40, 68);
     doc.text(`${student.lastName}, ${student.firstName}`, 40, 74);
-    doc.text(student.programId.toUpperCase(), 40, 80);
+    doc.text(getProgramLabel(student.programId), 40, 80);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Term:', 115, 68);
@@ -119,13 +265,13 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.text('Date Enrolled:', 115, 80);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text('1st Semester 2026-2027', 140, 68);
+    doc.text(getAcademicTermLabel(student.academicTerm), 140, 68);
     doc.setTextColor(16, 185, 129); // green
     doc.setFont('Helvetica', 'bold');
     doc.text('ENROLLED (OFFICIAL)', 140, 74);
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'normal');
-    doc.text(new Date().toLocaleDateString(), 140, 80);
+    doc.text(getEnrollmentDate(student), 140, 80);
 
     // Schedule Table Header
     let tableY = 92;
@@ -151,14 +297,12 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(51, 65, 85); // slate-700
     doc.setFont('Helvetica', 'normal');
 
-    student.selectedSubjects.forEach((s, index) => {
-      const sub = getSubjectById(s.subjectId);
-      if (sub) {
-        const sec = sub.sections?.find(x => x.id === s.sectionId);
-        const dayTimeStr = sec ? `${sec.schedule.day} ${sec.schedule.time}` : '—';
-        const roomStr = sec ? sec.schedule.room : '—';
-        const instructorStr = sec ? sec.instructor : sub.instructor || '—';
-        const codeStr = sec ? sec.code : sub.code;
+    scheduleRows.forEach((row, index) => {
+      if (row) {
+        const dayTimeStr = `${row.schedule.day} ${row.schedule.time}`;
+        const roomStr = row.schedule.room;
+        const instructorStr = row.instructor || '—';
+        const codeStr = row.sectionCode || row.subjectCode;
 
         // Alternating rows background
         if (index % 2 === 0) {
@@ -179,7 +323,9 @@ export default function FulfillmentStep({ onReturnToGateway }) {
         doc.setFont('Helvetica', 'normal');
         
         // Truncate subject description if too long
-        const nameText = sub.name.length > 32 ? sub.name.substring(0, 30) + '...' : sub.name;
+        const nameText = row.subjectName.length > 32
+          ? row.subjectName.substring(0, 30) + '...'
+          : row.subjectName;
         doc.text(nameText, 38, currentY + 5.5);
         doc.text(dayTimeStr, 92, currentY + 5.5);
         doc.text(roomStr, 145, currentY + 5.5);
@@ -200,7 +346,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     let sigY = currentY + 15;
     if (sigY > 235) {
       doc.addPage();
-      drawHeader(doc, logoImg, 'Official Class Schedule');
+      drawHeader(doc, pdfLogo, 'Official Class Schedule');
       drawFooter(doc, 2);
       sigY = 60;
     }
@@ -246,9 +392,13 @@ export default function FulfillmentStep({ onReturnToGateway }) {
   const handleDownloadRegForm = async () => {
     if (!student) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const logoImg = await loadLogo();
+    const pdfLogo = logoImg;
+    const enrollmentType = String(student.enrollmentType || 'Not specified').toUpperCase();
+    const program = getProgramLabel(student.programId);
+    const address = String(student.address || 'Not provided');
+    const selectedSubjects = Array.isArray(student.selectedSubjects) ? student.selectedSubjects : [];
     
-    drawHeader(doc, logoImg, 'Student Certificate of Registration');
+    drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
     drawFooter(doc, 1);
 
     // Student Information Grid (2 column layout)
@@ -265,7 +415,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     let labelX = 16;
     let valueX = 45;
     let labelX2 = 110;
-    let valueX2 = 138;
+    let valueX2 = 150;
 
     let currentInfoY = 68;
 
@@ -278,7 +428,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Enrollment Type:', labelX2, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.enrollmentType.toUpperCase(), valueX2, currentInfoY);
+    doc.text(truncatePdfText(enrollmentType), valueX2, currentInfoY);
 
     currentInfoY += rowHeight;
 
@@ -291,7 +441,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Program/Course:', labelX2, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.programId.toUpperCase(), valueX2, currentInfoY);
+    doc.text(truncatePdfText(program), valueX2, currentInfoY);
 
     currentInfoY += rowHeight;
 
@@ -299,7 +449,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Email Address:', labelX, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.email, valueX, currentInfoY);
+    doc.text(student.email || 'Not provided', valueX, currentInfoY);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Academic Term:', labelX2, currentInfoY);
@@ -312,7 +462,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Contact Phone:', labelX, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.phone, valueX, currentInfoY);
+    doc.text(student.phone || 'Not provided', valueX, currentInfoY);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Registration Status:', labelX2, currentInfoY);
@@ -327,12 +477,12 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.text('Birth Date:', labelX, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.birthDate, valueX, currentInfoY);
+    doc.text(student.birthDate || 'Not provided', valueX, currentInfoY);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Permanent Address:', labelX2, currentInfoY);
     doc.setFont('Helvetica', 'normal');
-    const addr = student.address.length > 30 ? student.address.substring(0, 28) + '...' : student.address;
+    const addr = truncatePdfText(address);
     doc.text(addr, valueX2, currentInfoY);
 
     // Central Certification Box
@@ -382,9 +532,13 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(51, 65, 85);
     doc.setFont('Helvetica', 'normal');
 
-    student.selectedSubjects.forEach((s, idx) => {
-      const sub = getSubjectById(s.subjectId);
+    selectedSubjects.forEach((s, idx) => {
+      const sub = resolveSubject(s.subjectId);
       if (sub) {
+        const section = findMatchingSection(sub, s.sectionId);
+        const subjectCode = String(sub.code || '—');
+        const subjectName = String(sub.name || 'Untitled subject');
+        const instructor = String(section?.instructor || sub.instructor || 'TBA');
         if (idx % 2 === 0) {
           doc.setFillColor(248, 250, 252);
           doc.rect(12, corY, 186, 6.5, 'F');
@@ -395,15 +549,15 @@ export default function FulfillmentStep({ onReturnToGateway }) {
 
         doc.setTextColor(15, 23, 42);
         doc.setFont('Helvetica', 'bold');
-        doc.text(sub.code, 15, corY + 4.5);
+        doc.text(subjectCode, 15, corY + 4.5);
         
         doc.setTextColor(51, 65, 85);
         doc.setFont('Helvetica', 'normal');
         
-        const nameText = sub.name.length > 40 ? sub.name.substring(0, 38) + '...' : sub.name;
+        const nameText = subjectName.length > 40 ? subjectName.substring(0, 38) + '...' : subjectName;
         doc.text(nameText, 50, corY + 4.5);
         doc.text('3.0', 145, corY + 4.5);
-        doc.text(sub.instructor, 160, corY + 4.5);
+        doc.text(instructor, 160, corY + 4.5);
         corY += 6.5;
       }
     });
@@ -419,7 +573,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     let corSigY = corY + 12;
     if (corSigY > 235) {
       doc.addPage();
-      drawHeader(doc, logoImg, 'Student Certificate of Registration');
+      drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
       drawFooter(doc, 2);
       corSigY = 60;
     }
@@ -465,9 +619,9 @@ export default function FulfillmentStep({ onReturnToGateway }) {
   const handleDownloadReceipt = async () => {
     if (!student) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const logoImg = await loadLogo();
+    const pdfLogo = logoImg;
     
-    drawHeader(doc, logoImg, 'Official Payment Receipt');
+    drawHeader(doc, pdfLogo, 'Official Payment Receipt');
     drawFooter(doc, 1);
 
     // Receipt Information Block (2 columns)
@@ -572,7 +726,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     let feeSigY = currentFeeY + 15;
     if (feeSigY > 235) {
       doc.addPage();
-      drawHeader(doc, logoImg, 'Official Payment Receipt');
+      drawHeader(doc, pdfLogo, 'Official Payment Receipt');
       drawFooter(doc, 2);
       feeSigY = 60;
     }
@@ -617,12 +771,13 @@ export default function FulfillmentStep({ onReturnToGateway }) {
 
   const handleDownloadAllCombined = async () => {
     if (!student) return;
+    const scheduleRows = await getDownloadSchedule();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const logoImg = await loadLogo();
+    const pdfLogo = logoImg;
     let overallPageNum = 1;
 
     // --- PAGE 1: Class Schedule ---
-    drawHeader(doc, logoImg, 'Official Class Schedule');
+    drawHeader(doc, pdfLogo, 'Official Class Schedule');
     drawFooter(doc, overallPageNum);
 
     // Student details block
@@ -643,7 +798,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'normal');
     doc.text(student.studentId || student.id, 40, 68);
     doc.text(`${student.lastName}, ${student.firstName}`, 40, 74);
-    doc.text(student.programId.toUpperCase(), 40, 80);
+    doc.text(getProgramLabel(student.programId), 40, 80);
 
     doc.setFont('Helvetica', 'bold');
     doc.text('Term:', 115, 68);
@@ -651,13 +806,13 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.text('Date Enrolled:', 115, 80);
 
     doc.setFont('Helvetica', 'normal');
-    doc.text(student.academicTerm === '2s-2026' ? '2nd Semester 2026-2027' : '1st Semester 2026-2027', 140, 68);
+    doc.text(getAcademicTermLabel(student.academicTerm), 140, 68);
     doc.setTextColor(16, 185, 129); // green
     doc.setFont('Helvetica', 'bold');
     doc.text('ENROLLED (OFFICIAL)', 140, 74);
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'normal');
-    doc.text(new Date().toLocaleDateString(), 140, 80);
+    doc.text(getEnrollmentDate(student), 140, 80);
 
     // Schedule Table Header
     let tableY = 92;
@@ -683,14 +838,12 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(51, 65, 85); // slate-700
     doc.setFont('Helvetica', 'normal');
 
-    student.selectedSubjects.forEach((s, index) => {
-      const sub = getSubjectById(s.subjectId);
-      if (sub) {
-        const sec = sub.sections?.find(x => x.id === s.sectionId);
-        const dayTimeStr = sec ? `${sec.schedule.day} ${sec.schedule.time}` : '—';
-        const roomStr = sec ? sec.schedule.room : '—';
-        const instructorStr = sec ? sec.instructor : sub.instructor || '—';
-        const codeStr = sec ? sec.code : sub.code;
+    scheduleRows.forEach((row, index) => {
+      if (row) {
+        const dayTimeStr = `${row.schedule.day} ${row.schedule.time}`;
+        const roomStr = row.schedule.room;
+        const instructorStr = row.instructor || '—';
+        const codeStr = row.sectionCode || row.subjectCode;
 
         if (index % 2 === 0) {
           doc.setFillColor(248, 250, 252); // slate-50
@@ -708,7 +861,9 @@ export default function FulfillmentStep({ onReturnToGateway }) {
         doc.setTextColor(51, 65, 85);
         doc.setFont('Helvetica', 'normal');
         
-        const nameText = sub.name.length > 32 ? sub.name.substring(0, 30) + '...' : sub.name;
+        const nameText = row.subjectName.length > 32
+          ? row.subjectName.substring(0, 30) + '...'
+          : row.subjectName;
         doc.text(nameText, 38, currentY + 5.5);
         doc.text(dayTimeStr, 92, currentY + 5.5);
         doc.text(roomStr, 145, currentY + 5.5);
@@ -730,7 +885,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     if (sigY > 235) {
       doc.addPage();
       overallPageNum++;
-      drawHeader(doc, logoImg, 'Official Class Schedule');
+      drawHeader(doc, pdfLogo, 'Official Class Schedule');
       drawFooter(doc, overallPageNum);
       sigY = 60;
     }
@@ -770,7 +925,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     // --- PAGE 2: Certificate of Registration ---
     doc.addPage();
     overallPageNum++;
-    drawHeader(doc, logoImg, 'Student Certificate of Registration');
+    drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
     drawFooter(doc, overallPageNum);
 
     doc.setTextColor(15, 23, 42); // Navy
@@ -902,7 +1057,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'normal');
 
     student.selectedSubjects.forEach((s, idx) => {
-      const sub = getSubjectById(s.subjectId);
+      const sub = resolveSubject(s.subjectId);
       if (sub) {
         if (idx % 2 === 0) {
           doc.setFillColor(248, 250, 252);
@@ -939,7 +1094,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     if (corSigY > 235) {
       doc.addPage();
       overallPageNum++;
-      drawHeader(doc, logoImg, 'Student Certificate of Registration');
+      drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
       drawFooter(doc, overallPageNum);
       corSigY = 60;
     }
@@ -979,7 +1134,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     // --- PAGE 3: Official Payment Receipt ---
     doc.addPage();
     overallPageNum++;
-    drawHeader(doc, logoImg, 'Official Payment Receipt');
+    drawHeader(doc, pdfLogo, 'Official Payment Receipt');
     drawFooter(doc, overallPageNum);
 
     doc.setTextColor(15, 23, 42); // Navy
@@ -1077,7 +1232,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     if (feeSigY > 235) {
       doc.addPage();
       overallPageNum++;
-      drawHeader(doc, logoImg, 'Official Payment Receipt');
+      drawHeader(doc, pdfLogo, 'Official Payment Receipt');
       drawFooter(doc, overallPageNum);
       feeSigY = 60;
     }
@@ -1123,14 +1278,14 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     await handleDownloadAllCombined();
   };
 
-  const handleDownloadAndReturn = async () => {
-    await handleDownloadAll();
-    // Wait for the browser to fully process all downloads before navigating
-    setTimeout(() => {
-      if (onReturnToGateway) {
-        onReturnToGateway();
-      }
-    }, 2000);
+  const _handleDownloadAndReturn = async () => {
+    try {
+      await handleDownloadAll();
+    } finally {
+      // Give the browser a short window to register the file save before redirecting.
+      await delay(1200);
+      onReturnToGateway?.();
+    }
   };
 
   return (
@@ -1182,37 +1337,12 @@ export default function FulfillmentStep({ onReturnToGateway }) {
               Congratulations! Your official registration records have been verified by the Registrar. You are now officially enrolled for the upcoming academic semester at NCST.
             </p>
  
-            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/40 text-emerald-700 text-xs font-bold px-5 py-2.5 rounded-full font-mono shadow-sm tracking-wide">
-              <ShieldCheck className="h-4 w-4" /> STUDENT STATUS: ENROLLED
-            </div>
-          </div>
-
-          {/* Download All Documents CTA */}
-          <div className="bg-gradient-to-br from-univ-navy to-slate-800 rounded-2xl p-8 shadow-premium-lg border border-slate-700">
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center shrink-0 border border-white/10">
-                <Download className="h-8 w-8 text-univ-gold" />
-              </div>
-              <div className="flex-1 text-center sm:text-left">
-                <h3 className="text-base font-extrabold text-white mb-1.5">Download Required Documents</h3>
-                <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                  Download your Class Schedule, Certificate of Registration, and Official Payment Receipt all at once. You will be redirected back to the landing page afterwards.
-                </p>
-              </div>
-              <button
-                onClick={handleDownloadAndReturn}
-                className="shrink-0 flex items-center gap-2.5 px-6 py-3.5 bg-univ-gold hover:bg-amber-500 text-univ-navy font-extrabold text-sm rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
-              >
-                <Download className="h-4.5 w-4.5" />
-                Download All & Finish
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+            
           </div>
 
           {/* Individual Document Downloads */}
           <div>
-            <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Or download individually</h3>
+            <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Download Documents</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               {/* Card 1 */}
               <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
@@ -1280,7 +1410,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
               className="inline-flex items-center gap-2 px-6 py-3 text-xs font-bold text-slate-500 hover:text-univ-navy bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all duration-200 shadow-sm cursor-pointer"
             >
               <Home className="h-4 w-4" />
-              Return to Gateway
+              Return to Login Page
             </button>
           </div>
         </div>

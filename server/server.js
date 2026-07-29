@@ -53,8 +53,10 @@ const startServer = async () => {
   try {
     // Database Connection
     let mongoUri = process.env.MONGO_URI;
+    const useMemoryDatabase = process.env.USE_MEMORY_DB === 'true';
 
-    if (process.env.USE_MEMORY_DB === 'true') {
+    if (useMemoryDatabase) {
+      console.warn('WARNING: Using temporary in-memory MongoDB. All data will be lost when server stops.');
       console.log('Initializing in-memory MongoDB server...');
       let MongoMemoryServer;
       try {
@@ -74,10 +76,10 @@ const startServer = async () => {
       process.exit(1);
     }
     await mongoose.connect(mongoUri);
-    if (process.env.USE_MEMORY_DB === 'true') {
+    if (useMemoryDatabase) {
       console.log('Connected to in-memory MongoDB.');
     } else {
-      console.log('MongoDB connected successfully.');
+      console.log('Connected to persistent MongoDB.');
     }
 
     // Seed default demo accounts & applicant records on first run.

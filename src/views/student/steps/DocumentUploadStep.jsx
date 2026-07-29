@@ -158,7 +158,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
   const docsToUploadOnline = requiredDocs.filter((d) => {
     if (submitOnCampus) {
       if (enrollmentType === 'new') return d.id === 'form-138';
-      if (enrollmentType === 'transfer') return d.id === 'transfer-credentials';
+      if (enrollmentType === 'transfer') return d.id === 'honorable-dismissal';
       if (enrollmentType === 'returning') return d.id === 'readmission-form';
       return false;
     }
@@ -211,7 +211,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
             <p className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Transferee Document Requirements</p>
           </div>
           <p className="text-xs text-slate-700 mb-3 leading-relaxed font-medium">
-            All documents must be <strong className="text-slate-900">original or certified true copies</strong> authenticated by your previous school's Registrar. Scanned copies must be clear and complete — no blurred, cropped, or incomplete pages will be accepted.
+            All documents must be <strong className="text-slate-900">original or certified true copies</strong> authenticated by your previous school's Registrar. Scanned copies must be clear and complete, no blurred, cropped, or incomplete pages will be accepted.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-800 font-medium">
             {[

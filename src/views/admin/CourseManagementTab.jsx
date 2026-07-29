@@ -16,6 +16,41 @@ const PROGRAMS = [
 ];
 
 const DAYS_OPTIONS = ['MWF', 'TTH', 'MTWTHF', 'M', 'T', 'W', 'TH', 'F', 'S', 'TTHF'];
+const ROOM_CODE_LENGTH = 4;
+const ROOM_CODE_PATTERN = /^[12][1-3](?:0[1-9]|10)$/;
+const SECTION_CODE_PATTERN = /^(CS|BA|NU)-[1-3]1[MAE][1-4]$/;
+const PROGRAM_CODE_BY_ID = { bscs: 'CS', bsba: 'BA', bsn: 'NU' };
+const YEAR_ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd' };
+
+function sanitizeRoomCode(value = '') {
+  return value.replace(/\D/g, '').slice(0, ROOM_CODE_LENGTH);
+}
+
+function formatSectionCode(value = '') {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (compact.length < 3) return compact;
+  return `${compact.slice(0, 2)}-${compact.slice(2)}`;
+}
+
+function getSectionCodeError(sectionCode, subject) {
+  if (!sectionCode) return 'Enter a section code.';
+  if (sectionCode.length > 4 && sectionCode[4] !== '1') {
+    return 'This subject is for 1st semester only.';
+  }
+  if (!SECTION_CODE_PATTERN.test(sectionCode)) {
+    return 'Use CS-11M1: program, year 1-3, semester 1, M/A/E, section 1-4.';
+  }
+  if (!subject || subject.programId === 'elective') return '';
+
+  const expectedProgram = PROGRAM_CODE_BY_ID[subject.programId];
+  if (sectionCode.slice(0, 2) !== expectedProgram) {
+    return `Section code must use ${expectedProgram} for this subject.`;
+  }
+  if (Number(sectionCode[3]) !== subject.yearLevel) {
+    return `Selected subject is for ${YEAR_ORDINALS[subject.yearLevel]} year only.`;
+  }
+  return '';
+}
 
 function SubjectFormModal({ isOpen, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -47,10 +82,10 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
           <h3 className="text-base font-extrabold text-slate-900">Add New Subject</h3>
-          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+          <button onClick={onClose} className="p-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -58,28 +93,28 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">ID (Unique) *</label>
-              <input type="text" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase().replace(/\s+/g, '') })} required placeholder="e.g. cs401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl font-mono" />
+              <input type="text" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase().replace(/\s+/g, '') })} required placeholder="e.g. cs401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Code *</label>
-              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder="e.g. CS 401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl font-mono" />
+              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder="e.g. CS 401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500" />
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Name *</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Advanced AI" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl" />
+            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Advanced AI" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Program *</label>
-              <select value={form.programId} onChange={(e) => setForm({ ...form, programId: e.target.value })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl">
+              <select value={form.programId} onChange={(e) => setForm({ ...form, programId: e.target.value })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                 <option value="">Select program...</option>
                 {PROGRAMS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Units *</label>
-              <input type="number" value={form.units} onChange={(e) => setForm({ ...form, units: parseInt(e.target.value) || 3 })} required min={1} className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl" />
+              <input type="number" value={form.units} onChange={(e) => setForm({ ...form, units: parseInt(e.target.value) || 3 })} required min={1} className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
             </div>
           </div>
 
@@ -88,7 +123,7 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Year Level *</label>
-                <select value={form.yearLevel} onChange={(e) => setForm({ ...form, yearLevel: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl">
+                <select value={form.yearLevel} onChange={(e) => setForm({ ...form, yearLevel: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                   <option value="">Select year...</option>
                   <option value={1}>1st Year</option>
                   <option value={2}>2nd Year</option>
@@ -98,7 +133,7 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
               </div>
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Semester *</label>
-                <select value={form.semester} onChange={(e) => setForm({ ...form, semester: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl">
+                <select value={form.semester} onChange={(e) => setForm({ ...form, semester: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                   <option value="">Select semester...</option>
                   <option value={1}>1st Semester</option>
                   <option value={2}>2nd Semester</option>
@@ -109,12 +144,12 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
 
           <div>
             <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Fee (₱) *</label>
-            <input type="number" value={form.fee} onChange={(e) => setForm({ ...form, fee: parseInt(e.target.value) || 0 })} required min={0} placeholder="e.g. 4500" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl" />
+            <input type="number" value={form.fee} onChange={(e) => setForm({ ...form, fee: parseInt(e.target.value) || 0 })} required min={0} placeholder="e.g. 4500" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-extrabold text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50">Cancel</button>
-            <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50">Cancel</button>
+            <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {saving ? 'Saving…' : 'Save Subject'}
             </button>
@@ -194,6 +229,16 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
+    const sectionCodeError = getSectionCodeError(form.sectionCode, selectedSubject);
+    if (sectionCodeError) {
+      toast.error(sectionCodeError);
+      return;
+    }
+    if (!roomCodeIsValid) {
+      toast.error('Room must be a 4-digit code like 1101.');
+      return;
+    }
     setSaving(true);
     await onSave({ ...form, time: `${form.startTime} - ${form.endTime}` });
     setSaving(false);
@@ -238,6 +283,18 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
     );
   }, [form.instructor, allSections, initialData]);
 
+  const roomCodeIsValid = !form.room?.trim()
+    || form.room === initialData?.room
+    || ROOM_CODE_PATTERN.test(form.room);
+
+  const roomFormatError = !!form.room?.trim()
+    && form.room !== initialData?.room
+    && form.room.length === ROOM_CODE_LENGTH
+    && !ROOM_CODE_PATTERN.test(form.room);
+
+  const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
+  const sectionCodeError = getSectionCodeError(form.sectionCode, selectedSubject);
+
   // Both room and instructor time conflicts block saving.
   // A teacher cannot teach two sections at the same time,
   // and a room cannot have two sections at the same time.
@@ -247,12 +304,12 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
           <h3 className="text-base font-extrabold text-slate-900">
             {initialData?.id ? 'Edit Section' : 'Add New Section'}
           </h3>
-          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
+          <button onClick={onClose} className="p-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -265,7 +322,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject *</label>
               <select value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
                 required disabled={!!initialData?.id}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
                 <option value="">Select a subject…</option>
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
               </select>
@@ -274,16 +331,27 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             {/* Section Code */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Section Code *</label>
-              <input type="text" value={form.sectionCode} onChange={(e) => setForm({ ...form, sectionCode: e.target.value })}
-                required placeholder="e.g. CS 101-C" disabled={!!initialData?.id}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input
+                type="text"
+                value={form.sectionCode}
+                onChange={(e) => setForm({ ...form, sectionCode: formatSectionCode(e.target.value) })}
+                required
+                maxLength={7}
+                autoComplete="off"
+                placeholder="e.g. CS-11M1"
+                disabled={!!initialData?.id}
+                className={`w-full px-3 py-2 text-xs border rounded-md font-mono focus:outline-none focus:ring-1 ${sectionCodeError && form.sectionCode ? 'border-rose-300 focus:ring-rose-500' : 'border-slate-200 focus:ring-indigo-500'}`}
+              />
+              <p className={`mt-1 text-[10px] ${sectionCodeError && form.sectionCode ? 'text-rose-600 font-semibold' : 'text-slate-400'}`}>
+                {sectionCodeError && form.sectionCode ? sectionCodeError : 'Format: CS-11M1. Semester is always 1; M, A, E; sections 1-4.'}
+              </p>
             </div>
 
             {/* Days */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Days *</label>
               <select value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} required
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
                 {DAYS_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
@@ -303,7 +371,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
                     setForm({ ...form, startTime: newStart, endTime: newEnd });
                   }}
                   required
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
                   {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -313,7 +381,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
                   value={form.endTime}
                   onChange={(e) => setForm({ ...form, endTime: e.target.value })}
                   required
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
                   {/* Only show slots strictly after the selected start time */}
                   {TIME_SLOTS.filter(t => TIME_SLOTS.indexOf(t) > TIME_SLOTS.indexOf(form.startTime))
                     .map(t => <option key={t} value={t}>{t}</option>)}
@@ -324,9 +392,28 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             {/* Room */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Room</label>
-              <input type="text" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })}
-                placeholder="e.g. Room 301"
-                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none focus:ring-2 ${roomConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`} />
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={ROOM_CODE_LENGTH}
+                value={form.room}
+                onChange={(e) => setForm({ ...form, room: sanitizeRoomCode(e.target.value) })}
+                placeholder="e.g. 1101"
+                className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 ${
+                  roomFormatError || roomConflicts.length > 0
+                    ? 'border-rose-400 focus:ring-rose-400 bg-rose-50'
+                    : 'border-slate-200 focus:ring-indigo-500'
+                }`}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                4 digits only. Format: building, floor, room. Example: 1101.
+              </p>
+              {roomFormatError && (
+                <p className="text-[10px] text-rose-600 font-bold mt-1">
+                  Room code must follow BFRR: building 1-2, floor 1-3, room 01-10.
+                </p>
+              )}
               {roomConflicts.length > 0 && (
                 <p className="text-[10px] text-rose-600 font-bold mt-1">⚠ Room conflict with {roomConflicts.length} section(s)</p>
               )}
@@ -337,7 +424,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Max Slots</label>
               <input type="number" value={form.maxSlots} onChange={(e) => setForm({ ...form, maxSlots: parseInt(e.target.value) || 40 })}
                 min={1} max={200}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
             </div>
 
             {/* Instructor */}
@@ -345,18 +432,18 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Instructor</label>
               <input type="text" value={form.instructor} onChange={(e) => setForm({ ...form, instructor: e.target.value })}
                 placeholder="e.g. Prof. Juan dela Cruz"
-                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none focus:ring-2 ${instructorConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`} />
+                className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 ${instructorConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`} />
               {instructorConflicts.length > 0 && (
                 <p className="text-[10px] text-rose-600 font-bold mt-1">⚠ This instructor is already teaching {instructorConflicts.length} section(s) at this exact time &amp; day — cannot double-book.</p>
               )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-extrabold text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50 cursor-pointer">
                 Cancel
               </button>
               <button type="submit" disabled={saving || hasConflict}
-                className={`flex items-center gap-2 px-5 py-2 text-xs font-extrabold text-white rounded-xl transition-all cursor-pointer disabled:opacity-50 ${hasConflict ? 'bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-md transition-colors cursor-pointer disabled:opacity-50 ${hasConflict ? 'bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 {hasConflict ? 'Resolve Conflicts First' : saving ? 'Saving…' : 'Save Section'}
               </button>
@@ -433,7 +520,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CourseManagementTab() {
   const { confirm } = useConfirm();
-  const { token: ctxToken } = useAuth();
+  const { token: ctxToken, logout } = useAuth();
 
   const authFetch = useCallback((url, options = {}) => {
     // Use context token if available, otherwise fall back to localStorage
@@ -463,14 +550,22 @@ export default function CourseManagementTab() {
       ]);
       const subData = await subRes.json();
       const secData = await secRes.json();
-      if (subData.success) setSubjects(subData.data);
-      if (secData.success) setSections(secData.data);
-    } catch {
-      toast.error('Failed to load course data.');
+      if (subRes.status === 401 || secRes.status === 401) {
+        toast.error('Session expired. Please sign in again.');
+        logout();
+        return;
+      }
+      if (!subRes.ok || !subData.success || !secRes.ok || !secData.success) {
+        throw new Error(subData.message || secData.message || 'Failed to load course data.');
+      }
+      setSubjects(subData.data);
+      setSections(secData.data);
+    } catch (error) {
+      toast.error(error.message || 'Failed to load course data.');
     } finally {
       setLoading(false);
     }
-  }, [authFetch]);
+  }, [authFetch, logout]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -574,7 +669,7 @@ export default function CourseManagementTab() {
   // ── Render ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-slate-400 gap-3 text-xs">
+      <div className="flex h-full items-center justify-center bg-slate-50 text-slate-400 gap-3 text-xs">
         <Loader2 className="w-5 h-5 animate-spin" /> Loading course catalog…
       </div>
     );
@@ -582,32 +677,32 @@ export default function CourseManagementTab() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-extrabold text-slate-900">Course & Section Management</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Course & Section Management</h1>
+            <p className="text-sm font-medium text-slate-500 mt-1">
               Manage section offerings. Room and instructor conflicts are validated on save.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={fetchData}
-              className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer"
+              className="p-2 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={() => setSubjectModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-md transition-colors shadow-sm cursor-pointer"
             >
               <BookOpen className="w-4 h-4" /> Add Subject
             </button>
             <button
               onClick={() => { setEditingSection(null); setModalOpen(true); }}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Add Section
             </button>
@@ -621,8 +716,8 @@ export default function CourseManagementTab() {
             { label: 'Active Sections', value: sections.filter(s => s.isActive !== false).length, icon: <Calendar className="w-4 h-4" />, color: 'emerald' },
             { label: 'Total Enrolled Slots', value: sections.reduce((s, sec) => s + (sec.enrolledCount || 0), 0), icon: <Users className="w-4 h-4" />, color: 'amber' },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-              <div className={`w-8 h-8 rounded-xl bg-${stat.color}-100 text-${stat.color}-600 flex items-center justify-center mb-3`}>
+            <div key={stat.label} className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+              <div className={`w-8 h-8 rounded-md bg-${stat.color}-100 text-${stat.color}-600 flex items-center justify-center mb-3`}>
                 {stat.icon}
               </div>
               <div className="text-xl font-extrabold text-slate-900">{stat.value}</div>
@@ -640,13 +735,13 @@ export default function CourseManagementTab() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search subject code or name…"
-              className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           <select
             value={programFilter}
             onChange={(e) => setProgramFilter(e.target.value)}
-            className="text-xs font-semibold border border-slate-200 rounded-xl px-3 py-2.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            className="text-xs font-semibold border border-slate-200 rounded-md px-3 py-2.5 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
           >
             <option value="">All Programs</option>
             {PROGRAMS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -666,14 +761,14 @@ export default function CourseManagementTab() {
               const totalEnrolled = liveSections.reduce((s, sec) => s + (sec.enrolledCount || 0), 0);
 
               return (
-                <div key={sub.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div key={sub.id} className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
                   {/* Subject header */}
                   <div
                     className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 transition-colors"
                     onClick={() => setExpandedSubjectId(isExpanded ? null : sub.id)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center shrink-0">
                         <GraduationCap className="w-4 h-4 text-indigo-600" />
                       </div>
                       <div className="min-w-0">

@@ -2,11 +2,12 @@ import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
 import Student from './Student.js';
 import Section from './models/Section.js';
-import { SUBJECTS_CATALOG } from './subjectsCatalog.js';
+import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import {
   getCurriculumSubjects,
   prereqsMet,
   enrichSubjectWithLiveSections,
+  getResolvedEnrolledSchedule,
   validateAddSection,
 } from './services/schedulerService.js';
 
@@ -84,6 +85,16 @@ export const getSchedulerSubjects = asyncHandler(async (req, res) => {
   res.json({ success: true, data: enriched });
 });
 
+// GET /api/scheduler/:studentId/enrolled
+// Return exact subjects and sections persisted on the student's enrollment.
+export const getEnrolledSchedule = asyncHandler(async (req, res) => {
+  const student = await getStudent(req, res);
+  if (!student) return;
+
+  const schedule = await getResolvedEnrolledSchedule(student.selectedSubjects || []);
+  res.json({ success: true, data: schedule });
+});
+
 // ---------------------------------------------------------------------------
 // GET /api/scheduler/:studentId/sections/:subjectId
 // Get open sections for a specific subject with live slot counts.
@@ -145,12 +156,21 @@ export const addSchedulerSection = asyncHandler(async (req, res) => {
   );
   student.selectedSubjects.push({ subjectId, sectionId, addedAt: new Date() });
 
+  const subjectIds = student.selectedSubjects.map((entry) => entry.subjectId);
+  const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
+  student.tuitionBreakdown = tuitionBreakdown;
+  student.totalTuition = totalTuition;
+
   await student.save();
 
   res.json({
     success: true,
     message: 'Section added successfully.',
-    data: student.selectedSubjects,
+    data: {
+      selectedSubjects: student.selectedSubjects,
+      tuitionBreakdown: student.tuitionBreakdown,
+      totalTuition: student.totalTuition,
+    },
   });
 });
 
@@ -171,12 +191,21 @@ export const removeSchedulerSection = asyncHandler(async (req, res) => {
     (s) => s.subjectId !== subjectId
   );
 
+  const subjectIds = student.selectedSubjects.map((entry) => entry.subjectId);
+  const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
+  student.tuitionBreakdown = tuitionBreakdown;
+  student.totalTuition = totalTuition;
+
   await student.save();
 
   res.json({
     success: true,
     message: 'Section removed.',
-    data: student.selectedSubjects,
+    data: {
+      selectedSubjects: student.selectedSubjects,
+      tuitionBreakdown: student.tuitionBreakdown,
+      totalTuition: student.totalTuition,
+    },
   });
 });
 

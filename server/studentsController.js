@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import Student from './Student.js';
 import User from './User.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
+import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -60,10 +61,15 @@ async function findStudentOr404(res, id) {
   return student;
 }
 
-// @desc    List all students (not deleted)
+// @desc    List submitted applications and enrolled students (not deleted)
 // @route   GET /api/students
 const getStudents = asyncHandler(async (req, res) => {
-  const students = await Student.find({ isDeleted: { $ne: true } }).sort({ _id: 1 });
+  // Registration records are applicant-only drafts. Staff should only receive
+  // applications after the applicant submits their documents for review.
+  const students = await Student.find({
+    isDeleted: { $ne: true },
+    status: { $ne: 'registration' },
+  }).sort({ _id: 1 });
   res.json(students);
 });
 
@@ -290,7 +296,8 @@ const updateStudent = asyncHandler(async (req, res) => {
     req.body.phone = val;
   }
   if (req.body.address !== undefined) {
-    req.body.address = sanitizeString(String(req.body.address), 500);
+    // Preserve spaces while the registration form saves each keystroke.
+    req.body.address = String(req.body.address).replace(/[$]/g, '').slice(0, 500);
   }
   // Validate and sanitize transferee fields
   if (req.body.previousSchool !== undefined) {
@@ -349,6 +356,39 @@ const submitDocuments = asyncHandler(async (req, res) => {
   if (student.enrollmentType === 'continuing') {
     student.status = 'advising_pending';
   } else {
+    if (!['registration', 'documents_rejected'].includes(student.status)) {
+      res.status(400).json({ error: 'Application has already been submitted for review.' });
+      return;
+    }
+
+    const requiredApplicantFields = [
+      ['enrollmentType', student.enrollmentType],
+      ['program', student.programId],
+      ['first name', student.firstName?.trim()],
+      ['last name', student.lastName?.trim()],
+      ['email address', student.email?.trim()],
+      ['phone number', student.phone?.trim()],
+      ['birth date', student.birthDate],
+      ['home address', student.address?.trim()],
+      ['applicant password', student.applicantPassword],
+    ];
+    const missingField = requiredApplicantFields.find(([, value]) => !value);
+    if (missingField) {
+      res.status(400).json({ error: `Complete your ${missingField[0]} before submitting the application.` });
+      return;
+    }
+
+    const requiredDocumentIds = getRequiredOnlineDocumentIds(
+      student.enrollmentType,
+      student.submitDocumentsOnCampus,
+    );
+    const uploadedDocumentIds = new Set(student.documents.map((document) => document.typeId));
+    const missingDocuments = requiredDocumentIds.filter((documentId) => !uploadedDocumentIds.has(documentId));
+    if (missingDocuments.length > 0) {
+      res.status(400).json({ error: 'Upload all required documents before submitting the application.' });
+      return;
+    }
+
     student.status = 'documents_submitted';
   }
   student.admissionNotes = ''; // Clear notes on resubmission
@@ -419,6 +459,19 @@ const selectProgram = asyncHandler(async (req, res) => {
   if (!student) return;
 
   const { programId, academicTerm } = req.body;
+
+  // Program selected during applicant admission stays fixed in Student Portal.
+  // Only term may change for a new enrollment cycle.
+  const applicantStageStatuses = ['registration', 'documents_submitted', 'documents_rejected'];
+  if (
+    student.programId &&
+    !applicantStageStatuses.includes(student.status) &&
+    programId !== student.programId
+  ) {
+    res.status(400).json({ error: 'Degree program cannot be changed in Student Portal.' });
+    return;
+  }
+
   student.programId = programId;
   student.academicTerm = academicTerm;
 
@@ -452,13 +505,12 @@ const selectProgram = asyncHandler(async (req, res) => {
     eligibleSubjectIds = [];
   }
 
-  student.selectedSubjects = eligibleSubjectIds.map((subjectId) => ({
-    subjectId,
-    sectionId: `${subjectId}-a`,
-    addedAt: new Date(),
-  }));
+  // Adviser-approved subjects and student-selected class sections are
+  // different records. Never invent a section ID before the student chooses.
+  student.approvedSubjectIds = eligibleSubjectIds;
+  student.selectedSubjects = [];
 
-  const { tuitionBreakdown, totalTuition } = computeTuition(eligibleSubjectIds);
+  const { tuitionBreakdown, totalTuition } = computeTuition([]);
   student.tuitionBreakdown = tuitionBreakdown;
   student.totalTuition = totalTuition;
 
@@ -513,16 +565,27 @@ const setSubjects = asyncHandler(async (req, res) => {
     }
   }
 
-  student.selectedSubjects = subjectIds.map((subjectId) => {
-    const matchedInput = inputSubjects.find(s => s.subjectId === subjectId);
-    return {
-      subjectId,
-      sectionId: matchedInput?.sectionId || `${subjectId}-a`,
-      addedAt: new Date(),
-    };
-  });
+  const hasExplicitSections = inputSubjects.length > 0
+    && inputSubjects.every((subject) => subject.subjectId && subject.sectionId);
 
-  const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
+  if (hasExplicitSections) {
+    student.selectedSubjects = inputSubjects.map(({ subjectId, sectionId }) => ({
+      subjectId,
+      sectionId,
+      addedAt: new Date(),
+    }));
+  } else {
+    // Adviser assigns eligible subjects, but student chooses actual sections.
+    student.approvedSubjectIds = subjectIds;
+    student.selectedSubjects = (student.selectedSubjects || []).filter(
+      (selection) => subjectIds.includes(selection.subjectId)
+        && selection.sectionId
+        && selection.sectionId !== `${selection.subjectId}-a`
+    );
+  }
+
+  const selectedSubjectIds = student.selectedSubjects.map((selection) => selection.subjectId);
+  const { tuitionBreakdown, totalTuition } = computeTuition(selectedSubjectIds);
   student.tuitionBreakdown = tuitionBreakdown;
   student.totalTuition = totalTuition;
 
@@ -567,6 +630,9 @@ const approveAdmission = asyncHandler(async (req, res) => {
   }
 
   student.admissionNotes = req.body.notes || '';
+  student.documents.forEach((document) => {
+    document.status = 'approved';
+  });
   
   if (!student.schoolEmail) {
     const safeFirst = student.firstName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
@@ -675,6 +741,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
   student.paymentStatus = 'paid';
   // Automate Registrar workflow: auto-enroll on payment confirmation
   student.status = 'enrolled';
+  student.enrolledAt = student.enrolledAt || new Date();
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;
@@ -722,6 +789,7 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   }
 
   student.status = 'enrolled';
+  student.enrolledAt = student.enrolledAt || new Date();
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;

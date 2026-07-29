@@ -279,7 +279,7 @@ export default function StudentView() {
         return <FulfillmentStep onReturnToGateway={() => {
               setActiveStudent(null);
               setIsVerified(false);
-              window.location.href = '/';
+              window.location.href = '/?portal=gateway&tab=student';
             }} />;
       default:
         return <ContinuingEnrollmentStep onNext={onNext} onBack={onBack} />;
@@ -302,7 +302,6 @@ export default function StudentView() {
           <h2 className="text-[10px] font-extrabold text-univ-navy uppercase tracking-widest text-center leading-relaxed">
             National College of<br />Science &amp; Technology
           </h2>
-          <span className="text-[9px] font-bold text-univ-gold uppercase tracking-wider">Gateway Portal</span>
         </div>
 
         <div className="p-5 flex-1 overflow-y-auto">

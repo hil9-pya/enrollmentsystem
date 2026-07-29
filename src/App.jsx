@@ -27,9 +27,10 @@ function AppContent() {
   const [viewMode, setViewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const portal = params.get('portal');
-    if (portal === 'applicant' || portal === 'student' || portal === 'staff' || portal === 'admin') return portal;
+    if (portal === 'gateway' || portal === 'applicant' || portal === 'student' || portal === 'staff' || portal === 'admin') return portal;
     return 'landing'; // Default to landing page
   });
+  const gatewayTab = new URLSearchParams(window.location.search).get('tab') || 'applicant';
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -151,6 +152,7 @@ function AppContent() {
   if (viewMode === 'gateway') {
     return (
       <GatewayView 
+        initialView={viewMode === 'gateway' ? gatewayTab : viewMode}
         onVerified={() => {
           setIsApplicantVerified(true);
           setViewMode('applicant');
