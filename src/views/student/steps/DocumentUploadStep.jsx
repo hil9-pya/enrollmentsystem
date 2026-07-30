@@ -78,7 +78,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         payload: { typeId, file },
       });
       toast.success(`${file.name} uploaded successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Upload failed. Please try again.');
     } finally {
       setUploadingTypes((prev) => {

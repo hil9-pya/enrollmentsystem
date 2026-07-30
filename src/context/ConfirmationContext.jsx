@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef } from 'react';
-import { ShieldCheck, AlertTriangle, HelpCircle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, HelpCircle, CheckCircle } from 'lucide-react';
 
 const ConfirmationContext = createContext(null);
 

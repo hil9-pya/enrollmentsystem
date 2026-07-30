@@ -4,7 +4,8 @@ import { Mail, Lock, AlertCircle, ArrowRight, Play } from 'lucide-react';
 import FloatingInput from '../../components/FloatingInput';
 
 export default function ApplicantPortalAccess({ onVerified }) {
-  const { setActiveStudent } = useEnrollment();
+  const { setActiveStudent, state } = useEnrollment();
+  const enrollmentSettings = state?.settings;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -68,11 +69,11 @@ export default function ApplicantPortalAccess({ onVerified }) {
         </div>
 
         {/* System Announcement */}
-        {useEnrollment().settings?.announcement && (
+        {enrollmentSettings?.announcement && (
           <div className="mb-6 p-4 bg-amber-50 rounded-xl flex items-start gap-3 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 stroke-[2]" />
             <p className="text-sm text-amber-900 font-bold leading-relaxed whitespace-pre-wrap">
-              {useEnrollment().settings.announcement}
+              {enrollmentSettings.announcement}
             </p>
           </div>
         )}
@@ -150,7 +151,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
             </div>
 
             <div className="text-center">
-              {useEnrollment().settings?.enrollmentOpen === false ? (
+              {enrollmentSettings?.enrollmentOpen === false ? (
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <p className="text-sm text-slate-600 font-bold">Enrollment is currently closed.</p>
                   <p className="text-xs text-slate-400 mt-1">We are not accepting new applications at this time.</p>

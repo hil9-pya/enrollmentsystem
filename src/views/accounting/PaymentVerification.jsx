@@ -146,9 +146,17 @@ export default function PaymentVerification({ studentId, onBack }) {
                 <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Settlement Details</h3>
                 
                 <div className="space-y-5">
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Method</p>
-                    <p className="text-sm font-extrabold text-univ-navy mt-1 capitalize">{student.paymentMethod || '—'}</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Method</p>
+                      <p className="text-sm font-extrabold text-univ-navy mt-1 capitalize">{student.paymentMethod || '—'}</p>
+                    </div>
+                    {student.paymentReference && (
+                      <div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Reference Code</p>
+                        <p className="text-sm font-extrabold text-univ-navy mt-1 font-mono">{student.paymentReference}</p>
+                      </div>
+                    )}
                   </div>
                   
                   {isPending && (

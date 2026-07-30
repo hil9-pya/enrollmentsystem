@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (_) {
+        } catch {
           errorMsg = `Server error (Status ${response.status})`;
         }
         throw new Error(errorMsg);

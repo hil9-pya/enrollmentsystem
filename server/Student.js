@@ -81,6 +81,8 @@ const StudentSchema = new mongoose.Schema(
     yearLevel: { type: Number, default: 1 },
     academicRecord: { type: [AcademicRecordSchema], default: [] },
     holds: { type: [HoldSchema], default: [] },
+    missedSemesters: { type: Number, default: 0 },
+    lastEnrolledTerm: { type: String, default: null },
 
     // Transferee-specific fields
     previousSchool: { type: String, default: '' },
@@ -115,6 +117,9 @@ const StudentSchema = new mongoose.Schema(
 
     paymentMethod: { type: String, default: null },
     paymentStatus: { type: String, default: 'unpaid' },
+    paymentReference: { type: String, default: null },
+    receiptNumber: { type: String, default: null },
+    paymentDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
     submitDocumentsOnCampus: { type: Boolean, default: false },
 
     scheduleGenerated: { type: Boolean, default: false },

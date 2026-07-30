@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronRight, LogIn, GraduationCap } from 'lucide-react';
+import { Menu, X, ChevronRight, LogIn } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar({ onNavigate }) {
+  const { user } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -95,7 +97,7 @@ export default function Navbar({ onNavigate }) {
                 }`}
               >
                 <LogIn className="w-4 h-4" />
-                Login
+                {user ? 'Dashboard' : 'Login'}
               </button>
             </div>
           </div>
@@ -137,7 +139,7 @@ export default function Navbar({ onNavigate }) {
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-univ-blue text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <LogIn className="w-4 h-4" />
-              Access Portal
+              {user ? 'Go to Dashboard' : 'Access Portal'}
             </button>
           </div>
         </div>

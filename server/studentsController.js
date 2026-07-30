@@ -2,8 +2,10 @@ import asyncHandler from 'express-async-handler';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 import Student from './Student.js';
 import User from './User.js';
+import Settings from './Settings.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 
@@ -12,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
 // Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
-async function generateNextId(prefixBase) {
+export async function generateNextId(prefixBase) {
   const year = new Date().getFullYear();
   const prefix = `${prefixBase}${year}-`;
 
@@ -261,7 +263,7 @@ const updateStudent = asyncHandler(async (req, res) => {
   const sanitizeString = (val, maxLen = 300) => {
     if (typeof val !== 'string') return '';
     // Remove $ to prevent MongoDB operator injection, trim whitespace, cap length
-    return val.replace(/[\$]/g, '').trim().slice(0, maxLen);
+    return val.replace(/[$]/g, '').trim().slice(0, maxLen);
   };
 
   // Validate enrollmentType is an allowed value
@@ -273,7 +275,7 @@ const updateStudent = asyncHandler(async (req, res) => {
 
   if (req.body.firstName !== undefined) {
     const val = sanitizeString(String(req.body.firstName), 100);
-    if (/[^a-zA-Z\s\-\.]/.test(val)) {
+    if (/[^a-zA-Z\s\-.]/.test(val)) {
       res.status(400).json({ error: 'First name must contain letters, spaces, hyphens, and dots only.' });
       return;
     }
@@ -281,7 +283,7 @@ const updateStudent = asyncHandler(async (req, res) => {
   }
   if (req.body.lastName !== undefined) {
     const val = sanitizeString(String(req.body.lastName), 100);
-    if (/[^a-zA-Z\s\-\.]/.test(val)) {
+    if (/[^a-zA-Z\s\-.]/.test(val)) {
       res.status(400).json({ error: 'Last name must contain letters, spaces, hyphens, and dots only.' });
       return;
     }
@@ -535,7 +537,6 @@ const setSubjects = asyncHandler(async (req, res) => {
   const subjectIds = inputSubjects.length > 0 
     ? inputSubjects.map(s => s.subjectId)
     : (Array.isArray(req.body.subjectIds) ? req.body.subjectIds : []);
-  const previousStatus = student.status;
 
   if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
     res.status(400);
@@ -610,8 +611,10 @@ const processPayment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const { paymentMethod, success } = req.body;
+  const { paymentMethod, success, paymentDetails, paymentReference } = req.body;
   if (paymentMethod) student.paymentMethod = paymentMethod;
+  if (paymentDetails) student.paymentDetails = paymentDetails;
+  if (paymentReference) student.paymentReference = paymentReference;
   student.paymentStatus = success ? 'processing' : 'failed';
 
   await student.save();
@@ -739,22 +742,8 @@ const confirmPayment = asyncHandler(async (req, res) => {
   }
 
   student.paymentStatus = 'paid';
-  // Automate Registrar workflow: auto-enroll on payment confirmation
-  student.status = 'enrolled';
-  student.enrolledAt = student.enrolledAt || new Date();
-  student.scheduleGenerated = true;
-  student.registrationFormGenerated = true;
-  student.receiptGenerated = true;
-
-  // Generate STU- ID now that they have paid
-  if (!student.studentId) {
-    student.studentId = await generateNextId('STU-');
-    
-    // Update the existing User account's username from APP- to STU-
-    await User.updateOne(
-      { username: student._id }, // Find by the APP- ID
-      { $set: { username: student.studentId } } // Update to STU- ID
-    );
+  if (student.status === 'payment_pending') {
+    student.status = 'payment_confirmed';
   }
 
   await student.save();
@@ -783,16 +772,35 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  if (student.status !== 'payment_pending' && student.status !== 'enrolled') {
+  if (student.status !== 'payment_confirmed' && student.status !== 'enrolled') {
     res.status(400);
-    throw new Error('Invalid action: Student must be pending payment or already enrolled.');
+    throw new Error('Invalid action: Student must be payment_confirmed or already enrolled.');
   }
+
+  // Fetch settings to know what the active term is
+  let settings = await Settings.findOne();
+  if (!settings) settings = { activeTerm: '1st Semester' };
 
   student.status = 'enrolled';
   student.enrolledAt = student.enrolledAt || new Date();
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;
+  
+  // Track term for auto-archiving logic
+  student.missedSemesters = 0;
+  student.lastEnrolledTerm = settings.activeTerm;
+
+  // Generate STU- ID now that they are officially enrolled
+  if (!student.studentId) {
+    student.studentId = await generateNextId('STU-');
+    
+    // Update the existing User account's username from APP- to STU-
+    await User.updateOne(
+      { username: student._id }, // Find by the APP- ID
+      { $set: { username: student.studentId } } // Update to STU- ID
+    );
+  }
 
   await student.save();
   res.json(student);
@@ -804,7 +812,7 @@ const resolveHold = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const { type, notes } = req.body;
+  const { type, notes: _notes } = req.body;
   const holdIndex = student.holds.findIndex(h => h.type === type && h.status === 'active');
   
   if (holdIndex >= 0) {
@@ -902,8 +910,97 @@ const rolloverStudent = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Initiate Paymongo Checkout Session for online tuition payment
+// @route   POST /api/students/:id/paymongo-checkout
+const createPaymongoCheckoutSession = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'advising_approved' && student.status !== 'payment_pending') {
+    res.status(400);
+    throw new Error('Not cleared for payment. Student must be cleared by academic adviser.');
+  }
+
+  // Calculate amount in centavos (PHP amount * 100)
+  const amountInCentavos = Math.round(student.totalTuition * 100);
+  const port = process.env.PORT || 5000;
+  const paymongoBaseUrl = `http://127.0.0.1:${port}/api/paymongo/v1/checkout_sessions`;
+
+  try {
+    // Send post request to our simulated Paymongo Checkout Session API
+    const response = await axios.post(paymongoBaseUrl, {
+      data: {
+        attributes: {
+          billing: {
+            name: `${student.firstName} ${student.lastName}`,
+            email: student.email,
+            phone: student.phone
+          },
+          line_items: [
+            {
+              amount: amountInCentavos,
+              currency: 'PHP',
+              name: 'NCST Enrollment Tuition & Fees Assessment',
+              quantity: 1
+            }
+          ],
+          payment_method_types: ['gcash', 'card', 'paymaya'],
+          reference_number: student._id.toString(), // Pass student _id as reference number
+          success_url: `http://localhost:5173/?portal=payment-success&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `http://localhost:5173/?portal=student`
+        }
+      }
+    });
+
+    res.status(200).json(response.data.data.attributes);
+  } catch (error) {
+    console.error('Error initiating Paymongo checkout session:', error.response?.data || error.message);
+    res.status(500);
+    throw new Error('Failed to initiate online payment checkout.');
+  }
+});
+
+// @desc    Verify Paymongo Payment completion
+// @route   GET /api/students/:id/verify-paymongo-payment
+const verifyPaymongoPayment = asyncHandler(async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) {
+    res.status(404);
+    throw new Error('Student not found');
+  }
+
+  const { session_id } = req.query;
+  if (!session_id) {
+    res.status(400);
+    throw new Error('session_id query parameter is required');
+  }
+
+  try {
+    // Check the student's paymentDetails directly instead of making an HTTP self-call.
+    const details = student.paymentDetails;
+    
+    if (!details || details.checkoutSessionId !== session_id) {
+      res.status(400);
+      throw new Error('Checkout session mismatch or not found on student record.');
+    }
+
+    if (details.status === 'paid') {
+      return res.status(200).json(student);
+    } else {
+      res.status(400);
+      throw new Error(`Payment is not completed. Checkout status is: ${details.status}`);
+    }
+  } catch (error) {
+    console.error('Error verifying Paymongo payment:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to verify payment status.');
+  }
+});
+
 export {
   createDraft,
+  createPaymongoCheckoutSession,
+  verifyPaymongoPayment,
   applicantLogin,
   getStudents,
   getStudentById,

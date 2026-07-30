@@ -18,6 +18,7 @@ import adminRoutes from './adminRoutes.js';
 import userRoutes from './userRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
 import schedulerRoutes from './schedulerRoutes.js';
+import paymongoRoutes from './paymongoRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
 import { startCleanupTask } from './cron.js';
 import { initCatalog } from './subjectsCatalog.js';
@@ -32,7 +33,7 @@ dotenv.config();
 // --- Global Error Handling for Critical Errors ---
 // These handlers catch issues that are not part of the Express request-response cycle.
 // They prevent the entire application from crashing silently or hanging in a corrupt state.
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   console.error('UNHANDLED REJECTION! 💥 Shutting down...');
   console.error('Reason:', reason);
   process.exit(1);
@@ -166,6 +167,7 @@ const startServer = async () => {
     app.use('/api/admin/users', userRoutes);
     app.use('/api/settings', settingsRoutes);
     app.use('/api/scheduler', schedulerRoutes);
+    app.use('/api/paymongo', paymongoRoutes);
 
     // Error Handling Middleware
     app.use(notFound);
@@ -232,5 +234,6 @@ startServer().then(server => {
 }).catch((error) => {
   console.error('\nServer startup failed.');
   console.error(error);
-  process.exit(1);
 });
+
+// Restart trigger to clear rate limit memory

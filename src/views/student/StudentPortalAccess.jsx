@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
-import { UserCheck, FilePlus, ChevronRight, AlertCircle, ArrowLeft, LogIn } from 'lucide-react';
+import { FilePlus, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function StudentPortalAccess({ onVerified }) {
   const { state, setActiveStudent } = useEnrollment();
-  const { students } = state;
+  const { students: _students } = state;
 
   const [mode, setMode] = useState('new'); // 'new' | 'resume'
   const [identifier, setIdentifier] = useState('');
@@ -36,7 +36,7 @@ export default function StudentPortalAccess({ onVerified }) {
       let data = {};
       try {
         data = await res.json();
-      } catch (_) {
+      } catch {
         // Fallback
       }
 
@@ -102,7 +102,7 @@ export default function StudentPortalAccess({ onVerified }) {
       let data = {};
       try {
         data = await res.json();
-      } catch (_) {
+      } catch {
         // Fallback for non-JSON responses
       }
 
@@ -128,7 +128,7 @@ export default function StudentPortalAccess({ onVerified }) {
       let data = {};
       try {
         data = await res.json();
-      } catch (_) {
+      } catch {
         // Fallback
       }
 
@@ -139,7 +139,7 @@ export default function StudentPortalAccess({ onVerified }) {
       setActiveStudent(data.id);
       toast.success(`Logged in as Demo: ${data.firstName} ${data.lastName}`);
       onVerified();
-    } catch (err) {
+    } catch {
       toast.error('Could not connect to the server or demo profile not found.');
     }
   };

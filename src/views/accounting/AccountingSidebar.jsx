@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, DollarSign, CheckCircle, Clock, Settings, FileText } from 'lucide-react';
+import { LayoutDashboard, Receipt, CheckCircle, Clock, Settings } from 'lucide-react';
 
 export default function AccountingSidebar({ activeTab, onTabChange, pendingCount }) {
   const tabs = [

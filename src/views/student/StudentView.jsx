@@ -121,13 +121,22 @@ function getFurthestStep(storedStep, resumeStep) {
 }
 
 export default function StudentView() {
-  const { getActiveStudent, setActiveStudent } = useEnrollment();
-  const { user } = useAuth();
+  const { state, getActiveStudent, setActiveStudent } = useEnrollment();
+  const { user, logout } = useAuth();
   const student = getActiveStudent();
 
   const hasActiveHolds = student?.holds?.some(h => h.status === 'active');
-  const initialStep = hasActiveHolds ? 'clearance' : 'continuing';
-  const [currentStep, setCurrentStep] = useState(initialStep);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (!student) return hasActiveHolds ? 'clearance' : 'continuing';
+    const resumeStep = getResumeStepFromStudent(student);
+    const storedStep = student.id ? localStorage.getItem(`student_current_step_${student.id}`) : null;
+    const shouldUseStatusStep = student.status && student.status !== 'registration';
+    return shouldUseStatusStep
+      ? resumeStep
+      : storedStep
+      ? getFurthestStep(storedStep, resumeStep)
+      : resumeStep;
+  });
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isVerified, setIsVerified] = useState(() => {
     return user?.role === 'student';
@@ -274,8 +283,8 @@ export default function StudentView() {
         return <PaymentStep onNext={onNext} onBack={onBack} />;
       case 'fulfillment':
         return <FulfillmentStep onReturnToGateway={() => {
+              if (logout) logout();
               setActiveStudent(null);
-              setIsVerified(false);
               window.location.href = '/?portal=gateway&tab=student';
             }} />;
       default:
@@ -290,6 +299,19 @@ export default function StudentView() {
 
   if (!isVerified) {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
+  }
+
+  if (!student) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-univ-blue border-t-transparent"></div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Loading profile... ({user?.studentId} / {getActiveStudent()?.id} / {state?.students?.length} / {localStorage.getItem('student_active_id')})
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const sidebar = (<>

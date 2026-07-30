@@ -61,7 +61,8 @@ export function EnrollmentProvider({ children }) {
         console.error('Failed to fetch settings:', err);
       }
 
-      if (!token) {
+      if (!token || user?.role === 'student') {
+        setStudents((prev) => prev.filter(s => s.id === activeStudentId));
         setIsLoading(false);
         return;
       }
@@ -72,7 +73,13 @@ export function EnrollmentProvider({ children }) {
           return;
         }
         const data = await safeJson(res);
-        setStudents(data);
+        setStudents((prev) => {
+          const active = prev.find((s) => s.id === activeStudentId);
+          if (active && !data.some((s) => s.id === activeStudentId)) {
+            return [...data, active];
+          }
+          return data;
+        });
       } catch (err) {
         console.error('Failed to connect to backend enrollment server:', err.message || err);
       } finally {
@@ -83,7 +90,7 @@ export function EnrollmentProvider({ children }) {
 
     const interval = setInterval(loadStudents, 15000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [activeStudentId, token, user?.role]);
 
   // 1b. Fetch active student profile from backend when activeStudentId changes and poll periodically
   useEffect(() => {
@@ -251,12 +258,21 @@ export function EnrollmentProvider({ children }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            paymentMethod: currentStudent?.paymentMethod,
+            paymentMethod: payload.paymentMethod || currentStudent?.paymentMethod,
+            paymentDetails: payload.paymentDetails,
+            paymentReference: payload.paymentReference,
             success: payload.success
           }),
         });
         updatedStudent = await safeJson(res);
       } 
+      
+      else if (type === 'VERIFY_PAYMONGO_PAYMENT') {
+        const res = await authFetch(`/api/students/${activeStudentId}/verify-paymongo-payment?session_id=${payload.sessionId}`, {
+          method: 'GET',
+        });
+        updatedStudent = await safeJson(res);
+      }
       
       else if (type === 'APPROVE_DOCUMENTS') {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/approve-admission`, {

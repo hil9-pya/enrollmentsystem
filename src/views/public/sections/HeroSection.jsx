@@ -1,7 +1,9 @@
 import React from 'react';
 import { ChevronRight, Play } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function HeroSection({ onNavigate }) {
+  const { user } = useAuth();
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden bg-univ-navy">
       {/* Background Image & Overlay */}
@@ -26,7 +28,7 @@ export default function HeroSection({ onNavigate }) {
               onClick={() => onNavigate('gateway')}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-univ-gold hover:bg-yellow-500 text-univ-navy font-extrabold rounded-xl transition-all shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:shadow-[0_0_30px_rgba(250,204,21,0.5)] hover:-translate-y-0.5 cursor-pointer"
             >
-              Apply Now
+              {user ? 'Go to Dashboard' : 'Apply Now'}
               <ChevronRight className="w-5 h-5" />
             </button>
             

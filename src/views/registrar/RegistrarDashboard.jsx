@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare, MoreHorizontal } from 'lucide-react';
+import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { PROGRAMS, ACADEMIC_TERMS, ACTIVE_TERM_ID } from '../../../data/mockData';
+import { PROGRAMS, ACADEMIC_TERMS } from '../../../data/mockData';
 
 export default function ProgramSelectionStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch, settings } = useEnrollment();
@@ -29,7 +29,7 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
         setTimeout(() => { autoSelected.current = false; }, 1000);
       });
     }
-  }, [student?.academicTerm, student?.programId, dispatch, activeTermLabel]);  
+  }, [student, student?.academicTerm, student?.programId, dispatch, activeTermLabel]);  
 
   function handleChange(field, value) {
     dispatch({

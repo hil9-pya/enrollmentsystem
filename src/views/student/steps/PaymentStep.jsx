@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { useConfirm } from '../../../context/ConfirmationContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
-import { Banknote, Building2, CreditCard, Smartphone, ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
+import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
 
 export default function PaymentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
-  const { confirm } = useConfirm();
   const student = getActiveStudent();
 
   const selectedMethodId = student?.paymentMethod;
@@ -23,9 +22,47 @@ export default function PaymentStep({ onNext, onBack }) {
     Smartphone: Smartphone,
   };
 
+  const [paymentMode, setPaymentMode] = useState(() => {
+    return ['gcash', 'card'].includes(student?.paymentMethod) ? 'online' : 'manual';
+  });
+
   const handleSelectMethod = (methodId) => {
     if (paymentStatus === 'paid') return;
     dispatch({ type: 'SET_PAYMENT_METHOD', payload: { method: methodId } });
+    if (['gcash', 'card'].includes(methodId)) {
+      setPaymentMode('online');
+    } else {
+      setPaymentMode('manual');
+    }
+  };
+
+  const handleOnlinePayment = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/students/${student.id}/paymongo-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        let errText = 'Failed to initiate checkout';
+        try {
+          const errData = await response.json();
+          errText = errData.error || errData.message || errText;
+        } catch {}
+        throw new Error(errText);
+      }
+      const data = await response.json();
+      if (data && data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL returned from server.');
+      }
+    } catch (error) {
+      console.error('Error initiating PayMongo payment:', error);
+      toast.error(error.message || 'Failed to initiate online payment.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -166,7 +203,20 @@ export default function PaymentStep({ onNext, onBack }) {
     setTimeout(() => {
       setIsProcessing(false);
       const success = true;
-      dispatch({ type: 'PROCESS_PAYMENT', payload: { success } });
+      let paymentReference = '';
+      if (selectedMethodId === 'bank') paymentReference = formValues.bankRef;
+      else if (selectedMethodId === 'gcash') paymentReference = formValues.gcashRef;
+      else if (selectedMethodId === 'cash') paymentReference = formValues.cashRef;
+      
+      dispatch({ 
+        type: 'PROCESS_PAYMENT', 
+        payload: { 
+          success, 
+          paymentMethod: selectedMethodId, 
+          paymentDetails: formValues, 
+          paymentReference 
+        } 
+      });
     }, 1500);
   };
 
@@ -410,6 +460,69 @@ export default function PaymentStep({ onNext, onBack }) {
           </div>
         </div>
 
+        {/* Payment Mode (Online vs Manual) Selector */}
+        {!isPaid && ['card', 'gcash'].includes(selectedMethodId) && (
+          <div className="mb-8 bg-slate-50/50 border border-slate-200/60 rounded-2xl p-6 shadow-sm animate-in fade-in duration-300">
+            <h4 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest mb-4">Payment Channel Option</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div 
+                onClick={() => setPaymentMode('online')}
+                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                  paymentMode === 'online'
+                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <input 
+                    type="radio" 
+                    id="payment-mode-online" 
+                    name="payment-mode" 
+                    checked={paymentMode === 'online'} 
+                    onChange={() => setPaymentMode('online')}
+                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
+                  />
+                  <label htmlFor="payment-mode-online" className="text-xs font-extrabold text-univ-navy cursor-pointer">
+                    Pay Online via PayMongo (Instant)
+                  </label>
+                  <span className="px-2 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-700 rounded-full tracking-wide uppercase ml-auto">
+                    Fastest
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
+                  Complete your payment securely using GCash or Credit/Debit Card. Your enrollment will clear instantly upon payment completion.
+                </p>
+              </div>
+
+              <div 
+                onClick={() => setPaymentMode('manual')}
+                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                  paymentMode === 'manual'
+                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <input 
+                    type="radio" 
+                    id="payment-mode-manual" 
+                    name="payment-mode" 
+                    checked={paymentMode === 'manual'} 
+                    onChange={() => setPaymentMode('manual')}
+                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
+                  />
+                  <label htmlFor="payment-mode-manual" className="text-xs font-extrabold text-univ-navy cursor-pointer">
+                    Manual Receipt Verification
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
+                  Submit details of your bank deposit or GCash receipt manually. Requires 1-2 business days for Accounting approval.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 3. Transaction Feedback Banners */}
         {isProcessing && (
           <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-6 mb-4 shadow-sm">
@@ -458,7 +571,8 @@ export default function PaymentStep({ onNext, onBack }) {
         {!isPaid && !isProcessing && (
           <div className="flex justify-end mt-6">
             <button
-              onClick={handleProcessPayment}
+              type="button"
+              onClick={paymentMode === 'online' ? handleOnlinePayment : handleProcessPayment}
               disabled={!selectedMethodId}
               className={`px-8 py-3 text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer ${
                 selectedMethodId
@@ -466,7 +580,9 @@ export default function PaymentStep({ onNext, onBack }) {
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
-              {paymentStatus === 'failed' ? 'Retry Payment' : 'Proceed with Payment'}
+              {paymentStatus === 'failed'
+                ? (paymentMode === 'online' ? 'Retry Online Payment' : 'Retry Payment')
+                : (paymentMode === 'online' ? 'Pay via PayMongo' : 'Proceed with Payment')}
             </button>
           </div>
         )}

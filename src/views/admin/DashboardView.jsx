@@ -497,7 +497,7 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                       </div>
                       <div>
                         <p className="font-semibold text-slate-900">{stud.firstName || 'Anonymous'} {stud.lastName || 'Applicant'}</p>
-                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{stud.id}</p>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{stud.studentId || stud.id}</p>
                         {stud.email && <p className="text-[10px] text-slate-400">{stud.email}</p>}
                       </div>
                     </div>
@@ -627,7 +627,7 @@ function TrashTab() {
   return (
     <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Trash Bin</h1>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Archived Students</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
           Restore deleted student records or remove them permanently.
         </p>
@@ -636,8 +636,8 @@ function TrashTab() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 flex items-center gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
         <div>
-          <p className="text-sm font-bold text-amber-900">Trash Bin</p>
-          <p className="text-xs text-amber-700 mt-0.5">Deleted students are stored here. You can restore them or permanently delete them from the database.</p>
+          <p className="text-sm font-bold text-amber-900">Archived Students</p>
+          <p className="text-xs text-amber-700 mt-0.5">For students with inactive or did not enroll for the past 2 sems. You can restore them or permanently delete them from the database.</p>
         </div>
       </div>
 
@@ -920,6 +920,21 @@ function SettingsTab() {
     finally { setSaving(false); }
   };
 
+  const handleAdvanceSemester = async () => {
+    if (!window.confirm('Are you sure you want to advance to the next semester? This will update the system term and automatically archive inactive students.')) return;
+    
+    setSaving(true);
+    try {
+      const res = await authFetch('/api/settings/advance-semester', { method: 'POST' });
+      const data = await safeJson(res);
+      setSettings(data.settings);
+      toast.success(`System advanced to ${data.newTerm}`);
+      // Refresh the page to ensure all components have the newest settings
+      window.location.reload();
+    } catch (err) { toast.error(err.message || 'Failed to advance semester'); }
+    finally { setSaving(false); }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>;
 
   return (
@@ -948,6 +963,18 @@ function SettingsTab() {
             <option value="1st Semester">1st Semester</option>
             <option value="2nd Semester">2nd Semester</option>
           </select>
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={handleAdvanceSemester}
+              disabled={saving}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+            >
+              Advance Academic Term & Archive Inactive Students
+            </button>
+            <p className="text-[10px] text-slate-500 mt-2">
+              Warning: This will change the active term and automatically archive students who have not enrolled for 2 consecutive semesters.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -1113,7 +1140,7 @@ export default function DashboardView() {
             <DirectoryTab
               title="Applicant Directory"
               description="Review applicant records and manage enrollment progress."
-              visibleStudents={visibleStudents.filter(s => s.id?.startsWith('APP-'))}
+              visibleStudents={visibleStudents.filter(s => !s.studentId && s.id?.startsWith('APP-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
               dispatch={dispatch}
@@ -1123,7 +1150,7 @@ export default function DashboardView() {
             <DirectoryTab
               title="Student Database"
               description="Manage official student records, statuses, and account details."
-              visibleStudents={visibleStudents.filter(s => s.id?.startsWith('STU-'))}
+              visibleStudents={visibleStudents.filter(s => s.studentId || s.id?.startsWith('STU-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
               dispatch={dispatch}

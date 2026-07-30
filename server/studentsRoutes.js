@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 import {
   createDraft,
   applicantLogin,
-  getStudents,
   getStudentById,
   registerStudent,
   updateStudent,
@@ -16,13 +15,10 @@ import {
   selectProgram,
   setSubjects,
   processPayment,
-  approveAdmission,
-  rejectAdmission,
-  approveAdvising,
-  confirmPayment,
-  validateEnrollment,
   proceedToPayment,
   rolloverStudent,
+  createPaymongoCheckoutSession,
+  verifyPaymongoPayment,
 } from './studentsController.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -76,6 +72,8 @@ router.post('/:id/subjects', setSubjects);
 
 router.post('/:id/proceed-to-payment', proceedToPayment);
 router.post('/:id/payment', processPayment);
+router.post('/:id/paymongo-checkout', createPaymongoCheckoutSession);
+router.get('/:id/verify-paymongo-payment', verifyPaymongoPayment);
 router.post('/:id/rollover', rolloverStudent);
 
 // Surface multer errors (bad file type / too large) as normal JSON errors

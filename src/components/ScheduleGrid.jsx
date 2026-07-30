@@ -145,7 +145,7 @@ export default function ScheduleGrid({ entries = [] }) {
         <div className="grid gap-0 relative" style={{ gridTemplateColumns: '56px repeat(6, 1fr)' }}>
           {/* Time labels column */}
           <div className="border-r border-slate-200 relative" style={{ height: GRID_HEIGHT }}>
-            {TIME_SLOTS.map((slot, i) => {
+            {TIME_SLOTS.map((slot, _i) => {
               const [h, m] = slot.split(':').map(Number);
               const mins = h * 60 + m;
               const top = toTop(mins);
