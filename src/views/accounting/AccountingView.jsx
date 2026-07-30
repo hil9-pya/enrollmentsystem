@@ -3,6 +3,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import AccountingSidebar from './AccountingSidebar';
 import AccountingDashboard from './AccountingDashboard';
 import PaymentVerification from './PaymentVerification';
+import PortalShell from '../../components/PortalShell';
 
 export default function AccountingView() {
   const { state } = useEnrollment();
@@ -59,17 +60,19 @@ export default function AccountingView() {
     }
   };
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
-      <AccountingSidebar 
+  const sidebar = (
+    <AccountingSidebar
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
         pendingCount={pendingCount}
-      />
-      
-      <main className="flex-1 overflow-hidden flex flex-col">
+    />
+  );
+
+  return (
+    <PortalShell sidebar={sidebar} portalTitle="Accounting Portal">
+      <main className="h-full min-w-0 overflow-hidden flex flex-col">
         {renderContent()}
       </main>
-    </div>
+    </PortalShell>
   );
 }

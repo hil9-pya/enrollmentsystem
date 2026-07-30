@@ -10,6 +10,7 @@ import PaymentStep from './steps/PaymentStep';
 import FulfillmentStep from './steps/FulfillmentStep';
 import ClearanceStep from './steps/ClearanceStep';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import PortalShell from '../../components/PortalShell';
 
 export const STUDENT_STEPS = [
   { key: 'clearance', label: 'Holds & Clearances' },
@@ -234,15 +235,11 @@ export default function StudentView() {
     const idx = STEP_KEYS.indexOf(currentStep);
     if (idx < 0 || idx >= STEP_KEYS.length - 1) return;
 
-    const status = student?.status || 'documents_approved';
-    const rank = getStatusRank(status);
-
-
     setCompletedSteps((prev) =>
       prev.includes(currentStep) ? prev : [...prev, currentStep]
     );
     setCurrentStep(STEP_KEYS[idx + 1]);
-  }, [currentStep, student]);
+  }, [currentStep]);
 
   const onBack = useCallback(() => {
     const idx = STEP_KEYS.indexOf(currentStep);
@@ -288,13 +285,14 @@ export default function StudentView() {
 
 
   const hasStudentInfo = student && student.firstName && student.lastName;
+  const currentStepDefinition = STUDENT_STEPS.find((step) => step.key === effectiveStep);
+  const currentStepNumber = STUDENT_STEPS.findIndex((step) => step.key === effectiveStep) + 1;
 
   if (!isVerified) {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
   }
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
+  const sidebar = (<>
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
         <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
@@ -341,15 +339,24 @@ export default function StudentView() {
           </div>
         )}
       </aside>
- 
+      </>
+  );
+
+  return (
+    <PortalShell
+      sidebar={sidebar}
+      portalTitle="Student Portal"
+      mobileTitle={currentStepDefinition?.label || 'Enrollment Progress'}
+      mobileSubtitle={`Step ${currentStepNumber} of ${STUDENT_STEPS.length}`}
+    >
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-50/70">
-        <div className="max-w-4xl mx-auto p-8">
+      <main className="h-full min-w-0 overflow-y-auto bg-slate-50/70">
+        <div className="max-w-4xl mx-auto p-4 sm:p-5 lg:p-8">
           <ErrorBoundary>
             {renderStep()}
           </ErrorBoundary>
         </div>
       </main>
-    </div>
+    </PortalShell>
   );
 }

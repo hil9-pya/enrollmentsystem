@@ -3,6 +3,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
 import EnrollmentValidation from './EnrollmentValidation';
+import PortalShell from '../../components/PortalShell';
 
 export default function RegistrarView() {
   const { state } = useEnrollment();
@@ -76,17 +77,19 @@ export default function RegistrarView() {
     }
   };
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
-      <RegistrarSidebar 
+  const sidebar = (
+    <RegistrarSidebar
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
         pendingCount={pendingCount}
-      />
-      
-      <main className="flex-1 overflow-hidden flex flex-col">
+    />
+  );
+
+  return (
+    <PortalShell sidebar={sidebar} portalTitle="Registrar Portal">
+      <main className="h-full min-w-0 overflow-hidden flex flex-col">
         {renderContent()}
       </main>
-    </div>
+    </PortalShell>
   );
 }

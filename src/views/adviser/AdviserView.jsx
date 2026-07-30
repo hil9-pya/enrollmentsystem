@@ -3,6 +3,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import AdviserSidebar from './AdviserSidebar';
 import AdviserDashboard from './AdviserDashboard';
 import AdvisingQueue from './AdvisingQueue';
+import PortalShell from '../../components/PortalShell';
 
 export default function AdviserView() {
   const { state } = useEnrollment();
@@ -44,17 +45,19 @@ export default function AdviserView() {
     }
   };
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
-      <AdviserSidebar 
+  const sidebar = (
+    <AdviserSidebar
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
         pendingCount={pendingCount}
-      />
-      
-      <main className="flex-1 overflow-hidden flex flex-col">
+    />
+  );
+
+  return (
+    <PortalShell sidebar={sidebar} portalTitle="Adviser Portal">
+      <main className="h-full min-w-0 overflow-hidden flex flex-col">
         {renderContent()}
       </main>
-    </div>
+    </PortalShell>
   );
 }

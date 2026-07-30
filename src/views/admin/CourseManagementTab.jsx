@@ -677,7 +677,7 @@ export default function CourseManagementTab() {
 
   return (
     <>
-      <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+      <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

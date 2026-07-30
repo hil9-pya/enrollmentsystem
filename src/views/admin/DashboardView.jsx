@@ -15,6 +15,7 @@ import StatusBadge from '../../components/StatusBadge';
 import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
 import AdminSidebar from './AdminSidebar';
+import PortalShell from '../../components/PortalShell';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_COLORS = {
@@ -58,7 +59,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
   }, [visibleStudents]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Administration Overview</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
@@ -417,7 +418,7 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       {editingStudent && (
         <StudentEditModal
           student={editingStudent}
@@ -624,7 +625,7 @@ function TrashTab() {
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Trash Bin</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
@@ -765,7 +766,7 @@ function StaffTab() {
   const roleIcons = { admin: Building2, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Accounts</h1>
@@ -922,7 +923,7 @@ function SettingsTab() {
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">System Configuration</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">Configure global enrollment settings and system parameters.</p>
@@ -1093,11 +1094,11 @@ export default function DashboardView() {
     // The context's polling will re-fetch automatically, but we can trigger local update
   };
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
-      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+  const sidebar = <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />;
 
-      <main className="flex-1 overflow-hidden flex flex-col">
+  return (
+    <PortalShell sidebar={sidebar} portalTitle="Admin Portal">
+      <main className="h-full min-w-0 overflow-hidden flex flex-col">
           {activeTab === 'analytics' && (
             <AnalyticsTab
               metrics={metrics}
@@ -1133,6 +1134,6 @@ export default function DashboardView() {
           {activeTab === 'settings' && <SettingsTab />}
           {activeTab === 'courses' && <CourseManagementTab />}
       </main>
-    </div>
+    </PortalShell>
   );
 }

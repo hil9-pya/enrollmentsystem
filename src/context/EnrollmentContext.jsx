@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
-import { SUBJECTS, MISC_FEES } from '../data/mockData.js';
+import { SUBJECTS } from '../data/mockData.js';
 import { useAuth } from './AuthContext';
 
 const EnrollmentContext = createContext(null);
@@ -19,7 +19,7 @@ const safeJson = async (res) => {
     try {
       const data = await res.json();
       errorMsg = data.error || data.message || errorMsg;
-    } catch (_) {
+    } catch {
       // Fallback for non-JSON responses (e.g. 502 HTML pages)
     }
     throw new Error(errorMsg);
@@ -67,6 +67,10 @@ export function EnrollmentProvider({ children }) {
       }
       try {
         const res = await authFetch('/api/admin/students');
+        if (res.status === 401 || res.status === 403) {
+          setIsLoading(false);
+          return;
+        }
         const data = await safeJson(res);
         setStudents(data);
       } catch (err) {
@@ -77,7 +81,7 @@ export function EnrollmentProvider({ children }) {
     }
     loadStudents();
 
-    const interval = setInterval(loadStudents, 3000);
+    const interval = setInterval(loadStudents, 15000);
     return () => clearInterval(interval);
   }, [token]);
 
@@ -106,7 +110,7 @@ export function EnrollmentProvider({ children }) {
     }
     loadActiveStudent();
 
-    const interval = setInterval(loadActiveStudent, 2000);
+    const interval = setInterval(loadActiveStudent, 10000);
     return () => clearInterval(interval);
   }, [activeStudentId, token, user?.role]);
 

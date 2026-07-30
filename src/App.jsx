@@ -72,7 +72,8 @@ function AppContent() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <span className="font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
+              <span className="sm:hidden font-heading font-bold text-sm tracking-wide text-univ-navy">NCST Applicant Portal</span>
+              <span className="hidden sm:inline font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
               <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Applicant Portal</span>
             </div>
           </div>
@@ -102,7 +103,8 @@ function AppContent() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <span className="font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
+              <span className="sm:hidden font-heading font-bold text-sm tracking-wide text-univ-navy">NCST Student Portal</span>
+              <span className="hidden sm:inline font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
               <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Student Portal</span>
             </div>
           </div>
@@ -130,7 +132,8 @@ function AppContent() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <div className="font-heading font-bold text-lg leading-tight tracking-wide text-univ-navy">NCST Enrollment Management System</div>
+              <div className="sm:hidden font-heading font-bold text-sm leading-tight tracking-wide text-univ-navy">NCST Enrollment System</div>
+              <div className="hidden sm:block font-heading font-bold text-lg leading-tight tracking-wide text-univ-navy">NCST Enrollment Management System</div>
             </div>
           </div>
           <div className="flex items-center gap-4">

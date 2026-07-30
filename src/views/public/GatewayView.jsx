@@ -67,20 +67,21 @@ export default function GatewayView({ onVerified, onBack, initialView = 'applica
                 <button 
                   key={tab.id}
                   onClick={() => setViewMode(tab.id)}
-                  className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all duration-300 outline-none focus:outline-none focus:ring-0 cursor-pointer ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
+                className={`flex-1 min-h-11 px-2 py-3 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
+                aria-pressed={viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin')}
                 >
                   {tab.label}
                 </button>
               ))}
            </div>
            
-           <div className="bg-white rounded-2xl shadow-premium border border-slate-100 p-2 h-[480px] flex flex-col outline-none focus:outline-none relative">
+           <div className="bg-white rounded-lg shadow-premium border border-slate-200 p-2 min-h-[420px] flex flex-col relative">
              {(viewMode === 'admin' || viewMode === 'staff' || viewMode === 'student') ? (
-               <div className="flex-1 flex flex-col outline-none focus:outline-none p-6 sm:p-8 overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
+               <div className="flex-1 flex flex-col p-6 sm:p-8 animate-in fade-in duration-300">
                   <LoginView portalType={viewMode} />
                </div>
              ) : viewMode === 'applicant' ? (
-               <div className="flex-1 flex flex-col outline-none focus:outline-none p-6 sm:p-8 overflow-y-auto animate-in fade-in zoom-in-95 duration-500">
+               <div className="flex-1 flex flex-col p-6 sm:p-8 animate-in fade-in duration-300">
                   <ApplicantPortalAccess onVerified={onVerified} />
                </div>
              ) : (
@@ -96,8 +97,8 @@ export default function GatewayView({ onVerified, onBack, initialView = 'applica
            {/* Footer right side */}
            <div className="mt-8 text-center flex flex-col items-center gap-4">
              <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-               <span className="hover:text-univ-blue cursor-pointer transition-colors">Privacy</span>
-               <span className="hover:text-univ-blue cursor-pointer transition-colors">Support</span>
+               <button type="button" className="hover:text-univ-blue cursor-pointer transition-colors">Privacy</button>
+               <button type="button" className="hover:text-univ-blue cursor-pointer transition-colors">Support</button>
                <button onClick={onBack} className="hover:text-univ-blue cursor-pointer transition-colors">Website</button>
              </div>
            </div>

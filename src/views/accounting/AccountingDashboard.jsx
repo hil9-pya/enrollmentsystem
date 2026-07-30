@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { DollarSign, Clock, CheckCircle, TrendingUp, Search, Download, Filter } from 'lucide-react';
+import { DollarSign, Clock, CheckCircle, TrendingUp, Search, Download } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
@@ -68,7 +68,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
   const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6'];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       {showOverview && (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
