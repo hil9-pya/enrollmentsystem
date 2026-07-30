@@ -59,7 +59,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   // Force string coercion and strip MongoDB operator chars ($) to block NoSQL injection
-  const rawIdentifier = String(email || '').replace(/[\$]/g, '').trim();
+  const rawIdentifier = String(email || '').replace(/[$]/g, '').trim();
   const rawPassword = String(password || '');
 
   if (!rawIdentifier || !rawPassword) {

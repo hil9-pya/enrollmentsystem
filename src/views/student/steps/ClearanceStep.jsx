@@ -39,7 +39,7 @@ export default function ClearanceStep({ onNext }) {
         payload: { typeId: 'readmission_clearance', file },
       });
       toast.success('Clearance document uploaded successfully');
-    } catch (err) {
+    } catch {
       toast.error('Upload failed. Please try again.');
     } finally {
       setIsUploading(false);

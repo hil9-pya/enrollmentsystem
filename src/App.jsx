@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EnrollmentProvider, useEnrollment } from './context/EnrollmentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConfirmationProvider, useConfirm } from './context/ConfirmationContext';
@@ -13,6 +13,8 @@ import AdviserView from './views/adviser/AdviserView';
 import AccountingView from './views/accounting/AccountingView';
 import RegistrarView from './views/registrar/RegistrarView';
 import DashboardView from './views/admin/DashboardView';
+import PaymongoCheckoutView from './views/public/PaymongoCheckoutView';
+import PaymentSuccessView from './views/public/PaymentSuccessView';
 
 import { LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -27,10 +29,40 @@ function AppContent() {
   const [viewMode, setViewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const portal = params.get('portal');
-    if (portal === 'gateway' || portal === 'applicant' || portal === 'student' || portal === 'staff' || portal === 'admin') return portal;
+    if (
+      portal === 'gateway' ||
+      portal === 'applicant' ||
+      portal === 'student' ||
+      portal === 'staff' ||
+      portal === 'admin' ||
+      portal === 'paymongo-checkout' ||
+      portal === 'payment-success'
+    ) return portal;
     return 'landing'; // Default to landing page
   });
   const gatewayTab = new URLSearchParams(window.location.search).get('tab') || 'applicant';
+
+  // Automatically redirect authenticated users when they access the gateway
+  useEffect(() => {
+    if (user && viewMode === 'gateway') {
+      setViewMode(user.role === 'student' ? 'student' : 'admin');
+    }
+  }, [user, viewMode]);
+
+  // Sync viewMode to URL to survive refreshes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (viewMode === 'landing') {
+      if (params.has('portal')) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } else {
+      if (params.get('portal') !== viewMode) {
+        params.set('portal', viewMode);
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+      }
+    }
+  }, [viewMode]);
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -94,8 +126,18 @@ function AppContent() {
     );
   }
 
+  // 1b. PayMongo Checkout View
+  if (viewMode === 'paymongo-checkout') {
+    return <PaymongoCheckoutView />;
+  }
+
+  // 1c. PayMongo Success View
+  if (viewMode === 'payment-success') {
+    return <PaymentSuccessView />;
+  }
+
   // 2. Student Portal View
-  if (user?.role === 'student') {
+  if (user?.role === 'student' && viewMode !== 'landing' && viewMode !== 'gateway') {
     return (
       <div className="h-screen flex flex-col">
         <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
@@ -122,7 +164,7 @@ function AppContent() {
   }
 
   // 3. Staff/Admin Portal View
-  if (user && user.role !== 'student') {
+  if (user && user.role !== 'student' && viewMode !== 'landing' && viewMode !== 'gateway') {
     const ActiveView = viewMap[user.role] || AdmissionView;
     return (
       <div className="h-screen flex flex-col">

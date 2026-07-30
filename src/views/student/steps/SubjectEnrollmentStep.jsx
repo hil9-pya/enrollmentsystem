@@ -3,8 +3,8 @@ import { useEnrollment } from '../../../context/EnrollmentContext';
 import { useConfirm } from '../../../context/ConfirmationContext';
 import { toast } from 'react-hot-toast';
 import {
-  Search, AlertTriangle, ArrowLeft, ArrowRight, Trash2, BookOpen,
-  Clock, CheckCircle, Calendar, Lock, Loader2, Info, XCircle, ChevronDown, ChevronUp,
+  AlertTriangle, Trash2, BookOpen,
+  Clock, CheckCircle, Calendar, Lock, Loader2, Info, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import SearchInput from '../../../components/SearchInput';
 import Modal from '../../../components/Modal';
@@ -80,8 +80,8 @@ function slotBadge(remaining, maxSlots) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SubjectEnrollmentStep({ onNext, onBack }) {
-  const { getActiveStudent, dispatch, getSubjectById, settings } = useEnrollment();
-  const { confirm } = useConfirm();
+  const { getActiveStudent, dispatch, getSubjectById, settings: _settings } = useEnrollment();
+  const { confirm: _confirm } = useConfirm();
   const student = getActiveStudent();
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
   const [requestText, setRequestText] = useState('');
 
   const studentId = student?._id || student?.id;
-  const selectedSubjects = student?.selectedSubjects || [];
+  const selectedSubjects = useMemo(() => student?.selectedSubjects || [], [student?.selectedSubjects]);
   const academicTermLabel = ACADEMIC_TERMS.find((term) => term.id === student?.academicTerm)?.label || student?.academicTerm;
 
   // ── Fetch curriculum subjects from API ────────────────────────────────────

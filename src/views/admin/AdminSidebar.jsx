@@ -8,8 +8,9 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
-const NAV_GROUPS = [
+const ALL_NAV_GROUPS = [
   {
     group: 'Dashboard',
     items: [
@@ -21,25 +22,33 @@ const NAV_GROUPS = [
     items: [
       { id: 'applicants', label: 'Applicant Directory', icon: UserPlus },
       { id: 'students', label: 'Student Database', icon: Users },
-      { id: 'trash', label: 'Trash Bin', icon: Trash2 },
+      { id: 'trash', label: 'Archived Students', icon: Trash2, roles: ['admin'] },
     ],
   },
   {
     group: 'Administration',
     items: [
-      { id: 'courses', label: 'Course Management', icon: BookOpen },
-      { id: 'staff', label: 'Staff Management', icon: UserCog },
+      { id: 'courses', label: 'Course Management', icon: BookOpen, roles: ['admin'] },
+      { id: 'staff', label: 'Staff Management', icon: UserCog, roles: ['admin'] },
     ],
   },
   {
     group: 'Settings',
     items: [
-      { id: 'settings', label: 'Settings', icon: Settings },
+      { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin'] },
     ],
   },
 ];
 
 export default function AdminSidebar({ activeTab, onTabChange }) {
+  const { user } = useAuth();
+  const role = user?.role || 'guest';
+
+  const navGroups = ALL_NAV_GROUPS.map(group => ({
+    ...group,
+    items: group.items.filter(item => !item.roles || item.roles.includes(role))
+  })).filter(group => group.items.length > 0);
+
   return (
     <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm z-10">
       <div className="p-6 border-b border-slate-100 flex flex-col gap-2 bg-slate-50/50">
@@ -52,7 +61,7 @@ export default function AdminSidebar({ activeTab, onTabChange }) {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.group} className="mb-6 px-4">
             <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 px-3">
               {group.group}

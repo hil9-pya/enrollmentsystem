@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { useConfirm } from '../../../context/ConfirmationContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
-import { Banknote, Building2, CreditCard, Smartphone, ArrowLeft, ArrowRight, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
+import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
 
 export default function PaymentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
-  const { confirm } = useConfirm();
   const student = getActiveStudent();
 
   const selectedMethodId = student?.paymentMethod;
@@ -23,9 +22,58 @@ export default function PaymentStep({ onNext, onBack }) {
     Smartphone: Smartphone,
   };
 
+  const [paymentMode, setPaymentMode] = useState(() => {
+    return ['gcash', 'card'].includes(student?.paymentMethod) ? 'online' : 'manual';
+  });
+
+  const [paymentScheme, setPaymentScheme] = useState(student?.paymentScheme || 'full');
+  const [amountPaid, setAmountPaid] = useState(student?.amountPaid || 3000);
+
+  const amountDueToday = paymentScheme === 'full' 
+    ? (student?.totalTuition || 0) 
+    : Math.min(Math.max(3000, Number(amountPaid) || 3000), student?.totalTuition || 3000);
+    
+  const displayAmount = (paymentStatus === 'paid' || paymentStatus === 'processing') 
+    ? (student?.paymentScheme === 'installment' ? student?.amountPaid : student?.totalTuition) 
+    : amountDueToday;
+
   const handleSelectMethod = (methodId) => {
     if (paymentStatus === 'paid') return;
     dispatch({ type: 'SET_PAYMENT_METHOD', payload: { method: methodId } });
+    if (['gcash', 'card'].includes(methodId)) {
+      setPaymentMode('online');
+    } else {
+      setPaymentMode('manual');
+    }
+  };
+
+  const handleOnlinePayment = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/students/${student.id}/paymongo-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        let errText = 'Failed to initiate checkout';
+        try {
+          const errData = await response.json();
+          errText = errData.error || errData.message || errText;
+        } catch {}
+        throw new Error(errText);
+      }
+      const data = await response.json();
+      if (data && data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL returned from server.');
+      }
+    } catch (error) {
+      console.error('Error initiating PayMongo payment:', error);
+      toast.error(error.message || 'Failed to initiate online payment.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -42,7 +90,6 @@ export default function PaymentStep({ onNext, onBack }) {
     gcashRef: '',
     cashDepositor: '',
     cashBranch: '',
-    cashRef: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -134,16 +181,8 @@ export default function PaymentStep({ onNext, onBack }) {
         errs.cashDepositor = 'Please enter a valid depositor name (letters only, min 3 characters).';
       }
 
-      if (!formValues.cashBranch.trim()) {
-        errs.cashBranch = 'Branch name is required.';
-      } else if (formValues.cashBranch.trim().length < 3) {
-        errs.cashBranch = 'Branch name must be at least 3 characters.';
-      }
-
-      if (!formValues.cashRef.trim()) {
-        errs.cashRef = 'Receipt reference number is required.';
-      } else if (!/^\d{6}$/.test(formValues.cashRef.trim())) {
-        errs.cashRef = 'Receipt reference number must be exactly 6 digits.';
+      if (!formValues.cashBranch) {
+        errs.cashBranch = 'Please select a branch location.';
       }
     }
 
@@ -166,7 +205,22 @@ export default function PaymentStep({ onNext, onBack }) {
     setTimeout(() => {
       setIsProcessing(false);
       const success = true;
-      dispatch({ type: 'PROCESS_PAYMENT', payload: { success } });
+      let paymentReference = '';
+      if (selectedMethodId === 'bank') paymentReference = formValues.bankRef;
+      else if (selectedMethodId === 'gcash') paymentReference = formValues.gcashRef;
+      else if (selectedMethodId === 'cash') paymentReference = '';
+      
+      dispatch({ 
+        type: 'PROCESS_PAYMENT', 
+        payload: { 
+          success, 
+          paymentMethod: selectedMethodId, 
+          paymentDetails: formValues, 
+          paymentReference,
+          paymentScheme,
+          amountPaid: amountDueToday
+        } 
+      });
     }, 1500);
   };
 
@@ -316,25 +370,21 @@ export default function PaymentStep({ onNext, onBack }) {
               error={errors.cashDepositor}
               placeholder="Depositor Name"
             />
-            <FloatingInput
-              label="Payment Branch Location"
-              id="cashBranch"
-              icon={MapPin}
-              value={formValues.cashBranch}
-              onChange={(e) => setFormValues({ ...formValues, cashBranch: e.target.value })}
-              error={errors.cashBranch}
-              placeholder="NCST Main / Bank Branch Name"
-            />
-            <FloatingInput
-              label="Receipt Reference Code"
-              id="cashRef"
-              icon={Hash}
-              value={formValues.cashRef}
-              onChange={(e) => setFormValues({ ...formValues, cashRef: e.target.value.replace(/\D/g, '') })}
-              error={errors.cashRef}
-              placeholder="6-digit receipt number"
-              maxLength="6"
-            />
+            <div>
+              <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block mb-2">Payment Branch Location</label>
+              <select
+                value={formValues.cashBranch}
+                onChange={(e) => setFormValues({ ...formValues, cashBranch: e.target.value })}
+                className={`w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent bg-slate-50/50 ${
+                  errors.cashBranch ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-200 focus:ring-univ-blue/50'
+                }`}
+              >
+                <option value="">Select Branch</option>
+                <option value="NCST Main Branch">NCST Main Branch</option>
+                <option value="NCST Imus">NCST Imus</option>
+              </select>
+              {errors.cashBranch && <p className="text-rose-500 text-xs mt-1.5 font-semibold">{errors.cashBranch}</p>}
+            </div>
           </div>
         );
       default:
@@ -376,9 +426,95 @@ export default function PaymentStep({ onNext, onBack }) {
                   ₱{student?.totalTuition ? student.totalTuition.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'}
                 </td>
               </tr>
+              {!isPaid && (
+                <tr className="bg-univ-blue/5 border-t border-slate-200 font-extrabold">
+                  <td className="px-5 py-5 text-xs text-univ-blue uppercase tracking-wider">Amount Due Today ({paymentScheme === 'full' ? 'Full Payment' : 'Downpayment'})</td>
+                  <td className="px-5 py-5 text-right font-mono text-univ-blue text-2xl">
+                    ₱{amountDueToday.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>
+
+        {/* 1.5 Payment Scheme Selector */}
+        {!isPaid && (
+          <div className="mb-8">
+            <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4">Select Payment Scheme</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div 
+                onClick={() => setPaymentScheme('full')}
+                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                  paymentScheme === 'full'
+                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <input 
+                    type="radio" 
+                    readOnly
+                    checked={paymentScheme === 'full'} 
+                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
+                  />
+                  <label className="text-xs font-extrabold text-univ-navy cursor-pointer">
+                    Full Payment
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
+                  Pay the total assessed tuition &amp; fees in full today.
+                </p>
+              </div>
+
+              <div 
+                onClick={() => setPaymentScheme('installment')}
+                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-center ${
+                  paymentScheme === 'installment'
+                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <input 
+                    type="radio" 
+                    readOnly
+                    checked={paymentScheme === 'installment'} 
+                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
+                  />
+                  <label className="text-xs font-extrabold text-univ-navy cursor-pointer flex-1">
+                    Downpayment (Installment)
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7 mb-3">
+                  Pay a minimum downpayment of ₱3,000 to secure your enrollment.
+                </p>
+                {paymentScheme === 'installment' && (
+                  <div className="pl-7" onClick={(e) => e.stopPropagation()}>
+                    <label className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block mb-1">Enter Downpayment Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₱</span>
+                      <input 
+                        type="number" 
+                        min="3000"
+                        max={student?.totalTuition || undefined}
+                        value={amountPaid}
+                        onChange={(e) => setAmountPaid(e.target.value)}
+                        onBlur={(e) => {
+                          const val = Number(e.target.value);
+                          if (val < 3000) setAmountPaid(3000);
+                          else if (student?.totalTuition && val > student.totalTuition) setAmountPaid(student.totalTuition);
+                          else setAmountPaid(val);
+                        }}
+                        className="w-full pl-8 pr-4 py-2 text-sm font-bold text-univ-navy border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-univ-blue/50 bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 2. Payment Method Selector */}
         <div className="mb-8">
@@ -410,6 +546,69 @@ export default function PaymentStep({ onNext, onBack }) {
           </div>
         </div>
 
+        {/* Payment Mode (Online vs Manual) Selector */}
+        {!isPaid && ['card', 'gcash'].includes(selectedMethodId) && (
+          <div className="mb-8 bg-slate-50/50 border border-slate-200/60 rounded-2xl p-6 shadow-sm animate-in fade-in duration-300">
+            <h4 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest mb-4">Payment Channel Option</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div 
+                onClick={() => setPaymentMode('online')}
+                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                  paymentMode === 'online'
+                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <input 
+                    type="radio" 
+                    id="payment-mode-online" 
+                    name="payment-mode" 
+                    checked={paymentMode === 'online'} 
+                    onChange={() => setPaymentMode('online')}
+                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
+                  />
+                  <label htmlFor="payment-mode-online" className="text-xs font-extrabold text-univ-navy cursor-pointer">
+                    Pay Online via PayMongo (Instant)
+                  </label>
+                  <span className="px-2 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-700 rounded-full tracking-wide uppercase ml-auto">
+                    Fastest
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
+                  Complete your payment securely using GCash or Credit/Debit Card. Your enrollment will clear instantly upon payment completion.
+                </p>
+              </div>
+
+              <div 
+                onClick={() => setPaymentMode('manual')}
+                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
+                  paymentMode === 'manual'
+                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <input 
+                    type="radio" 
+                    id="payment-mode-manual" 
+                    name="payment-mode" 
+                    checked={paymentMode === 'manual'} 
+                    onChange={() => setPaymentMode('manual')}
+                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
+                  />
+                  <label htmlFor="payment-mode-manual" className="text-xs font-extrabold text-univ-navy cursor-pointer">
+                    Manual Receipt Verification
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
+                  Submit details of your bank deposit or GCash receipt manually. Requires 1-2 business days for Accounting approval.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 3. Transaction Feedback Banners */}
         {isProcessing && (
           <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-6 mb-4 shadow-sm">
@@ -424,7 +623,7 @@ export default function PaymentStep({ onNext, onBack }) {
             <div>
               <h4 className="text-xs font-extrabold text-amber-700 uppercase tracking-wider">Payment Verification Pending</h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
-                Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been submitted. The Office of the Accounting department is currently reviewing and verifying your transaction.
+                Your payment of ₱{displayAmount?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been submitted. The Office of the Accounting department is currently reviewing and verifying your transaction.
               </p>
             </div>
           </div>
@@ -436,7 +635,7 @@ export default function PaymentStep({ onNext, onBack }) {
             <div>
               <h4 className="text-xs font-extrabold text-emerald-700 uppercase tracking-wider">Payment Verified</h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
-                Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified and cleared by the Accounting department.
+                Your payment of ₱{displayAmount?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified and cleared by the Accounting department.
               </p>
             </div>
           </div>
@@ -458,7 +657,8 @@ export default function PaymentStep({ onNext, onBack }) {
         {!isPaid && !isProcessing && (
           <div className="flex justify-end mt-6">
             <button
-              onClick={handleProcessPayment}
+              type="button"
+              onClick={paymentMode === 'online' ? handleOnlinePayment : handleProcessPayment}
               disabled={!selectedMethodId}
               className={`px-8 py-3 text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer ${
                 selectedMethodId
@@ -466,7 +666,9 @@ export default function PaymentStep({ onNext, onBack }) {
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
-              {paymentStatus === 'failed' ? 'Retry Payment' : 'Proceed with Payment'}
+              {paymentStatus === 'failed'
+                ? (paymentMode === 'online' ? 'Retry Online Payment' : 'Retry Payment')
+                : (paymentMode === 'online' ? 'Pay via PayMongo' : 'Proceed with Payment')}
             </button>
           </div>
         )}

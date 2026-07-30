@@ -47,7 +47,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
       // but for simplicity, we'll assume it worked if no exception was thrown and we'll show success.
       toast.success('Applicant approved successfully.');
       setNotes('');
-    } catch (err) {
+    } catch {
       toast.error('Unable to update applicant status. Please try again.');
     } finally {
       setIsProcessing(false);
@@ -72,7 +72,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
       });
       toast.success('Applicant refused successfully.');
       setNotes('');
-    } catch (err) {
+    } catch {
       toast.error('Unable to update applicant status. Please try again.');
     } finally {
       setIsProcessing(false);

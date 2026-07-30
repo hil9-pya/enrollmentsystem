@@ -14,7 +14,6 @@ export default function EnrollmentValidation({ studentId, onBack }) {
   const { dispatch, getStudentById } = useEnrollment();
   const { confirm } = useConfirm();
   const [flashMessage, setFlashMessage] = useState(null);
-  const [confirmingValidation, setConfirmingValidation] = useState(false);
 
   const student = getStudentById(studentId);
   const program = student ? PROGRAMS.find(p => p.id === student.programId) : null;
@@ -45,11 +44,6 @@ export default function EnrollmentValidation({ studentId, onBack }) {
   }
 
   async function handleValidateEnrollment() {
-    if (!confirmingValidation) {
-      setConfirmingValidation(true);
-      return;
-    }
-
     const isConfirmed = await confirm({
       title: 'Finalize Official Enrollment',
       message: `Are you sure you want to officially enroll ${student.firstName} ${student.lastName} for the current term? This action will generate their class schedule, registration form, and official receipt.`,
@@ -58,10 +52,7 @@ export default function EnrollmentValidation({ studentId, onBack }) {
       type: 'success',
     });
     
-    if (!isConfirmed) {
-      setConfirmingValidation(false);
-      return;
-    }
+    if (!isConfirmed) return;
 
     await dispatch({
       type: 'VALIDATE_ENROLLMENT',
@@ -69,7 +60,6 @@ export default function EnrollmentValidation({ studentId, onBack }) {
     });
     
     showFlash(`Enrollment validated for ${student.firstName} ${student.lastName}`);
-    setConfirmingValidation(false);
   }
 
   async function handleRollover() {
@@ -168,14 +158,10 @@ export default function EnrollmentValidation({ studentId, onBack }) {
               </div>
               <button
                 onClick={handleValidateEnrollment}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-sm cursor-pointer ${
-                  confirmingValidation
-                    ? 'bg-rose-600 hover:bg-rose-500 animate-pulse'
-                    : 'bg-univ-blue hover:bg-blue-700'
-                }`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-sm cursor-pointer bg-univ-blue hover:bg-blue-700"
               >
                 <CheckCircle className="h-4 w-4" />
-                {confirmingValidation ? 'Click again to confirm' : 'Validate Enrollment'}
+                Validate Enrollment
               </button>
             </div>
           )}

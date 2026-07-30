@@ -7,7 +7,7 @@ import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRight
 // Since we use MongoDB (not SQL), this guards against NoSQL operator injection.
 const sanitizeInput = (value, maxLen = 300) => {
   if (typeof value !== 'string') return '';
-  return value.replace(/[\$<>]/g, '').slice(0, maxLen);
+  return value.replace(/[$<>]/g, '').slice(0, maxLen);
 };
 
 const TRANSFER_REASONS = [
@@ -128,7 +128,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     setDraft(getInitialDraft(student));
     setErrors({});
     dirtyRef.current = false;
-  }, [student?.id]);
+  }, [student, student?.id]);
 
   useEffect(() => {
     if (!student?.id || !dirtyRef.current) return;
@@ -155,7 +155,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     const newErrors = {};
     const today = new Date();
 
-    const nameValidationRegex = /^[a-zA-Z\s\-\.]+$/;
+    const nameValidationRegex = /^[a-zA-Z\s.-]+$/;
     const sanitizedFirst = sanitizeInput(draft.firstName.trim() || '', 100);
     const sanitizedLast = sanitizeInput(draft.lastName.trim() || '', 100);
 
@@ -293,7 +293,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="firstName"
             icon={User}
             value={draft.firstName}
-            onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s\-\.]/g, ''), 100)}
+            onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s.-]/g, ''), 100)}
             error={errors.firstName}
             required
             placeholder="Juan"
@@ -303,7 +303,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="lastName"
             icon={User}
             value={draft.lastName}
-            onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s\-\.]/g, ''), 100)}
+            onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s.-]/g, ''), 100)}
             error={errors.lastName}
             required
             placeholder="Dela Cruz"

@@ -5,7 +5,6 @@ import Section from './models/Section.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import {
   getCurriculumSubjects,
-  prereqsMet,
   enrichSubjectWithLiveSections,
   getResolvedEnrolledSchedule,
   validateAddSection,

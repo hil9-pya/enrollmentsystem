@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { PROGRAMS, ACADEMIC_TERMS, ACTIVE_TERM_ID } from '../../../data/mockData';
+import { PROGRAMS } from '../../../data/mockData';
 import { GraduationCap } from 'lucide-react';
 
 export default function ContinuingEnrollmentStep({ onNext }) {
@@ -11,32 +11,25 @@ export default function ContinuingEnrollmentStep({ onNext }) {
   const selectedTerm = student?.academicTerm || '';
 
   const selectedProgram = PROGRAMS.find((p) => p.id === selectedProgramId);
+  const { settings } = useEnrollment();
+  const activeTermLabel = settings?.activeTerm || '1st Semester';
 
   const autoSelected = React.useRef(false);
 
   React.useEffect(() => {
-    if (student && student.academicTerm !== ACTIVE_TERM_ID && !autoSelected.current) {
+    if (student && student.academicTerm !== activeTermLabel && !autoSelected.current) {
       autoSelected.current = true;
       dispatch({
         type: 'SELECT_PROGRAM',
         payload: {
           programId: selectedProgramId,
-          academicTerm: ACTIVE_TERM_ID,
+          academicTerm: activeTermLabel,
         },
       }).finally(() => {
         setTimeout(() => { autoSelected.current = false; }, 1000);
       });
     }
-  }, [student?.academicTerm, selectedProgramId, dispatch]);
-  function handleTermChange(value) {
-    dispatch({
-      type: 'SELECT_PROGRAM',
-      payload: {
-        programId: selectedProgramId,
-        academicTerm: value,
-      },
-    });
-  }
+  }, [student, selectedProgramId, dispatch, activeTermLabel]);
 
   const isComplete = selectedProgramId && selectedTerm;
 
@@ -98,7 +91,7 @@ export default function ContinuingEnrollmentStep({ onNext }) {
             Active Academic Term
           </label>
           <div className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50/50 text-slate-700 font-medium">
-            {ACADEMIC_TERMS.find((t) => t.id === ACTIVE_TERM_ID)?.label}
+            {activeTermLabel}
           </div>
         </div>
       </div>

@@ -30,7 +30,7 @@ import { chromium } from 'playwright';
     const res = await fetch('http://localhost:5000/api/admin/students', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    const students = await res.json();
+    const _students = await res.json();
     
     // Create a NEW student to reproduce the user's flow
     console.log('Creating a completely new student...');

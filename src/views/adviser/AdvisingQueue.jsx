@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowRight, Clock, CheckCircle, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
+import { Search, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import { useEnrollment } from '../../context/EnrollmentContext';
