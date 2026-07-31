@@ -261,6 +261,7 @@ export function EnrollmentProvider({ children }) {
             paymentMethod: payload.paymentMethod || currentStudent?.paymentMethod,
             paymentDetails: payload.paymentDetails,
             paymentReference: payload.paymentReference,
+            paymentPlan: payload.paymentPlan,
             success: payload.success
           }),
         });

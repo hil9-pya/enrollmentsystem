@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import {
   createDraft,
   applicantLogin,
+  checkEmailAvailability,
   getStudentById,
   registerStudent,
   updateStudent,
@@ -60,6 +61,7 @@ const router = express.Router();
 router.post('/draft', createDraft);
 router.post('/applicant-login', applicantLogin);
 router.post('/register', registerStudent);
+router.get('/email-availability', checkEmailAvailability);
 router.get('/:id', getStudentById);
 router.put('/:id', updateStudent);
 

@@ -174,13 +174,18 @@ export const payMockCheckoutSession = async (req, res) => {
 
     // Apply enrollment clearance standards (auto-clear online payment)
     student.paymentMethod = paymentMethod || 'gcash';
-    student.paymentStatus = 'paid';
-    student.status = 'enrolled';
-    student.enrolledAt = student.enrolledAt || new Date();
-    student.scheduleGenerated = true;
-    student.registrationFormGenerated = true;
-    student.receiptGenerated = true;
-    student.receiptNumber = generateReceiptNumber();
+    const paidAmount = Number(student.paymentDetails.amount) || 0;
+    student.amountPaid = paidAmount;
+    student.remainingBalance = Math.max(0, (Number(student.totalTuition) || 0) - paidAmount);
+    student.paymentStatus = student.remainingBalance > 0 ? 'partial' : 'paid';
+    student.status = student.remainingBalance > 0 ? 'payment_confirmed' : 'enrolled';
+    if (student.remainingBalance === 0) {
+      student.enrolledAt = student.enrolledAt || new Date();
+      student.scheduleGenerated = true;
+      student.registrationFormGenerated = true;
+      student.receiptGenerated = true;
+      student.receiptNumber = generateReceiptNumber();
+    }
     student.paymentReference = finalRefCode;
 
     // Generate STU- ID if not already assigned
@@ -195,7 +200,7 @@ export const payMockCheckoutSession = async (req, res) => {
     }
 
     student.auditLogs.push({
-      action: `Paid Tuition (Paymongo Online - ${paymentMethod?.toUpperCase()})`,
+      action: `${student.remainingBalance > 0 ? 'Paid Downpayment' : 'Paid Tuition'} (Paymongo Online - ${paymentMethod?.toUpperCase()})`,
       user: 'Student Portal (Auto-Settled)',
       date: new Date(),
     });

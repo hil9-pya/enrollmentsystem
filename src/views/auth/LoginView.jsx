@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import FloatingInput from '../../components/FloatingInput';
 
-export default function LoginView({ portalType }) {
+export default function LoginView({ portalType, onLogin }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +18,8 @@ export default function LoginView({ portalType }) {
     const result = await login(email, password);
     if (!result.success) {
       setError(result.error);
+    } else {
+      onLogin?.(result.user);
     }
     
     setIsSubmitting(false);

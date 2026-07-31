@@ -3,7 +3,7 @@ import { Briefcase, ArrowLeft } from 'lucide-react';
 import LoginView from '../auth/LoginView';
 import ApplicantPortalAccess from '../applicant/ApplicantPortalAccess';
 
-export default function GatewayView({ onVerified, onBack, initialView = 'applicant' }) {
+export default function GatewayView({ onVerified, onBack, onLogin, initialView = 'applicant' }) {
   const [viewMode, setViewMode] = useState(initialView); // 'applicant', 'student', 'staff', 'admin'
 
   return (
@@ -78,7 +78,7 @@ export default function GatewayView({ onVerified, onBack, initialView = 'applica
            <div className="bg-white rounded-lg shadow-premium border border-slate-200 p-2 min-h-[420px] flex flex-col relative">
              {(viewMode === 'admin' || viewMode === 'staff' || viewMode === 'student') ? (
                <div className="flex-1 flex flex-col p-6 sm:p-8 animate-in fade-in duration-300">
-                  <LoginView portalType={viewMode} />
+                  <LoginView portalType={viewMode} onLogin={onLogin} />
                </div>
              ) : viewMode === 'applicant' ? (
                <div className="flex-1 flex flex-col p-6 sm:p-8 animate-in fade-in duration-300">

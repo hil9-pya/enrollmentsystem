@@ -11,6 +11,8 @@ export default function PaymentStep({ onNext, onBack }) {
 
   const selectedMethodId = student?.paymentMethod;
   const paymentStatus = student?.paymentStatus || 'unpaid';
+  const downpaymentAmount = Math.min(3000, Number(student?.totalTuition) || 0);
+  const canUseDownpayment = (Number(student?.totalTuition) || 0) > downpaymentAmount;
 
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -25,6 +27,11 @@ export default function PaymentStep({ onNext, onBack }) {
   const [paymentMode, setPaymentMode] = useState(() => {
     return ['gcash', 'card'].includes(student?.paymentMethod) ? 'online' : 'manual';
   });
+  const [paymentPlan, setPaymentPlan] = useState(() => student?.paymentPlan || 'full');
+  const paymentAmount = paymentPlan === 'downpayment' && canUseDownpayment
+    ? downpaymentAmount
+    : Number(student?.totalTuition) || 0;
+  const remainingBalance = Math.max(0, (Number(student?.totalTuition) || 0) - paymentAmount);
 
   const handleSelectMethod = (methodId) => {
     if (paymentStatus === 'paid') return;
@@ -42,6 +49,7 @@ export default function PaymentStep({ onNext, onBack }) {
       const response = await fetch(`/api/students/${student.id}/paymongo-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentPlan }),
       });
       if (!response.ok) {
         let errText = 'Failed to initiate checkout';
@@ -214,7 +222,8 @@ export default function PaymentStep({ onNext, onBack }) {
           success, 
           paymentMethod: selectedMethodId, 
           paymentDetails: formValues, 
-          paymentReference 
+          paymentReference,
+          paymentPlan,
         } 
       });
     }, 1500);
@@ -393,7 +402,7 @@ export default function PaymentStep({ onNext, onBack }) {
   };
 
   // If already paid or processing in state, skip manual trigger and allow proceeding
-  const isPaid = ['paid', 'processing'].includes(paymentStatus) || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status);
+  const isPaid = ['paid', 'partial', 'processing'].includes(paymentStatus) || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status);
 
   return (
     <div className="space-y-6">
@@ -430,7 +439,29 @@ export default function PaymentStep({ onNext, onBack }) {
           </table>
         </div>
 
-        {/* 2. Payment Method Selector */}
+        {/* 2. Payment Plan */}
+        {!isPaid && (
+          <div className="mb-8">
+            <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4">Payment Plan</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button type="button" onClick={() => setPaymentPlan('full')}
+                className={`text-left border rounded-xl p-4 transition-all ${paymentPlan === 'full' ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                <span className="block text-xs font-extrabold text-univ-navy">Full Payment</span>
+                <span className="block mt-1 text-sm font-bold text-univ-blue">₱{(Number(student?.totalTuition) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              </button>
+              {canUseDownpayment && (
+                <button type="button" onClick={() => setPaymentPlan('downpayment')}
+                  className={`text-left border rounded-xl p-4 transition-all ${paymentPlan === 'downpayment' ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                  <span className="block text-xs font-extrabold text-univ-navy">Downpayment</span>
+                  <span className="block mt-1 text-sm font-bold text-univ-blue">₱3,000.00</span>
+                  <span className="block mt-1 text-[10px] font-medium text-slate-500">Remaining balance: ₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Payment Method Selector */}
         <div className="mb-8">
           <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4">Select Payment Method</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -537,19 +568,19 @@ export default function PaymentStep({ onNext, onBack }) {
             <div>
               <h4 className="text-xs font-extrabold text-amber-700 uppercase tracking-wider">Payment Verification Pending</h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
-                Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been submitted. The Office of the Accounting department is currently reviewing and verifying your transaction.
+                Your payment of ₱{paymentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been submitted. The Office of the Accounting department is currently reviewing and verifying your transaction.
               </p>
             </div>
           </div>
         )}
 
-        {(paymentStatus === 'paid' || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status)) && (
+        {(paymentStatus === 'paid' || paymentStatus === 'partial' || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status)) && (
           <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200/50 rounded-xl p-5 mb-4 shadow-sm">
             <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
               <h4 className="text-xs font-extrabold text-emerald-700 uppercase tracking-wider">Payment Verified</h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
-                Your payment of ₱{student?.totalTuition?.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified and cleared by the Accounting department.
+                ₱{(student?.amountPaid || paymentAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified by Accounting.{(student?.remainingBalance || remainingBalance) > 0 ? ` Remaining balance: ₱${(student?.remainingBalance || remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}.` : ' Tuition is fully settled.'}
               </p>
             </div>
           </div>
@@ -582,7 +613,7 @@ export default function PaymentStep({ onNext, onBack }) {
             >
               {paymentStatus === 'failed'
                 ? (paymentMode === 'online' ? 'Retry Online Payment' : 'Retry Payment')
-                : (paymentMode === 'online' ? 'Pay via PayMongo' : 'Proceed with Payment')}
+                : (paymentMode === 'online' ? `Pay ₱${paymentAmount.toLocaleString()} via PayMongo` : `Pay ₱${paymentAmount.toLocaleString()}`)}
             </button>
           </div>
         )}

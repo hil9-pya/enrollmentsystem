@@ -27,7 +27,7 @@ export default function PaymentVerification({ studentId, onBack }) {
   async function handleConfirmPayment() {
     const isConfirmed = await confirm({
       title: 'Confirm Tuition Payment',
-      message: `Are you sure you want to confirm the tuition payment of ${formatPeso(student.totalTuition)} for ${student.firstName} ${student.lastName}? This clears their accounting hold and moves them to final registration.`,
+      message: `Confirm ${student.paymentPlan === 'downpayment' ? 'downpayment' : 'full payment'} of ${formatPeso(student.amountPaid || student.totalTuition)} for ${student.firstName} ${student.lastName}?${student.paymentPlan === 'downpayment' ? ` Remaining balance: ${formatPeso(student.remainingBalance)}.` : ' This clears their accounting hold and moves them to final registration.'}`,
       confirmText: 'Confirm Payment',
       cancelText: 'Cancel',
       type: 'success',
@@ -40,7 +40,7 @@ export default function PaymentVerification({ studentId, onBack }) {
     setTimeout(() => onBack(), 1500);
   }
 
-  const isPending = student.paymentStatus !== 'paid';
+  const isPending = !['paid', 'partial'].includes(student.paymentStatus);
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -90,7 +90,7 @@ export default function PaymentVerification({ studentId, onBack }) {
               <div>
                 <p className="text-xs font-bold text-emerald-800">Payment Confirmed &amp; Cleared</p>
                 <p className="text-[10px] text-emerald-600 font-bold mt-1">
-                  This student has no pending financial holds.
+                  {student.remainingBalance > 0 ? `Downpayment confirmed. Remaining balance: ${formatPeso(student.remainingBalance)}.` : 'This student has no pending financial holds.'}
                 </p>
               </div>
             </div>
@@ -157,6 +157,16 @@ export default function PaymentVerification({ studentId, onBack }) {
                         <p className="text-sm font-extrabold text-univ-navy mt-1 font-mono">{student.paymentReference}</p>
                       </div>
                     )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Received</p>
+                      <p className="text-sm font-extrabold text-univ-navy mt-1">{formatPeso(student.amountPaid || student.totalTuition)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Remaining Balance</p>
+                      <p className="text-sm font-extrabold text-univ-navy mt-1">{formatPeso(student.remainingBalance)}</p>
+                    </div>
                   </div>
                   
                   {isPending && (

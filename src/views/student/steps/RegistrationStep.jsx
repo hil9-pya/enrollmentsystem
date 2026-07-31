@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
-import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, ChevronDown } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown } from 'lucide-react';
 
 // Strips characters commonly used in injection attacks before sending to backend.
 // Since we use MongoDB (not SQL), this guards against NoSQL operator injection.
 const sanitizeInput = (value, maxLen = 300) => {
   if (typeof value !== 'string') return '';
   return value.replace(/[$<>]/g, '').slice(0, maxLen);
+};
+
+const capitalizeFirstLetter = (value) => {
+  if (!value) return '';
+  return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
 const TRANSFER_REASONS = [
@@ -121,14 +126,19 @@ export default function RegistrationStep({ onNext, onBack }) {
   const [draft, setDraft] = useState(() => getInitialDraft(student));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [emailAvailability, setEmailAvailability] = useState('idle');
   const saveTimerRef = useRef(null);
   const dirtyRef = useRef(false);
 
+  // Polling and autosave replace `student` with a new object. Resetting the
+  // draft for every replacement erases text while the applicant is typing.
   useEffect(() => {
     setDraft(getInitialDraft(student));
     setErrors({});
+    setPassword('');
+    setConfirmPassword('');
     dirtyRef.current = false;
-  }, [student, student?.id]);
+  }, [student?.id]);
 
   useEffect(() => {
     if (!student?.id || !dirtyRef.current) return;
@@ -150,6 +160,32 @@ export default function RegistrationStep({ onNext, onBack }) {
       }
     };
   }, [draft, dispatch, isTransferee, student?.id]);
+
+  useEffect(() => {
+    const email = draft.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailAvailability('idle');
+      return undefined;
+    }
+
+    let cancelled = false;
+    setEmailAvailability('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ email, excludeStudentId: student?.id || '' });
+        const res = await fetch(`/api/students/email-availability?${params}`);
+        const data = await res.json();
+        if (!cancelled) setEmailAvailability(data.available ? 'available' : 'taken');
+      } catch {
+        if (!cancelled) setEmailAvailability('idle');
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [draft.email, student?.id]);
 
   const validate = () => {
     const newErrors = {};
@@ -293,7 +329,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="firstName"
             icon={User}
             value={draft.firstName}
-            onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s.-]/g, ''), 100)}
+            onChange={(e) => handleChange('firstName', capitalizeFirstLetter(e.target.value.replace(/[^a-zA-Z\s.-]/g, '')), 100)}
             error={errors.firstName}
             required
             placeholder="Juan"
@@ -303,7 +339,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="lastName"
             icon={User}
             value={draft.lastName}
-            onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s.-]/g, ''), 100)}
+            onChange={(e) => handleChange('lastName', capitalizeFirstLetter(e.target.value.replace(/[^a-zA-Z\s.-]/g, '')), 100)}
             error={errors.lastName}
             required
             placeholder="Dela Cruz"
@@ -317,10 +353,18 @@ export default function RegistrationStep({ onNext, onBack }) {
           icon={Mail}
           value={draft.email}
           onChange={(e) => handleChange('email', e.target.value, 254)}
-          error={errors.email}
+          error={errors.email || (emailAvailability === 'taken' ? 'This email is already used by another application.' : null)}
           required
           placeholder="juan@email.com"
         />
+        {emailAvailability === 'checking' && (
+          <p className="-mt-4 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Checking email availability...</p>
+        )}
+        {emailAvailability === 'available' && (
+          <div className="-mt-4 mb-4 flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+            <CheckCircle className="h-3 w-3" /> Email is available
+          </div>
+        )}
 
         <FloatingInput
           label="Phone Number"

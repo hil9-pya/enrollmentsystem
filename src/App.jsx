@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { EnrollmentProvider, useEnrollment } from './context/EnrollmentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConfirmationProvider, useConfirm } from './context/ConfirmationContext';
@@ -41,13 +41,6 @@ function AppContent() {
     return 'landing'; // Default to landing page
   });
   const gatewayTab = new URLSearchParams(window.location.search).get('tab') || 'applicant';
-
-  // Automatically redirect authenticated users when they access the gateway
-  useEffect(() => {
-    if (user && viewMode === 'gateway') {
-      setViewMode(user.role === 'student' ? 'student' : 'admin');
-    }
-  }, [user, viewMode]);
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -183,6 +176,9 @@ function AppContent() {
     return (
       <GatewayView 
         initialView={viewMode === 'gateway' ? gatewayTab : viewMode}
+        onLogin={(signedInUser) => {
+          setViewMode(signedInUser?.role === 'student' ? 'student' : signedInUser?.role || 'admin');
+        }}
         onVerified={() => {
           setIsApplicantVerified(true);
           setViewMode('applicant');

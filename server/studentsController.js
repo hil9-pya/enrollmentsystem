@@ -12,6 +12,16 @@ import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const DOWNPAYMENT_AMOUNT = 3000;
+
+function getPaymentAmounts(student, paymentPlan) {
+  const total = Math.max(0, Number(student.totalTuition) || 0);
+  const plan = paymentPlan === 'downpayment' && total > DOWNPAYMENT_AMOUNT
+    ? 'downpayment'
+    : 'full';
+  const amountPaid = plan === 'downpayment' ? DOWNPAYMENT_AMOUNT : total;
+  return { plan, amountPaid, remainingBalance: Math.max(0, total - amountPaid) };
+}
 
 // Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
 export async function generateNextId(prefixBase) {
@@ -176,6 +186,21 @@ const applicantLogin = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Check whether an applicant email can be used
+// @route   GET /api/students/email-availability
+const checkEmailAvailability = asyncHandler(async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  const excludeStudentId = String(req.query.excludeStudentId || '').trim();
+
+  if (!email) {
+    res.status(400).json({ error: 'Email is required.' });
+    return;
+  }
+
+  const existing = await Student.findOne({ email }).select('_id');
+  res.json({ available: !existing || String(existing._id) === excludeStudentId });
+});
+
 // @desc    Start a new student application (Student Portal "New Application")
 // @route   POST /api/students/register
 const registerStudent = asyncHandler(async (req, res) => {
@@ -296,6 +321,15 @@ const updateStudent = asyncHandler(async (req, res) => {
       return;
     }
     req.body.phone = val;
+  }
+  if (req.body.email !== undefined) {
+    const email = String(req.body.email).trim().toLowerCase();
+    const existing = email ? await Student.findOne({ email }).select('_id') : null;
+    if (existing && String(existing._id) !== String(student._id)) {
+      res.status(400).json({ error: 'An application with this email already exists.' });
+      return;
+    }
+    req.body.email = email;
   }
   if (req.body.address !== undefined) {
     // Preserve spaces while the registration form saves each keystroke.
@@ -611,10 +645,14 @@ const processPayment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const { paymentMethod, success, paymentDetails, paymentReference } = req.body;
+  const { paymentMethod, success, paymentDetails, paymentReference, paymentPlan } = req.body;
+  const amounts = getPaymentAmounts(student, paymentPlan);
   if (paymentMethod) student.paymentMethod = paymentMethod;
-  if (paymentDetails) student.paymentDetails = paymentDetails;
+  if (paymentDetails) student.paymentDetails = { ...paymentDetails, amount: amounts.amountPaid };
   if (paymentReference) student.paymentReference = paymentReference;
+  student.paymentPlan = amounts.plan;
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
   student.paymentStatus = success ? 'processing' : 'failed';
 
   await student.save();
@@ -741,7 +779,10 @@ const confirmPayment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: Student is not pending payment.');
   }
 
-  student.paymentStatus = 'paid';
+  const amounts = getPaymentAmounts(student, student.paymentPlan);
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
+  student.paymentStatus = amounts.remainingBalance > 0 ? 'partial' : 'paid';
   if (student.status === 'payment_pending') {
     student.status = 'payment_confirmed';
   }
@@ -922,7 +963,12 @@ const createPaymongoCheckoutSession = asyncHandler(async (req, res) => {
   }
 
   // Calculate amount in centavos (PHP amount * 100)
-  const amountInCentavos = Math.round(student.totalTuition * 100);
+  const amounts = getPaymentAmounts(student, req.body.paymentPlan);
+  student.paymentPlan = amounts.plan;
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
+  await student.save();
+  const amountInCentavos = Math.round(amounts.amountPaid * 100);
   const port = process.env.PORT || 5000;
   const paymongoBaseUrl = `http://127.0.0.1:${port}/api/paymongo/v1/checkout_sessions`;
 
@@ -940,7 +986,9 @@ const createPaymongoCheckoutSession = asyncHandler(async (req, res) => {
             {
               amount: amountInCentavos,
               currency: 'PHP',
-              name: 'NCST Enrollment Tuition & Fees Assessment',
+              name: amounts.plan === 'downpayment'
+                ? 'NCST Enrollment Downpayment'
+                : 'NCST Enrollment Tuition & Fees Assessment',
               quantity: 1
             }
           ],
@@ -1002,6 +1050,7 @@ export {
   createPaymongoCheckoutSession,
   verifyPaymongoPayment,
   applicantLogin,
+  checkEmailAvailability,
   getStudents,
   getStudentById,
   registerStudent,

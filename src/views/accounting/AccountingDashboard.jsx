@@ -25,12 +25,13 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
     relevantStudents.forEach(s => {
       expectedRevenue += (s.totalTuition || 0);
-      if (s.paymentStatus === 'paid') {
-        collectedRevenue += (s.totalTuition || 0);
+      const received = s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0);
+      const balance = s.remainingBalance ?? Math.max(0, (s.totalTuition || 0) - received);
+      if (received > 0) {
+        collectedRevenue += received;
         paidCount++;
-      } else {
-        pendingRevenue += (s.totalTuition || 0);
       }
+      pendingRevenue += balance;
     });
 
     const ledgerData = [...relevantStudents]
@@ -55,7 +56,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
     let programRevenue = PROGRAMS.map(p => ({
       name: p.id,
-      value: students.filter(s => s.programId === p.id && s.paymentStatus === 'paid').reduce((acc, s) => acc + (s.totalTuition || 0), 0)
+      value: students.filter(s => s.programId === p.id).reduce((acc, s) => acc + (s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0)), 0)
     })).filter(d => d.value > 0);
     
     if (programRevenue.length === 0) {

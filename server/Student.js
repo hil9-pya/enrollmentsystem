@@ -117,6 +117,9 @@ const StudentSchema = new mongoose.Schema(
 
     paymentMethod: { type: String, default: null },
     paymentStatus: { type: String, default: 'unpaid' },
+    paymentPlan: { type: String, enum: ['full', 'downpayment'], default: 'full' },
+    amountPaid: { type: Number, default: 0 },
+    remainingBalance: { type: Number, default: 0 },
     paymentReference: { type: String, default: null },
     receiptNumber: { type: String, default: null },
     paymentDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
