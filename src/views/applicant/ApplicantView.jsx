@@ -2,12 +2,12 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { AlertCircle, Wrench } from 'lucide-react';
 import StepIndicator from '../../components/StepIndicator';
-import ApplicantPortalAccess from './ApplicantPortalAccess';
 import EnrollmentTypeStep from '../student/steps/EnrollmentTypeStep';
 import ProgramSelectionStep from '../student/steps/ProgramSelectionStep';
 import RegistrationStep from '../student/steps/RegistrationStep';
 import DocumentUploadStep from '../student/steps/DocumentUploadStep';
 import AcceptanceLetterStep from './steps/AcceptanceLetterStep';
+import PortalShell from '../../components/PortalShell';
 
 export const APPLICANT_STEPS = [
   { key: 'type', label: 'Enrollment Type' },
@@ -48,7 +48,7 @@ function getCompletedStepsFromApplicant(student) {
     student.phone?.trim() &&
     student.birthDate &&
     student.address?.trim() &&
-    student.applicantPassword
+    student.emailVerified
   ) {
     completed.push('registration');
   }
@@ -65,7 +65,7 @@ function getResumeStepFromApplicant(student) {
 
   if (!student.enrollmentType) return 'type';
   if (!student.programId) return 'program';
-  if (!student.firstName || !student.lastName || !student.email) return 'registration';
+  if (!student.firstName || !student.lastName || !student.email || !student.emailVerified) return 'registration';
 
   switch (status) {
     case 'documents_rejected':
@@ -197,6 +197,8 @@ export default function ApplicantView() {
   };
 
   const hasStudentInfo = student && student.firstName && student.lastName;
+  const currentStepDefinition = APPLICANT_STEPS.find((step) => step.key === effectiveStep);
+  const currentStepNumber = APPLICANT_STEPS.findIndex((step) => step.key === effectiveStep) + 1;
 
   if (settings?.systemMaintenance) {
     return (
@@ -217,8 +219,7 @@ export default function ApplicantView() {
     );
   }
 
-  return (
-    <div className="flex h-full bg-slate-50">
+  const sidebar = (
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
         <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
           <img src="/logo.png" alt="NCST Logo" className="h-12 w-auto object-contain drop-shadow-sm" />
@@ -263,9 +264,17 @@ export default function ApplicantView() {
           </div>
         )}
       </aside>
- 
-      <main className="flex-1 overflow-y-auto bg-slate-50/70">
-        <div className="max-w-4xl mx-auto p-8">
+  );
+
+  return (
+    <PortalShell
+      sidebar={sidebar}
+      portalTitle="Applicant Portal"
+      mobileTitle={currentStepDefinition?.label || 'Application Progress'}
+      mobileSubtitle={`Step ${currentStepNumber} of ${APPLICANT_STEPS.length}`}
+    >
+      <main className="h-full min-w-0 overflow-y-auto bg-slate-50/70">
+        <div className="max-w-4xl mx-auto p-4 sm:p-5 lg:p-8">
           {settings?.announcement && (
             <div className="mb-6 p-4 bg-amber-50 rounded-xl flex items-start gap-3 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2">
               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 stroke-[2]" />
@@ -277,6 +286,6 @@ export default function ApplicantView() {
           {renderStep()}
         </div>
       </main>
-    </div>
+    </PortalShell>
   );
 }

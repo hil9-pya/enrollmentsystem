@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
-import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, ChevronDown } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, RefreshCw } from 'lucide-react';
 
 // Strips characters commonly used in injection attacks before sending to backend.
 // Since we use MongoDB (not SQL), this guards against NoSQL operator injection.
 const sanitizeInput = (value, maxLen = 300) => {
   if (typeof value !== 'string') return '';
-  return value.replace(/[\$<>]/g, '').slice(0, maxLen);
+  return value.replace(/[$<>]/g, '').slice(0, maxLen);
+};
+
+const capitalizeFirstLetter = (value) => {
+  if (!value) return '';
+  return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
 const TRANSFER_REASONS = [
@@ -116,17 +121,32 @@ export default function RegistrationStep({ onNext, onBack }) {
   const student = getActiveStudent();
   const enrollmentType = student?.enrollmentType || 'new';
   const isTransferee = enrollmentType === 'transfer';
+  const emailLocked = Boolean(student?.status && student.status !== 'registration');
 
   const [errors, setErrors] = useState({});
   const [draft, setDraft] = useState(() => getInitialDraft(student));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [emailAvailability, setEmailAvailability] = useState('idle');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [isEmailAction, setIsEmailAction] = useState(false);
   const saveTimerRef = useRef(null);
   const dirtyRef = useRef(false);
+  const studentRef = useRef(student);
+  studentRef.current = student;
 
+  // Polling and autosave replace `student` with a new object. Resetting the
+  // draft for every replacement erases text while the applicant is typing.
   useEffect(() => {
-    setDraft(getInitialDraft(student));
+    setDraft(getInitialDraft(studentRef.current));
     setErrors({});
+    setPassword('');
+    setConfirmPassword('');
+    setOtp('');
+    setOtpSent(false);
+    setOtpError('');
     dirtyRef.current = false;
   }, [student?.id]);
 
@@ -151,11 +171,41 @@ export default function RegistrationStep({ onNext, onBack }) {
     };
   }, [draft, dispatch, isTransferee, student?.id]);
 
+  useEffect(() => {
+    if (emailLocked) {
+      setEmailAvailability('idle');
+      return undefined;
+    }
+    const email = draft.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailAvailability('idle');
+      return undefined;
+    }
+
+    let cancelled = false;
+    setEmailAvailability('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ email, excludeStudentId: student?.id || '' });
+        const res = await fetch(`/api/students/email-availability?${params}`);
+        const data = await res.json();
+        if (!cancelled) setEmailAvailability(data.available ? 'available' : 'taken');
+      } catch {
+        if (!cancelled) setEmailAvailability('idle');
+      }
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [draft.email, emailLocked, student?.id]);
+
   const validate = () => {
     const newErrors = {};
     const today = new Date();
 
-    const nameValidationRegex = /^[a-zA-Z\s\-\.]+$/;
+    const nameValidationRegex = /^[a-zA-Z\s.-]+$/;
     const sanitizedFirst = sanitizeInput(draft.firstName.trim() || '', 100);
     const sanitizedLast = sanitizeInput(draft.lastName.trim() || '', 100);
 
@@ -238,6 +288,11 @@ export default function RegistrationStep({ onNext, onBack }) {
     const value = sanitizeInput(rawValue, maxLen);
     dirtyRef.current = true;
     setDraft(prev => ({ ...prev, [field]: value }));
+    if (field === 'email') {
+      setOtpSent(false);
+      setOtp('');
+      setOtpError('');
+    }
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
@@ -251,13 +306,58 @@ export default function RegistrationStep({ onNext, onBack }) {
     });
   };
 
-  const handleNext = async () => {
-    if (validate()) {
-      await flushDraft();
-      if (password) {
-        await dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { applicantPassword: password } });
+  const requestOtp = async () => {
+    setIsEmailAction(true);
+    setOtpError('');
+    try {
+      const response = await fetch(`/api/students/${student.id}/email-verification/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: draft.email.trim() }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.message || 'Could not send verification code.');
+      if (data.emailVerified) {
+        onNext();
+        return;
       }
+      setOtpSent(true);
+    } catch (error) {
+      setOtpError(error.message);
+    } finally {
+      setIsEmailAction(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (!validate()) return;
+    await flushDraft();
+    if (password) {
+      await dispatch({ type: 'UPDATE_ACTIVE_STUDENT', payload: { applicantPassword: password } });
+    }
+    await requestOtp();
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!/^\d{6}$/.test(otp)) {
+      setOtpError('Enter the 6-digit code sent to your email.');
+      return;
+    }
+    setIsEmailAction(true);
+    setOtpError('');
+    try {
+      const response = await fetch(`/api/students/${student.id}/email-verification/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.message || 'Could not verify email.');
       onNext();
+    } catch (error) {
+      setOtpError(error.message);
+    } finally {
+      setIsEmailAction(false);
     }
   };
 
@@ -293,7 +393,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="firstName"
             icon={User}
             value={draft.firstName}
-            onChange={(e) => handleChange('firstName', e.target.value.replace(/[^a-zA-Z\s\-\.]/g, ''), 100)}
+            onChange={(e) => handleChange('firstName', capitalizeFirstLetter(e.target.value.replace(/[^a-zA-Z\s.-]/g, '')), 100)}
             error={errors.firstName}
             required
             placeholder="Juan"
@@ -303,7 +403,7 @@ export default function RegistrationStep({ onNext, onBack }) {
             id="lastName"
             icon={User}
             value={draft.lastName}
-            onChange={(e) => handleChange('lastName', e.target.value.replace(/[^a-zA-Z\s\-\.]/g, ''), 100)}
+            onChange={(e) => handleChange('lastName', capitalizeFirstLetter(e.target.value.replace(/[^a-zA-Z\s.-]/g, '')), 100)}
             error={errors.lastName}
             required
             placeholder="Dela Cruz"
@@ -317,10 +417,24 @@ export default function RegistrationStep({ onNext, onBack }) {
           icon={Mail}
           value={draft.email}
           onChange={(e) => handleChange('email', e.target.value, 254)}
-          error={errors.email}
+          error={errors.email || (emailAvailability === 'taken' ? 'This email is already used by another application.' : null)}
+          disabled={emailLocked}
           required
           placeholder="juan@email.com"
         />
+        {emailLocked && (
+          <p className="-mt-4 mb-4 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+            Email is locked after document submission. Contact Admissions to request a change.
+          </p>
+        )}
+        {emailAvailability === 'checking' && (
+          <p className="-mt-4 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Checking email availability...</p>
+        )}
+        {emailAvailability === 'available' && (
+          <div className="-mt-4 mb-4 flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
+            <CheckCircle className="h-3 w-3" /> Email is available
+          </div>
+        )}
 
         <FloatingInput
           label="Phone Number"
@@ -471,6 +585,47 @@ export default function RegistrationStep({ onNext, onBack }) {
         </div>
       </div>
 
+      {otpSent && (
+        <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
+          <div className="flex items-start gap-3 mb-4">
+            <ShieldCheck className="w-5 h-5 text-univ-blue mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-extrabold text-univ-navy">Verify your email</p>
+              <p className="text-xs text-slate-600 mt-1">Enter the 6-digit code sent to <strong>{draft.email}</strong>. Code expires in 10 minutes.</p>
+            </div>
+          </div>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={otp}
+            onChange={(event) => {
+              setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
+              setOtpError('');
+            }}
+            placeholder="000000"
+            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-[0.4em] outline-none focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10"
+          />
+          {otpError && <p className="mt-2 text-xs font-bold text-rose-600">{otpError}</p>}
+          <button
+            type="button"
+            onClick={requestOtp}
+            disabled={isEmailAction}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-univ-blue disabled:text-slate-400"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Resend code
+          </button>
+        </div>
+      )}
+
+      {!otpSent && otpError && (
+        <div className="mt-6 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-700">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{otpError}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mt-8 border-t border-slate-100 pt-6">
         <button
           type="button"
@@ -481,10 +636,11 @@ export default function RegistrationStep({ onNext, onBack }) {
         </button>
         <button
           type="button"
-          onClick={handleNext}
-          className="px-8 py-3 rounded-xl text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 transition-all shadow-md shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+          onClick={otpSent ? handleVerifyOtp : handleNext}
+          disabled={isEmailAction}
+          className="px-8 py-3 rounded-xl text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 disabled:bg-slate-400 transition-all shadow-md shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
         >
-          Continue
+          {isEmailAction ? 'Please wait...' : otpSent ? 'Verify & Continue' : 'Send Verification Code'}
         </button>
       </div>
     </div>

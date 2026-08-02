@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
-import { SUBJECTS, MISC_FEES } from '../data/mockData.js';
+import { SUBJECTS } from '../data/mockData.js';
 import { useAuth } from './AuthContext';
 
 const EnrollmentContext = createContext(null);
@@ -19,7 +19,7 @@ const safeJson = async (res) => {
     try {
       const data = await res.json();
       errorMsg = data.error || data.message || errorMsg;
-    } catch (_) {
+    } catch {
       // Fallback for non-JSON responses (e.g. 502 HTML pages)
     }
     throw new Error(errorMsg);
@@ -40,14 +40,30 @@ export function EnrollmentProvider({ children }) {
     return localStorage.getItem('student_active_id') || 'STU-2026-0006';
   });
 
-  const setActiveStudent = (id) => {
+  const setActiveStudent = useCallback((id) => {
     setActiveStudentId(id);
     if (id) {
       localStorage.setItem('student_active_id', id);
     } else {
       localStorage.removeItem('student_active_id');
     }
-  };
+  }, []);
+
+  const refreshActiveStudent = useCallback(async (studentId = activeStudentId) => {
+    if (!studentId) return null;
+
+    const res = await fetch(`/api/students/${studentId}`, { cache: 'no-store' });
+    const data = await safeJson(res);
+    if (data?.id) {
+      setStudents((prev) => {
+        const exists = prev.some((student) => student.id === data.id);
+        return exists
+          ? prev.map((student) => (student.id === data.id ? data : student))
+          : [...prev, data];
+      });
+    }
+    return data;
+  }, [activeStudentId]);
 
   // 1. Fetch initial students array from backend SQLite on mount and poll periodically
   useEffect(() => {
@@ -61,14 +77,25 @@ export function EnrollmentProvider({ children }) {
         console.error('Failed to fetch settings:', err);
       }
 
-      if (!token) {
+      if (!token || user?.role === 'student') {
+        setStudents((prev) => prev.filter(s => s.id === activeStudentId));
         setIsLoading(false);
         return;
       }
       try {
         const res = await authFetch('/api/admin/students');
+        if (res.status === 401 || res.status === 403) {
+          setIsLoading(false);
+          return;
+        }
         const data = await safeJson(res);
-        setStudents(data);
+        setStudents((prev) => {
+          const active = prev.find((s) => s.id === activeStudentId);
+          if (active && !data.some((s) => s.id === activeStudentId)) {
+            return [...data, active];
+          }
+          return data;
+        });
       } catch (err) {
         console.error('Failed to connect to backend enrollment server:', err.message || err);
       } finally {
@@ -77,9 +104,9 @@ export function EnrollmentProvider({ children }) {
     }
     loadStudents();
 
-    const interval = setInterval(loadStudents, 3000);
+    const interval = setInterval(loadStudents, 15000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [activeStudentId, token, user?.role]);
 
   // 1b. Fetch active student profile from backend when activeStudentId changes and poll periodically
   useEffect(() => {
@@ -88,27 +115,16 @@ export function EnrollmentProvider({ children }) {
       // applicant draft retained in browser storage after staff sign-in.
       if (!activeStudentId || (token && user?.role !== 'student')) return;
       try {
-        const res = await fetch(`/api/students/${activeStudentId}`);
-        const data = await safeJson(res);
-        if (data && data.id) {
-          setStudents((prev) => {
-            const exists = prev.some((s) => s.id === data.id);
-            if (exists) {
-              return prev.map((s) => (s.id === data.id ? data : s));
-            } else {
-              return [...prev, data];
-            }
-          });
-        }
+        await refreshActiveStudent(activeStudentId);
       } catch (err) {
         console.error('Failed to load active student:', err.message || err);
       }
     }
     loadActiveStudent();
 
-    const interval = setInterval(loadActiveStudent, 2000);
+    const interval = setInterval(loadActiveStudent, 10000);
     return () => clearInterval(interval);
-  }, [activeStudentId, token, user?.role]);
+  }, [activeStudentId, token, user?.role, refreshActiveStudent]);
 
   // 2. Custom Dispatch Interceptor to handle async HTTP calls and synchronize state
   const dispatch = useCallback(async (action) => {
@@ -247,12 +263,22 @@ export function EnrollmentProvider({ children }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            paymentMethod: currentStudent?.paymentMethod,
+            paymentMethod: payload.paymentMethod || currentStudent?.paymentMethod,
+            paymentDetails: payload.paymentDetails,
+            paymentReference: payload.paymentReference,
+            paymentPlan: payload.paymentPlan,
             success: payload.success
           }),
         });
         updatedStudent = await safeJson(res);
       } 
+      
+      else if (type === 'VERIFY_PAYMONGO_PAYMENT') {
+        const res = await authFetch(`/api/students/${activeStudentId}/verify-paymongo-payment?session_id=${payload.sessionId}`, {
+          method: 'GET',
+        });
+        updatedStudent = await safeJson(res);
+      }
       
       else if (type === 'APPROVE_DOCUMENTS') {
         const res = await authFetch(`/api/admin/students/${payload.studentId}/approve-admission`, {
@@ -421,8 +447,9 @@ export function EnrollmentProvider({ children }) {
       getActiveStudent,
       getSubjectById,
       setActiveStudent,
+      refreshActiveStudent,
     }),
-    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById]
+    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent]
   );
 
   return (

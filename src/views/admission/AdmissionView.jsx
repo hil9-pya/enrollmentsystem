@@ -4,6 +4,7 @@ import AdmissionSidebar from './AdmissionSidebar';
 import DashboardOverview from './DashboardOverview';
 import ApplicantManagement from './ApplicantManagement';
 import ApplicantDetails from './ApplicantDetails';
+import PortalShell from '../../components/PortalShell';
 
 export default function AdmissionView() {
   const { state } = useEnrollment();
@@ -69,17 +70,19 @@ export default function AdmissionView() {
     }
   };
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
-      <AdmissionSidebar 
+  const sidebar = (
+    <AdmissionSidebar
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
         reviewCount={reviewCount}
-      />
-      
-      <main className="flex-1 overflow-hidden flex flex-col">
+    />
+  );
+
+  return (
+    <PortalShell sidebar={sidebar} portalTitle="Admission Portal">
+      <main className="h-full min-w-0 overflow-hidden flex flex-col">
         {renderContent()}
       </main>
-    </div>
+    </PortalShell>
   );
 }

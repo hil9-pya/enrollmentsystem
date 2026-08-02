@@ -88,7 +88,7 @@ export async function initDb() {
   // Migration: add original_name column if it doesn't exist (for existing databases)
   try {
     await dbRun(`ALTER TABLE documents ADD COLUMN original_name TEXT`);
-  } catch (e) {
+  } catch {
     // Column already exists, ignore
   }
 

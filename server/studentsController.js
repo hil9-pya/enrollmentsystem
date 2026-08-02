@@ -2,17 +2,49 @@ import asyncHandler from 'express-async-handler';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
+import crypto from 'crypto';
 import Student from './Student.js';
 import User from './User.js';
+import Settings from './Settings.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
+import {
+  sendAdmissionApprovedEmail,
+  sendAdmissionRejectedEmail,
+  sendApplicationSubmittedEmail,
+  sendVerificationOtpEmail,
+} from './services/emailService.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const DOWNPAYMENT_AMOUNT = 3000;
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+
+function hashEmailOtp(studentId, otp) {
+  const secret = process.env.EMAIL_OTP_SECRET || process.env.JWT_SECRET;
+  if (!secret) throw new Error('EMAIL_OTP_SECRET or JWT_SECRET must be configured.');
+  return crypto.createHmac('sha256', secret).update(`${studentId}:${otp}`).digest('hex');
+}
+
+function logEmailFailure(kind, student, error) {
+  console.error(`${kind} email failed for ${student._id}:`, error.message);
+}
+
+function getPaymentAmounts(student, paymentPlan) {
+  const total = Math.max(0, Number(student.totalTuition) || 0);
+  const plan = paymentPlan === 'downpayment' && total > DOWNPAYMENT_AMOUNT
+    ? 'downpayment'
+    : 'full';
+  const amountPaid = plan === 'downpayment' ? DOWNPAYMENT_AMOUNT : total;
+  return { plan, amountPaid, remainingBalance: Math.max(0, total - amountPaid) };
+}
 
 // Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
-async function generateNextId(prefixBase) {
+export async function generateNextId(prefixBase) {
   const year = new Date().getFullYear();
   const prefix = `${prefixBase}${year}-`;
 
@@ -174,6 +206,21 @@ const applicantLogin = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Check whether an applicant email can be used
+// @route   GET /api/students/email-availability
+const checkEmailAvailability = asyncHandler(async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  const excludeStudentId = String(req.query.excludeStudentId || '').trim();
+
+  if (!email) {
+    res.status(400).json({ error: 'Email is required.' });
+    return;
+  }
+
+  const existing = await Student.findOne({ email }).select('_id');
+  res.json({ available: !existing || String(existing._id) === excludeStudentId });
+});
+
 // @desc    Start a new student application (Student Portal "New Application")
 // @route   POST /api/students/register
 const registerStudent = asyncHandler(async (req, res) => {
@@ -229,6 +276,106 @@ const registerStudent = asyncHandler(async (req, res) => {
   res.status(201).json(student);
 });
 
+// @desc    Send email ownership verification OTP
+// @route   POST /api/students/:id/email-verification/send
+const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  const normalizedEmail = String(req.body.email || student.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    res.status(400);
+    throw new Error('Enter a valid email address before requesting a verification code.');
+  }
+
+  const duplicate = await Student.exists({ _id: { $ne: student._id }, email: normalizedEmail });
+  if (duplicate) {
+    res.status(400);
+    throw new Error('An application with this email already exists.');
+  }
+  if (student.emailVerified && student.email === normalizedEmail) {
+    res.json({ message: 'Email is already verified.', emailVerified: true });
+    return;
+  }
+
+  const now = Date.now();
+  if (student.emailOtpLastSentAt && now - new Date(student.emailOtpLastSentAt).getTime() < OTP_RESEND_COOLDOWN_MS) {
+    res.status(429);
+    throw new Error('Please wait 60 seconds before requesting another code.');
+  }
+
+  const otp = String(crypto.randomInt(100000, 1000000));
+  student.email = normalizedEmail;
+  student.emailVerified = false;
+  student.emailOtpHash = hashEmailOtp(student._id, otp);
+  student.emailOtpExpiresAt = new Date(now + OTP_TTL_MS);
+  student.emailOtpLastSentAt = new Date(now);
+  student.emailOtpAttempts = 0;
+  await student.save();
+
+  try {
+    await sendVerificationOtpEmail({ to: student.email, firstName: student.firstName, otp });
+  } catch (error) {
+    student.emailOtpHash = null;
+    student.emailOtpExpiresAt = null;
+    student.emailOtpLastSentAt = null;
+    await student.save();
+    res.status(503);
+    throw new Error(`Verification email could not be sent. ${error.message}`);
+  }
+
+  res.json({ message: 'Verification code sent.', emailVerified: false });
+});
+
+// @desc    Verify email ownership OTP
+// @route   POST /api/students/:id/email-verification/verify
+const verifyEmailOtp = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  if (student.emailVerified) {
+    res.json({ message: 'Email is already verified.', emailVerified: true });
+    return;
+  }
+
+  const otp = String(req.body.otp || '').trim();
+  if (!/^\d{6}$/.test(otp)) {
+    res.status(400);
+    throw new Error('Enter the 6-digit verification code.');
+  }
+  if (!student.emailOtpHash || !student.emailOtpExpiresAt) {
+    res.status(400);
+    throw new Error('Request a verification code first.');
+  }
+  if (new Date(student.emailOtpExpiresAt).getTime() <= Date.now()) {
+    student.emailOtpHash = null;
+    student.emailOtpExpiresAt = null;
+    await student.save();
+    res.status(400);
+    throw new Error('Verification code expired. Request a new code.');
+  }
+  if (student.emailOtpAttempts >= OTP_MAX_ATTEMPTS) {
+    res.status(429);
+    throw new Error('Too many incorrect attempts. Request a new code.');
+  }
+
+  const submittedHash = hashEmailOtp(student._id, otp);
+  const matches = crypto.timingSafeEqual(Buffer.from(submittedHash, 'hex'), Buffer.from(student.emailOtpHash, 'hex'));
+  if (!matches) {
+    student.emailOtpAttempts += 1;
+    await student.save();
+    res.status(400);
+    throw new Error('Incorrect verification code.');
+  }
+
+  student.emailVerified = true;
+  student.emailOtpHash = null;
+  student.emailOtpExpiresAt = null;
+  student.emailOtpLastSentAt = null;
+  student.emailOtpAttempts = 0;
+  await student.save();
+  res.json({ message: 'Email verified successfully.', emailVerified: true });
+});
+
 // @desc    Generic partial update (enrollment type, personal info, payment method, etc.)
 // @route   PUT /api/students/:id
 const updateStudent = asyncHandler(async (req, res) => {
@@ -261,7 +408,7 @@ const updateStudent = asyncHandler(async (req, res) => {
   const sanitizeString = (val, maxLen = 300) => {
     if (typeof val !== 'string') return '';
     // Remove $ to prevent MongoDB operator injection, trim whitespace, cap length
-    return val.replace(/[\$]/g, '').trim().slice(0, maxLen);
+    return val.replace(/[$]/g, '').trim().slice(0, maxLen);
   };
 
   // Validate enrollmentType is an allowed value
@@ -273,7 +420,7 @@ const updateStudent = asyncHandler(async (req, res) => {
 
   if (req.body.firstName !== undefined) {
     const val = sanitizeString(String(req.body.firstName), 100);
-    if (/[^a-zA-Z\s\-\.]/.test(val)) {
+    if (/[^a-zA-Z\s\-.]/.test(val)) {
       res.status(400).json({ error: 'First name must contain letters, spaces, hyphens, and dots only.' });
       return;
     }
@@ -281,7 +428,7 @@ const updateStudent = asyncHandler(async (req, res) => {
   }
   if (req.body.lastName !== undefined) {
     const val = sanitizeString(String(req.body.lastName), 100);
-    if (/[^a-zA-Z\s\-\.]/.test(val)) {
+    if (/[^a-zA-Z\s\-.]/.test(val)) {
       res.status(400).json({ error: 'Last name must contain letters, spaces, hyphens, and dots only.' });
       return;
     }
@@ -294,6 +441,26 @@ const updateStudent = asyncHandler(async (req, res) => {
       return;
     }
     req.body.phone = val;
+  }
+  if (req.body.email !== undefined) {
+    const email = String(req.body.email).trim().toLowerCase();
+    if (email !== student.email && student.status !== 'registration') {
+      res.status(400).json({ error: 'Email cannot be changed after documents are submitted. Contact Admissions for assistance.' });
+      return;
+    }
+    const existing = email ? await Student.findOne({ email }).select('_id') : null;
+    if (existing && String(existing._id) !== String(student._id)) {
+      res.status(400).json({ error: 'An application with this email already exists.' });
+      return;
+    }
+    if (email !== student.email) {
+      student.emailVerified = false;
+      student.emailOtpHash = null;
+      student.emailOtpExpiresAt = null;
+      student.emailOtpLastSentAt = null;
+      student.emailOtpAttempts = 0;
+    }
+    req.body.email = email;
   }
   if (req.body.address !== undefined) {
     // Preserve spaces while the registration form saves each keystroke.
@@ -356,6 +523,10 @@ const submitDocuments = asyncHandler(async (req, res) => {
   if (student.enrollmentType === 'continuing') {
     student.status = 'advising_pending';
   } else {
+    if (!student.emailVerified) {
+      res.status(400).json({ error: 'Verify your email before submitting documents.' });
+      return;
+    }
     if (!['registration', 'documents_rejected'].includes(student.status)) {
       res.status(400).json({ error: 'Application has already been submitted for review.' });
       return;
@@ -393,6 +564,13 @@ const submitDocuments = asyncHandler(async (req, res) => {
   }
   student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
+  if (student.emailVerified && student.email) {
+    try {
+      await sendApplicationSubmittedEmail(student);
+    } catch (error) {
+      logEmailFailure('Application confirmation', student, error);
+    }
+  }
   res.json(student);
 });
 
@@ -535,7 +713,6 @@ const setSubjects = asyncHandler(async (req, res) => {
   const subjectIds = inputSubjects.length > 0 
     ? inputSubjects.map(s => s.subjectId)
     : (Array.isArray(req.body.subjectIds) ? req.body.subjectIds : []);
-  const previousStatus = student.status;
 
   if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
     res.status(400);
@@ -610,8 +787,14 @@ const processPayment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const { paymentMethod, success } = req.body;
+  const { paymentMethod, success, paymentDetails, paymentReference, paymentPlan } = req.body;
+  const amounts = getPaymentAmounts(student, paymentPlan);
   if (paymentMethod) student.paymentMethod = paymentMethod;
+  if (paymentDetails) student.paymentDetails = { ...paymentDetails, amount: amounts.amountPaid };
+  if (paymentReference) student.paymentReference = paymentReference;
+  student.paymentPlan = amounts.plan;
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
   student.paymentStatus = success ? 'processing' : 'failed';
 
   await student.save();
@@ -673,6 +856,13 @@ const approveAdmission = asyncHandler(async (req, res) => {
   });
 
   await student.save();
+  if (student.emailVerified && student.email) {
+    try {
+      await sendAdmissionApprovedEmail(student);
+    } catch (error) {
+      logEmailFailure('Admission approval', student, error);
+    }
+  }
   res.json(student);
 });
 
@@ -698,6 +888,13 @@ const rejectAdmission = asyncHandler(async (req, res) => {
   });
 
   await student.save();
+  if (student.emailVerified && student.email) {
+    try {
+      await sendAdmissionRejectedEmail(student);
+    } catch (error) {
+      logEmailFailure('Admission action-required', student, error);
+    }
+  }
   res.json(student);
 });
 
@@ -738,23 +935,12 @@ const confirmPayment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: Student is not pending payment.');
   }
 
-  student.paymentStatus = 'paid';
-  // Automate Registrar workflow: auto-enroll on payment confirmation
-  student.status = 'enrolled';
-  student.enrolledAt = student.enrolledAt || new Date();
-  student.scheduleGenerated = true;
-  student.registrationFormGenerated = true;
-  student.receiptGenerated = true;
-
-  // Generate STU- ID now that they have paid
-  if (!student.studentId) {
-    student.studentId = await generateNextId('STU-');
-    
-    // Update the existing User account's username from APP- to STU-
-    await User.updateOne(
-      { username: student._id }, // Find by the APP- ID
-      { $set: { username: student.studentId } } // Update to STU- ID
-    );
+  const amounts = getPaymentAmounts(student, student.paymentPlan);
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
+  student.paymentStatus = amounts.remainingBalance > 0 ? 'partial' : 'paid';
+  if (student.status === 'payment_pending') {
+    student.status = 'payment_confirmed';
   }
 
   await student.save();
@@ -783,16 +969,35 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  if (student.status !== 'payment_pending' && student.status !== 'enrolled') {
+  if (student.status !== 'payment_confirmed' && student.status !== 'enrolled') {
     res.status(400);
-    throw new Error('Invalid action: Student must be pending payment or already enrolled.');
+    throw new Error('Invalid action: Student must be payment_confirmed or already enrolled.');
   }
+
+  // Fetch settings to know what the active term is
+  let settings = await Settings.findOne();
+  if (!settings) settings = { activeTerm: '1st Semester' };
 
   student.status = 'enrolled';
   student.enrolledAt = student.enrolledAt || new Date();
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;
+  
+  // Track term for auto-archiving logic
+  student.missedSemesters = 0;
+  student.lastEnrolledTerm = settings.activeTerm;
+
+  // Generate STU- ID now that they are officially enrolled
+  if (!student.studentId) {
+    student.studentId = await generateNextId('STU-');
+    
+    // Update the existing User account's username from APP- to STU-
+    await User.updateOne(
+      { username: student._id }, // Find by the APP- ID
+      { $set: { username: student.studentId } } // Update to STU- ID
+    );
+  }
 
   await student.save();
   res.json(student);
@@ -804,7 +1009,7 @@ const resolveHold = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const { type, notes } = req.body;
+  const { type, notes: _notes } = req.body;
   const holdIndex = student.holds.findIndex(h => h.type === type && h.status === 'active');
   
   if (holdIndex >= 0) {
@@ -902,12 +1107,111 @@ const rolloverStudent = asyncHandler(async (req, res) => {
   res.json(student);
 });
 
+// @desc    Initiate Paymongo Checkout Session for online tuition payment
+// @route   POST /api/students/:id/paymongo-checkout
+const createPaymongoCheckoutSession = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'advising_approved' && student.status !== 'payment_pending') {
+    res.status(400);
+    throw new Error('Not cleared for payment. Student must be cleared by academic adviser.');
+  }
+
+  // Calculate amount in centavos (PHP amount * 100)
+  const amounts = getPaymentAmounts(student, req.body.paymentPlan);
+  student.paymentPlan = amounts.plan;
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
+  await student.save();
+  const amountInCentavos = Math.round(amounts.amountPaid * 100);
+  const port = process.env.PORT || 5000;
+  const paymongoBaseUrl = `http://127.0.0.1:${port}/api/paymongo/v1/checkout_sessions`;
+
+  try {
+    // Send post request to our simulated Paymongo Checkout Session API
+    const response = await axios.post(paymongoBaseUrl, {
+      data: {
+        attributes: {
+          billing: {
+            name: `${student.firstName} ${student.lastName}`,
+            email: student.email,
+            phone: student.phone
+          },
+          line_items: [
+            {
+              amount: amountInCentavos,
+              currency: 'PHP',
+              name: amounts.plan === 'downpayment'
+                ? 'NCST Enrollment Downpayment'
+                : 'NCST Enrollment Tuition & Fees Assessment',
+              quantity: 1
+            }
+          ],
+          payment_method_types: ['gcash', 'card', 'paymaya'],
+          reference_number: student._id.toString(), // Pass student _id as reference number
+          success_url: `http://localhost:5173/?portal=payment-success&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `http://localhost:5173/?portal=student`
+        }
+      }
+    });
+
+    res.status(200).json(response.data.data.attributes);
+  } catch (error) {
+    console.error('Error initiating Paymongo checkout session:', error.response?.data || error.message);
+    res.status(500);
+    throw new Error('Failed to initiate online payment checkout.');
+  }
+});
+
+// @desc    Verify Paymongo Payment completion
+// @route   GET /api/students/:id/verify-paymongo-payment
+const verifyPaymongoPayment = asyncHandler(async (req, res) => {
+  const student = await Student.findById(req.params.id);
+  if (!student) {
+    res.status(404);
+    throw new Error('Student not found');
+  }
+
+  const { session_id } = req.query;
+  if (!session_id) {
+    res.status(400);
+    throw new Error('session_id query parameter is required');
+  }
+
+  try {
+    // Check the student's paymentDetails directly instead of making an HTTP self-call.
+    const details = student.paymentDetails;
+    
+    if (!details || details.checkoutSessionId !== session_id) {
+      res.status(400);
+      throw new Error('Checkout session mismatch or not found on student record.');
+    }
+
+    if (details.status === 'paid') {
+      return res.status(200).json(student);
+    } else {
+      res.status(400);
+      throw new Error(`Payment is not completed. Checkout status is: ${details.status}`);
+    }
+  } catch (error) {
+    console.error('Error verifying Paymongo payment:', error.message);
+    res.status(error.statusCode || 500);
+    throw new Error(error.message || 'Failed to verify payment status.');
+  }
+});
+
 export {
   createDraft,
+  createPaymongoCheckoutSession,
+  verifyPaymongoPayment,
   applicantLogin,
+  checkEmailAvailability,
   getStudents,
   getStudentById,
   registerStudent,
+  sendEmailVerificationOtp,
+  verifyEmailOtp,
   updateStudent,
   submitDocuments,
   uploadDocument,

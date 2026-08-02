@@ -10,6 +10,7 @@ import PaymentStep from './steps/PaymentStep';
 import FulfillmentStep from './steps/FulfillmentStep';
 import ClearanceStep from './steps/ClearanceStep';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import PortalShell from '../../components/PortalShell';
 
 export const STUDENT_STEPS = [
   { key: 'clearance', label: 'Holds & Clearances' },
@@ -100,6 +101,7 @@ function getResumeStepFromStudent(student) {
       }
       return 'evaluation';
     case 'advising_approved':
+      return 'evaluation';
     case 'enrollment_pending':
       return 'enrollment';
     default:
@@ -120,13 +122,23 @@ function getFurthestStep(storedStep, resumeStep) {
 }
 
 export default function StudentView() {
-  const { getActiveStudent, setActiveStudent } = useEnrollment();
-  const { user } = useAuth();
+  const { getActiveStudent, setActiveStudent, refreshActiveStudent } = useEnrollment();
+  const { user, logout } = useAuth();
   const student = getActiveStudent();
+  const [isProfileReady, setIsProfileReady] = useState(false);
 
   const hasActiveHolds = student?.holds?.some(h => h.status === 'active');
-  const initialStep = hasActiveHolds ? 'clearance' : 'continuing';
-  const [currentStep, setCurrentStep] = useState(initialStep);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (!student) return hasActiveHolds ? 'clearance' : 'continuing';
+    const resumeStep = getResumeStepFromStudent(student);
+    const storedStep = student.id ? localStorage.getItem(`student_current_step_${student.id}`) : null;
+    const shouldUseStatusStep = student.status && student.status !== 'registration';
+    return shouldUseStatusStep
+      ? resumeStep
+      : storedStep
+      ? getFurthestStep(storedStep, resumeStep)
+      : resumeStep;
+  });
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isVerified, setIsVerified] = useState(() => {
     return user?.role === 'student';
@@ -134,15 +146,31 @@ export default function StudentView() {
   const lastInitializedStudentId = useRef(null);
   const lastKnownStatus = useRef(null);
 
-  // Sync verification if user logs in/out
+  // Load fresh status before choosing the resume step. Approved applicants
+  // still review Course Evaluation before proceeding to Subject Enrollment.
   useEffect(() => {
-    if (user?.role === 'student') {
-      setIsVerified(true);
-      if (user.studentId) {
-        setActiveStudent(user.studentId);
-      }
+    if (user?.role !== 'student' || !user.studentId) {
+      setIsProfileReady(false);
+      return;
     }
-  }, [user, setActiveStudent]);
+
+    let cancelled = false;
+    setIsVerified(true);
+    setIsProfileReady(false);
+    setActiveStudent(user.studentId);
+
+    refreshActiveStudent(user.studentId)
+      .catch((error) => {
+        console.error('Failed to refresh student profile:', error.message || error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsProfileReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role, user?.studentId, setActiveStudent, refreshActiveStudent]);
 
   // Initialize resume state on student switch, then let users navigate manually.
   useEffect(() => {
@@ -234,15 +262,11 @@ export default function StudentView() {
     const idx = STEP_KEYS.indexOf(currentStep);
     if (idx < 0 || idx >= STEP_KEYS.length - 1) return;
 
-    const status = student?.status || 'documents_approved';
-    const rank = getStatusRank(status);
-
-
     setCompletedSteps((prev) =>
       prev.includes(currentStep) ? prev : [...prev, currentStep]
     );
     setCurrentStep(STEP_KEYS[idx + 1]);
-  }, [currentStep, student]);
+  }, [currentStep]);
 
   const onBack = useCallback(() => {
     const idx = STEP_KEYS.indexOf(currentStep);
@@ -277,8 +301,8 @@ export default function StudentView() {
         return <PaymentStep onNext={onNext} onBack={onBack} />;
       case 'fulfillment':
         return <FulfillmentStep onReturnToGateway={() => {
+              if (logout) logout();
               setActiveStudent(null);
-              setIsVerified(false);
               window.location.href = '/?portal=gateway&tab=student';
             }} />;
       default:
@@ -288,13 +312,28 @@ export default function StudentView() {
 
 
   const hasStudentInfo = student && student.firstName && student.lastName;
+  const currentStepDefinition = STUDENT_STEPS.find((step) => step.key === effectiveStep);
+  const currentStepNumber = STUDENT_STEPS.findIndex((step) => step.key === effectiveStep) + 1;
 
   if (!isVerified) {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
   }
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
+  const isAuthenticatedProfile = Boolean(
+    student && (student.id === user?.studentId || student.studentId === user?.studentId)
+  );
+  if (!isProfileReady || !isAuthenticatedProfile) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-univ-blue border-t-transparent"></div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const sidebar = (<>
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
         <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
@@ -341,15 +380,24 @@ export default function StudentView() {
           </div>
         )}
       </aside>
- 
+      </>
+  );
+
+  return (
+    <PortalShell
+      sidebar={sidebar}
+      portalTitle="Student Portal"
+      mobileTitle={currentStepDefinition?.label || 'Enrollment Progress'}
+      mobileSubtitle={`Step ${currentStepNumber} of ${STUDENT_STEPS.length}`}
+    >
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-50/70">
-        <div className="max-w-4xl mx-auto p-8">
+      <main className="h-full min-w-0 overflow-y-auto bg-slate-50/70">
+        <div className="max-w-4xl mx-auto p-4 sm:p-5 lg:p-8">
           <ErrorBoundary>
             {renderStep()}
           </ErrorBoundary>
         </div>
       </main>
-    </div>
+    </PortalShell>
   );
 }

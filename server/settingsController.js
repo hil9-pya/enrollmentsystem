@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import Settings from './Settings.js';
+import mongoose from 'mongoose';
 
 // @desc    Get settings
 // @route   GET /api/settings
@@ -28,4 +29,52 @@ const updateSettings = asyncHandler(async (req, res) => {
   res.json(updatedSettings);
 });
 
-export { getSettings, updateSettings };
+// @desc    Advance to the next academic semester and process student archives
+// @route   POST /api/settings/advance-semester
+const advanceSemester = asyncHandler(async (req, res) => {
+  let settings = await Settings.findOne();
+  if (!settings) settings = new Settings();
+
+  const oldTerm = settings.activeTerm || '1st Semester';
+  const newTerm = oldTerm === '1st Semester' ? '2nd Semester' : '1st Semester';
+  
+  settings.activeTerm = newTerm;
+  await settings.save();
+
+  // Process all students
+  const Student = mongoose.model('Student');
+  const allStudents = await Student.find({ isDeleted: { $ne: true } });
+
+  for (const student of allStudents) {
+    let updateDoc = {};
+    if (student.status === 'enrolled' && student.academicTerm === oldTerm) {
+      // Successfully completed the term that just ended, reset strikes
+      updateDoc = { 
+        $set: { 
+          missedSemesters: 0, 
+          lastEnrolledTerm: oldTerm 
+        } 
+      };
+    } else {
+      // Missed the term (either not enrolled, or enrolled in a past term and never rolled over)
+      const newMissed = (student.missedSemesters || 0) + 1;
+      updateDoc = { $set: { missedSemesters: newMissed } };
+      
+      if (newMissed >= 2) {
+        updateDoc.$set.isDeleted = true;
+        updateDoc.$push = {
+          auditLogs: {
+            action: 'Auto-archived due to missing 2 consecutive semesters',
+            user: 'System Admin',
+            date: new Date()
+          }
+        };
+      }
+    }
+    await Student.updateOne({ _id: student._id }, updateDoc);
+  }
+
+  res.json({ message: 'Semester advanced successfully', newTerm, settings });
+});
+
+export { getSettings, updateSettings, advanceSemester };

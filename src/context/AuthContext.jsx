@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorMsg;
-        } catch (_) {
+        } catch {
           errorMsg = `Server error (Status ${response.status})`;
         }
         throw new Error(errorMsg);
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      return { success: true };
+      return { success: true, user: data.user };
     } catch (err) {
       return { success: false, error: err.message };
     }

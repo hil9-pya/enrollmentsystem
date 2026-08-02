@@ -13,6 +13,8 @@ import AdviserView from './views/adviser/AdviserView';
 import AccountingView from './views/accounting/AccountingView';
 import RegistrarView from './views/registrar/RegistrarView';
 import DashboardView from './views/admin/DashboardView';
+import PaymongoCheckoutView from './views/public/PaymongoCheckoutView';
+import PaymentSuccessView from './views/public/PaymentSuccessView';
 
 import { LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -27,7 +29,15 @@ function AppContent() {
   const [viewMode, setViewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const portal = params.get('portal');
-    if (portal === 'gateway' || portal === 'applicant' || portal === 'student' || portal === 'staff' || portal === 'admin') return portal;
+    if (
+      portal === 'gateway' ||
+      portal === 'applicant' ||
+      portal === 'student' ||
+      portal === 'staff' ||
+      portal === 'admin' ||
+      portal === 'paymongo-checkout' ||
+      portal === 'payment-success'
+    ) return portal;
     return 'landing'; // Default to landing page
   });
   const gatewayTab = new URLSearchParams(window.location.search).get('tab') || 'applicant';
@@ -72,7 +82,8 @@ function AppContent() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <span className="font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
+              <span className="sm:hidden font-heading font-bold text-sm tracking-wide text-univ-navy">NCST Applicant Portal</span>
+              <span className="hidden sm:inline font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
               <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Applicant Portal</span>
             </div>
           </div>
@@ -94,15 +105,26 @@ function AppContent() {
     );
   }
 
+  // 1b. PayMongo Checkout View
+  if (viewMode === 'paymongo-checkout') {
+    return <PaymongoCheckoutView />;
+  }
+
+  // 1c. PayMongo Success View
+  if (viewMode === 'payment-success') {
+    return <PaymentSuccessView />;
+  }
+
   // 2. Student Portal View
-  if (user?.role === 'student') {
+  if (user?.role === 'student' && viewMode !== 'landing' && viewMode !== 'gateway') {
     return (
       <div className="h-screen flex flex-col">
         <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <span className="font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
+              <span className="sm:hidden font-heading font-bold text-sm tracking-wide text-univ-navy">NCST Student Portal</span>
+              <span className="hidden sm:inline font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
               <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Student Portal</span>
             </div>
           </div>
@@ -122,7 +144,7 @@ function AppContent() {
   }
 
   // 3. Staff/Admin Portal View
-  if (user && user.role !== 'student') {
+  if (user && user.role !== 'student' && viewMode !== 'landing' && viewMode !== 'gateway') {
     const ActiveView = viewMap[user.role] || AdmissionView;
     return (
       <div className="h-screen flex flex-col">
@@ -130,7 +152,8 @@ function AppContent() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
-              <div className="font-heading font-bold text-lg leading-tight tracking-wide text-univ-navy">NCST Enrollment Management System</div>
+              <div className="sm:hidden font-heading font-bold text-sm leading-tight tracking-wide text-univ-navy">NCST Enrollment System</div>
+              <div className="hidden sm:block font-heading font-bold text-lg leading-tight tracking-wide text-univ-navy">NCST Enrollment Management System</div>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -153,6 +176,9 @@ function AppContent() {
     return (
       <GatewayView 
         initialView={viewMode === 'gateway' ? gatewayTab : viewMode}
+        onLogin={(signedInUser) => {
+          setViewMode(signedInUser?.role === 'student' ? 'student' : signedInUser?.role || 'admin');
+        }}
         onVerified={() => {
           setIsApplicantVerified(true);
           setViewMode('applicant');

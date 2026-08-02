@@ -12,17 +12,19 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { toast } from 'react-hot-toast';
 import StatusBadge from '../../components/StatusBadge';
+import Badge from '../../components/Badge';
 import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
 import AdminSidebar from './AdminSidebar';
+import PortalShell from '../../components/PortalShell';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
-const ROLE_COLORS = {
-  admin: 'bg-rose-100 text-rose-700 border-rose-200',
-  admission: 'bg-blue-100 text-blue-700 border-blue-200',
-  adviser: 'bg-purple-100 text-purple-700 border-purple-200',
-  accounting: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  registrar: 'bg-amber-100 text-amber-700 border-amber-200',
+const ROLE_TONES = {
+  admin: 'neutral',
+  admission: 'info',
+  adviser: 'info',
+  accounting: 'success',
+  registrar: 'warning',
 };
 
 const authFetch = (url, options = {}) => {
@@ -58,7 +60,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
   }, [visibleStudents]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Administration Overview</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
@@ -417,7 +419,7 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       {editingStudent && (
         <StudentEditModal
           student={editingStudent}
@@ -496,7 +498,7 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                       </div>
                       <div>
                         <p className="font-semibold text-slate-900">{stud.firstName || 'Anonymous'} {stud.lastName || 'Applicant'}</p>
-                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{stud.id}</p>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">{stud.studentId || stud.id}</p>
                         {stud.email && <p className="text-[10px] text-slate-400">{stud.email}</p>}
                       </div>
                     </div>
@@ -519,11 +521,9 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex px-2.5 py-0.5 text-[10px] font-bold border rounded-lg uppercase tracking-wider ${
-                      stud.paymentStatus === 'paid' ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                      : stud.paymentStatus === 'processing' ? 'bg-amber-50 border-amber-100 text-amber-700'
-                      : 'bg-slate-100 border-slate-200 text-slate-500'
-                    }`}>{stud.paymentStatus || 'unpaid'}</span>
+                    <Badge tone={stud.paymentStatus === 'paid' ? 'success' : stud.paymentStatus === 'processing' ? 'warning' : 'neutral'}>
+                      {stud.paymentStatus || 'Unpaid'}
+                    </Badge>
                     {stud.totalTuition > 0 && <p className="text-[10px] text-slate-400 mt-1">₱{stud.totalTuition?.toLocaleString()}</p>}
                   </td>
                   <td className="px-5 py-4">
@@ -624,9 +624,9 @@ function TrashTab() {
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Trash Bin</h1>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Archived Students</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
           Restore deleted student records or remove them permanently.
         </p>
@@ -635,8 +635,8 @@ function TrashTab() {
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 flex items-center gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
         <div>
-          <p className="text-sm font-bold text-amber-900">Trash Bin</p>
-          <p className="text-xs text-amber-700 mt-0.5">Deleted students are stored here. You can restore them or permanently delete them from the database.</p>
+          <p className="text-sm font-bold text-amber-900">Archived Students</p>
+          <p className="text-xs text-amber-700 mt-0.5">For students with inactive or did not enroll for the past 2 sems. You can restore them or permanently delete them from the database.</p>
         </div>
       </div>
 
@@ -675,7 +675,7 @@ function TrashTab() {
                     <td className="px-5 py-4 text-slate-500 font-medium">{stud.programId?.toUpperCase() || '—'}</td>
                     <td className="px-5 py-4"><StatusBadge status={stud.status} /></td>
                     <td className="px-5 py-4">
-                      <span className="px-2 py-0.5 text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded-lg uppercase">{stud.paymentStatus || 'unpaid'}</span>
+                      <Badge>{stud.paymentStatus || 'Unpaid'}</Badge>
                     </td>
                     <td className="px-5 py-4 text-center">
                       <button onClick={() => handleRestore(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-bold transition-all cursor-pointer">
@@ -765,7 +765,7 @@ function StaffTab() {
   const roleIcons = { admin: Building2, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Accounts</h1>
@@ -864,10 +864,10 @@ function StaffTab() {
                     </td>
                     <td className="px-5 py-4 font-mono text-slate-600 text-xs">@{user.username}</td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold border rounded-lg uppercase tracking-wider ${ROLE_COLORS[user.role] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      <Badge tone={ROLE_TONES[user.role] || 'neutral'}>
                         <RoleIcon className="w-3 h-3" />
                         {user.role}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-5 py-4 text-slate-500">{user.email}</td>
                     <td className="px-5 py-4 text-center">
@@ -919,10 +919,25 @@ function SettingsTab() {
     finally { setSaving(false); }
   };
 
+  const handleAdvanceSemester = async () => {
+    if (!window.confirm('Are you sure you want to advance to the next semester? This will update the system term and automatically archive inactive students.')) return;
+    
+    setSaving(true);
+    try {
+      const res = await authFetch('/api/settings/advance-semester', { method: 'POST' });
+      const data = await safeJson(res);
+      setSettings(data.settings);
+      toast.success(`System advanced to ${data.newTerm}`);
+      // Refresh the page to ensure all components have the newest settings
+      window.location.reload();
+    } catch (err) { toast.error(err.message || 'Failed to advance semester'); }
+    finally { setSaving(false); }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">System Configuration</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">Configure global enrollment settings and system parameters.</p>
@@ -947,6 +962,18 @@ function SettingsTab() {
             <option value="1st Semester">1st Semester</option>
             <option value="2nd Semester">2nd Semester</option>
           </select>
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={handleAdvanceSemester}
+              disabled={saving}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+            >
+              Advance Academic Term & Archive Inactive Students
+            </button>
+            <p className="text-[10px] text-slate-500 mt-2">
+              Warning: This will change the active term and automatically archive students who have not enrolled for 2 consecutive semesters.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -1093,11 +1120,11 @@ export default function DashboardView() {
     // The context's polling will re-fetch automatically, but we can trigger local update
   };
 
-  return (
-    <div className="flex h-full bg-[#f4f6fb]">
-      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+  const sidebar = <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />;
 
-      <main className="flex-1 overflow-hidden flex flex-col">
+  return (
+    <PortalShell sidebar={sidebar} portalTitle="Admin Portal">
+      <main className="h-full min-w-0 overflow-hidden flex flex-col">
           {activeTab === 'analytics' && (
             <AnalyticsTab
               metrics={metrics}
@@ -1112,7 +1139,7 @@ export default function DashboardView() {
             <DirectoryTab
               title="Applicant Directory"
               description="Review applicant records and manage enrollment progress."
-              visibleStudents={visibleStudents.filter(s => s.id?.startsWith('APP-'))}
+              visibleStudents={visibleStudents.filter(s => !s.studentId && s.id?.startsWith('APP-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
               dispatch={dispatch}
@@ -1122,7 +1149,7 @@ export default function DashboardView() {
             <DirectoryTab
               title="Student Database"
               description="Manage official student records, statuses, and account details."
-              visibleStudents={visibleStudents.filter(s => s.id?.startsWith('STU-'))}
+              visibleStudents={visibleStudents.filter(s => s.studentId || s.id?.startsWith('STU-'))}
               onTrash={handleTrashStudent}
               onStudentUpdated={handleStudentUpdated}
               dispatch={dispatch}
@@ -1133,6 +1160,6 @@ export default function DashboardView() {
           {activeTab === 'settings' && <SettingsTab />}
           {activeTab === 'courses' && <CourseManagementTab />}
       </main>
-    </div>
+    </PortalShell>
   );
 }

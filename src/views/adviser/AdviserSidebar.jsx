@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, GraduationCap, CheckCircle, AlertTriangle, Settings, BookOpen } from 'lucide-react';
+import { LayoutDashboard, CheckCircle, AlertTriangle, Settings, BookOpen } from 'lucide-react';
 
 export default function AdviserSidebar({ activeTab, onTabChange, pendingCount }) {
   const tabs = [

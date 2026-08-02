@@ -66,6 +66,11 @@ const StudentSchema = new mongoose.Schema(
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     email: { type: String, default: '', lowercase: true, trim: true },
+    emailVerified: { type: Boolean, default: false },
+    emailOtpHash: { type: String, default: null },
+    emailOtpExpiresAt: { type: Date, default: null },
+    emailOtpLastSentAt: { type: Date, default: null },
+    emailOtpAttempts: { type: Number, default: 0 },
     phone: { type: String, default: '' },
     birthDate: { type: String, default: '' },
     address: { type: String, default: '' },
@@ -81,6 +86,8 @@ const StudentSchema = new mongoose.Schema(
     yearLevel: { type: Number, default: 1 },
     academicRecord: { type: [AcademicRecordSchema], default: [] },
     holds: { type: [HoldSchema], default: [] },
+    missedSemesters: { type: Number, default: 0 },
+    lastEnrolledTerm: { type: String, default: null },
 
     // Transferee-specific fields
     previousSchool: { type: String, default: '' },
@@ -115,6 +122,12 @@ const StudentSchema = new mongoose.Schema(
 
     paymentMethod: { type: String, default: null },
     paymentStatus: { type: String, default: 'unpaid' },
+    paymentPlan: { type: String, enum: ['full', 'downpayment'], default: 'full' },
+    amountPaid: { type: Number, default: 0 },
+    remainingBalance: { type: Number, default: 0 },
+    paymentReference: { type: String, default: null },
+    receiptNumber: { type: String, default: null },
+    paymentDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
     submitDocumentsOnCampus: { type: Boolean, default: false },
 
     scheduleGenerated: { type: Boolean, default: false },
@@ -138,6 +151,10 @@ const StudentSchema = new mongoose.Schema(
         ret.id = ret._id;
         delete ret.__v;
         delete ret.applicantPassword; // Exclude password from API responses
+        delete ret.emailOtpHash;
+        delete ret.emailOtpExpiresAt;
+        delete ret.emailOtpLastSentAt;
+        delete ret.emailOtpAttempts;
         return ret;
       },
     },
@@ -146,6 +163,11 @@ const StudentSchema = new mongoose.Schema(
       transform: (_doc, ret) => {
         ret.id = ret._id;
         delete ret.__v;
+        delete ret.applicantPassword;
+        delete ret.emailOtpHash;
+        delete ret.emailOtpExpiresAt;
+        delete ret.emailOtpLastSentAt;
+        delete ret.emailOtpAttempts;
         return ret;
       },
     },

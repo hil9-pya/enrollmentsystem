@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare, MoreHorizontal } from 'lucide-react';
+import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import Badge from '../../components/Badge';
 
 export default function RegistrarDashboard({ students, onNavigate, initialFilter, onViewDetails, showOverview = true }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -207,9 +208,7 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-600 bg-slate-100 px-2.5 py-1 rounded">
-                        {student.enrollmentType}
-                      </span>
+                      <Badge>{student.enrollmentType}</Badge>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <StatusBadge status={student.status} />

@@ -21,7 +21,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'applicants', label: 'Applicant Directory', icon: UserPlus },
       { id: 'students', label: 'Student Database', icon: Users },
-      { id: 'trash', label: 'Trash Bin', icon: Trash2 },
+      { id: 'trash', label: 'Archived Students', icon: Trash2 },
     ],
   },
   {

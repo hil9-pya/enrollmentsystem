@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { DollarSign, Clock, CheckCircle, TrendingUp, Search, Download, Filter } from 'lucide-react';
+import { DollarSign, Clock, CheckCircle, TrendingUp, Search, Download } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
@@ -25,12 +25,13 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
     relevantStudents.forEach(s => {
       expectedRevenue += (s.totalTuition || 0);
-      if (s.paymentStatus === 'paid') {
-        collectedRevenue += (s.totalTuition || 0);
+      const received = s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0);
+      const balance = s.remainingBalance ?? Math.max(0, (s.totalTuition || 0) - received);
+      if (received > 0) {
+        collectedRevenue += received;
         paidCount++;
-      } else {
-        pendingRevenue += (s.totalTuition || 0);
       }
+      pendingRevenue += balance;
     });
 
     const ledgerData = [...relevantStudents]
@@ -55,7 +56,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
     let programRevenue = PROGRAMS.map(p => ({
       name: p.id,
-      value: students.filter(s => s.programId === p.id && s.paymentStatus === 'paid').reduce((acc, s) => acc + (s.totalTuition || 0), 0)
+      value: students.filter(s => s.programId === p.id).reduce((acc, s) => acc + (s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0)), 0)
     })).filter(d => d.value > 0);
     
     if (programRevenue.length === 0) {
@@ -68,7 +69,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
   const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6'];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       {showOverview && (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">

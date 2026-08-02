@@ -6,7 +6,9 @@ import { fileURLToPath } from 'url';
 import {
   createDraft,
   applicantLogin,
-  getStudents,
+  checkEmailAvailability,
+  sendEmailVerificationOtp,
+  verifyEmailOtp,
   getStudentById,
   registerStudent,
   updateStudent,
@@ -16,13 +18,10 @@ import {
   selectProgram,
   setSubjects,
   processPayment,
-  approveAdmission,
-  rejectAdmission,
-  approveAdvising,
-  confirmPayment,
-  validateEnrollment,
   proceedToPayment,
   rolloverStudent,
+  createPaymongoCheckoutSession,
+  verifyPaymongoPayment,
 } from './studentsController.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -64,6 +63,9 @@ const router = express.Router();
 router.post('/draft', createDraft);
 router.post('/applicant-login', applicantLogin);
 router.post('/register', registerStudent);
+router.get('/email-availability', checkEmailAvailability);
+router.post('/:id/email-verification/send', sendEmailVerificationOtp);
+router.post('/:id/email-verification/verify', verifyEmailOtp);
 router.get('/:id', getStudentById);
 router.put('/:id', updateStudent);
 
@@ -76,6 +78,8 @@ router.post('/:id/subjects', setSubjects);
 
 router.post('/:id/proceed-to-payment', proceedToPayment);
 router.post('/:id/payment', processPayment);
+router.post('/:id/paymongo-checkout', createPaymongoCheckoutSession);
+router.get('/:id/verify-paymongo-payment', verifyPaymongoPayment);
 router.post('/:id/rollover', rolloverStudent);
 
 // Surface multer errors (bad file type / too large) as normal JSON errors

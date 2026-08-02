@@ -1,4 +1,18 @@
-# React + Vite
+# SIA Enrollment System
+
+## Free Gmail SMTP setup
+
+Applicant email verification and enrollment notifications use Nodemailer with Gmail SMTP.
+
+1. Enable 2-Step Verification on the Gmail sender account.
+2. Create a Google App Password for that account.
+3. Copy SMTP values from `server/.env.example` into `server/.env`.
+4. Set `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, and a long random `EMAIL_OTP_SECRET`.
+5. Restart the backend after changing environment variables.
+
+Never commit `server/.env` or use the Gmail account's normal password. The generated `@ncst.edu` address is simulated; SMTP sends notices to the applicant's verified personal email.
+
+## Development
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronRight, LogIn, GraduationCap } from 'lucide-react';
+import { Menu, X, ChevronRight, LogIn } from 'lucide-react';
 
 export default function Navbar({ onNavigate }) {
   const [isScrolled, setIsScrolled] = useState(false);

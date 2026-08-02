@@ -373,10 +373,14 @@ export async function initCatalog() {
     // Load from DB into memory with guaranteed id property
     const subjectsFromDb = await Subject.find().lean();
     if (subjectsFromDb.length > 0) {
-      SUBJECTS_CATALOG = subjectsFromDb.map((s) => ({
-        ...s,
-        id: s.id || s._id?.toString() || s.code?.toLowerCase().replace(/\s+/g, ''),
-      }));
+      SUBJECTS_CATALOG = subjectsFromDb.map((s) => {
+        const initial = INITIAL_SUBJECTS_CATALOG.find(i => i.id === s.id);
+        return {
+          ...s,
+          sections: initial?.sections || [],
+          id: s.id || s._id?.toString() || s.code?.toLowerCase().replace(/\s+/g, ''),
+        };
+      });
     }
     console.log(`Loaded ${SUBJECTS_CATALOG.length} subjects into memory cache.`);
   } catch (err) {

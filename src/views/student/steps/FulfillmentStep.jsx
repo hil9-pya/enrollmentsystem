@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { CheckCircle, FileDown, Clock, ShieldCheck, Printer, Home } from 'lucide-react';
+import { CheckCircle, FileDown, Clock, Printer, Home } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ACADEMIC_TERMS, PROGRAMS } from '../../../data/mockData';
 
@@ -230,1062 +230,552 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     return enrolledSchedule.length > 0 ? enrolledSchedule : localScheduleRows;
   };
 
+
+  // --- SENIOR UI/UX PDF GENERATION ---
+  
+  // Modern sleek font setup (we rely on default Helvetica for speed/compatibility)
+  // but we use subtle colors (slate-500, slate-900) instead of pure black.
+
+  const drawCard = (doc, title, x, y, width, height) => {
+    // Elegant soft shadow / border for card
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setFillColor(255, 255, 255);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(x, y, width, height, 3, 3, 'FD');
+    
+    // Header background
+    if (title) {
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.roundedRect(x, y, width, 8, 3, 3, 'F');
+      // square off bottom corners of header
+      doc.rect(x, y + 5, width, 3, 'F');
+      
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.4);
+      doc.line(x, y + 8, x + width, y + 8);
+      
+      doc.setTextColor(51, 65, 85); // slate-700
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text(title.toUpperCase(), x + 4, y + 5.5);
+    }
+  };
+
+  const drawLabelValue = (doc, label, value, x, y, valueX) => {
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(label, x, y);
+    
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setFont('Helvetica', 'bold');
+    doc.text(String(value), valueX, y);
+  };
+
+  const drawSeal = (doc, x, y, text1, text2) => {
+    doc.setDrawColor(16, 185, 129); // emerald-500
+    doc.setFillColor(240, 253, 250); // emerald-50
+    doc.setLineWidth(0.5);
+    doc.roundedRect(x, y, 65, 20, 2, 2, 'FD');
+    
+    doc.setTextColor(6, 78, 59); // emerald-900
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('OFFICIAL SYSTEM VALIDATION', x + 32.5, y + 6, { align: 'center' });
+    
+    doc.setTextColor(16, 185, 129); // emerald-500
+    doc.setFontSize(9);
+    doc.text(text1, x + 32.5, y + 12, { align: 'center' });
+    
+    doc.setFontSize(6);
+    doc.setTextColor(100, 116, 139);
+    doc.text(text2, x + 32.5, y + 17, { align: 'center' });
+  };
+
+  const formatCurrency = (val) => `Php ${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const partitionFees = (tuitionBreakdown) => {
+    const tuition = [];
+    const misc = [];
+    (tuitionBreakdown || []).forEach(item => {
+      const lower = item.label.toLowerCase();
+      if (lower.includes('fee') || lower.includes('id') || lower.includes('library') || lower.includes('laboratory')) {
+        misc.push(item);
+      } else {
+        tuition.push(item);
+      }
+    });
+    return { tuition, misc };
+  };
+
   const handleDownloadSchedule = async () => {
     if (!student) return;
     const scheduleRows = await getDownloadSchedule();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfLogo = logoImg;
-    
-    drawHeader(doc, pdfLogo, 'Official Class Schedule');
+    drawHeader(doc, logoImg, 'Official Class Schedule');
     drawFooter(doc, 1);
 
-    // Student details block
-    doc.setTextColor(15, 23, 42); // Navy
+    // Student Info Card
+    drawCard(doc, 'Student Information', 15, 60, 180, 22);
+    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 40);
+    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 125);
+    drawLabelValue(doc, 'Status:', student.status.toUpperCase(), 105, 78, 125);
+
+    // Schedule Card
+    const schedY = 88;
+    drawCard(doc, 'Enrolled Subjects & Schedule', 15, schedY, 180, 10 + (scheduleRows.length * 8) + 5);
+    
+    // Table Header
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, schedY + 8, 180, 7, 'F');
+    doc.setTextColor(71, 85, 105);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('STUDENT INFORMATION', 15, 59);
+    doc.setFontSize(7.5);
+    doc.text('CODE', 20, schedY + 12.5);
+    doc.text('DESCRIPTION', 45, schedY + 12.5);
+    doc.text('UNITS', 120, schedY + 12.5, { align: 'center' });
+    doc.text('DAY', 135, schedY + 12.5);
+    doc.text('TIME', 155, schedY + 12.5);
+    doc.text('ROOM', 185, schedY + 12.5);
 
-    doc.setDrawColor(226, 232, 240); // slate-200
-    doc.setFillColor(250, 250, 250);
-    doc.rect(12, 62, 186, 22, 'FD'); // Box for student info
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student ID:', 16, 68);
-    doc.text('Name:', 16, 74);
-    doc.text('Program:', 16, 80);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.studentId || student.id, 40, 68);
-    doc.text(`${student.lastName}, ${student.firstName}`, 40, 74);
-    doc.text(getProgramLabel(student.programId), 40, 80);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Term:', 115, 68);
-    doc.text('Status:', 115, 74);
-    doc.text('Date Enrolled:', 115, 80);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.text(getAcademicTermLabel(student.academicTerm), 140, 68);
-    doc.setTextColor(16, 185, 129); // green
-    doc.setFont('Helvetica', 'bold');
-    doc.text('ENROLLED (OFFICIAL)', 140, 74);
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(getEnrollmentDate(student), 140, 80);
-
-    // Schedule Table Header
-    let tableY = 92;
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.text('ACADEMIC CLASS SCHEDULE', 15, tableY - 3);
-
-    // Header row background
-    doc.setFillColor(15, 23, 42); // navy header row
-    doc.rect(12, tableY, 186, 7, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text('CODE', 15, tableY + 5);
-    doc.text('DESCRIPTION', 38, tableY + 5);
-    doc.text('SCHEDULE', 92, tableY + 5);
-    doc.text('ROOM', 145, tableY + 5);
-    doc.text('INSTRUCTOR', 165, tableY + 5);
-
-    // Table rows
-    let currentY = tableY + 7;
-    doc.setTextColor(51, 65, 85); // slate-700
-    doc.setFont('Helvetica', 'normal');
-
-    scheduleRows.forEach((row, index) => {
-      if (row) {
-        const dayTimeStr = `${row.schedule.day} ${row.schedule.time}`;
-        const roomStr = row.schedule.room;
-        const instructorStr = row.instructor || '—';
-        const codeStr = row.sectionCode || row.subjectCode;
-
-        // Alternating rows background
-        if (index % 2 === 0) {
-          doc.setFillColor(248, 250, 252); // slate-50
-          doc.rect(12, currentY, 186, 8, 'F');
-        }
-        
-        // Draw horizontal separator line
-        doc.setDrawColor(241, 245, 249); // slate-100
-        doc.setLineWidth(0.3);
-        doc.line(12, currentY + 8, 198, currentY + 8);
-
-        doc.setTextColor(15, 23, 42); // Code in navy bold
-        doc.setFont('Helvetica', 'bold');
-        doc.text(codeStr, 15, currentY + 5.5);
-        
-        doc.setTextColor(51, 65, 85);
-        doc.setFont('Helvetica', 'normal');
-        
-        // Truncate subject description if too long
-        const nameText = row.subjectName.length > 32
-          ? row.subjectName.substring(0, 30) + '...'
-          : row.subjectName;
-        doc.text(nameText, 38, currentY + 5.5);
-        doc.text(dayTimeStr, 92, currentY + 5.5);
-        doc.text(roomStr, 145, currentY + 5.5);
-        doc.text(instructorStr, 165, currentY + 5.5);
-        
-        currentY += 8;
+    let rowY = schedY + 20;
+    scheduleRows.forEach((row, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, rowY - 5, 180, 7, 'F');
       }
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(7.5);
+      
+      const desc = doc.splitTextToSize(row.subjectName || '', 65);
+      doc.text(row.subjectCode || '', 20, rowY);
+      doc.text(desc[0], 45, rowY);
+      doc.text(String(row.units), 120, rowY, { align: 'center' });
+      doc.text(row.schedule?.day || 'TBA', 135, rowY);
+      doc.text(row.schedule?.time || 'TBA', 155, rowY);
+      doc.text(row.schedule?.room || 'TBA', 185, rowY);
+      rowY += 8;
     });
 
-    // Final outer border line for table
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.line(12, tableY, 12, currentY);
-    doc.line(198, tableY, 198, currentY);
-    doc.line(12, currentY, 198, currentY);
-
-    // Signatures block
-    let sigY = currentY + 15;
-    if (sigY > 235) {
-      doc.addPage();
-      drawHeader(doc, pdfLogo, 'Official Class Schedule');
-      drawFooter(doc, 2);
-      sigY = 60;
-    }
-
-    // Registrar validation box/seal
-    doc.setDrawColor(16, 185, 129); // green validation stamp
-    doc.setLineWidth(0.6);
-    doc.rect(15, sigY, 65, 25);
-    doc.setTextColor(16, 185, 129);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('OFFICIAL VALIDATION SEAL', 20, sigY + 5);
-    doc.setFontSize(10);
-    doc.text('STATUS: ENROLLED', 20, sigY + 12);
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, sigY + 18);
-    doc.text('NCST REGISTRAR OFFICE', 20, sigY + 22);
-
-    // Registrar signature line
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.line(130, sigY + 15, 185, sigY + 15);
-    doc.text('MR. FLORENCIO FLORES JR.', 130, sigY + 20);
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('University Registrar, NCST', 130, sigY + 24);
-
-    // Simulated registrar signature drawing (squiggly loops)
-    doc.setDrawColor(30, 58, 138); // blue ink signature
-    doc.setLineWidth(0.5);
-    doc.line(135, sigY + 12, 140, sigY + 6);
-    doc.line(140, sigY + 6, 148, sigY + 14);
-    doc.line(148, sigY + 14, 155, sigY + 4);
-    doc.line(155, sigY + 4, 162, sigY + 16);
-    doc.line(162, sigY + 16, 175, sigY + 10);
-
+    drawSeal(doc, 15, rowY + 5, 'SCHEDULE VERIFIED', `DATE: ${new Date().toLocaleDateString()}`);
     doc.save(`Class_Schedule_${student.id}.pdf`);
   };
 
   const handleDownloadRegForm = async () => {
     if (!student) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfLogo = logoImg;
-    const enrollmentType = String(student.enrollmentType || 'Not specified').toUpperCase();
-    const program = getProgramLabel(student.programId);
-    const address = String(student.address || 'Not provided');
-    const selectedSubjects = Array.isArray(student.selectedSubjects) ? student.selectedSubjects : [];
-    
-    drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
+    drawHeader(doc, logoImg, 'Certificate of Registration');
     drawFooter(doc, 1);
 
-    // Student Information Grid (2 column layout)
-    doc.setTextColor(15, 23, 42); // Navy
+    // Profile Card
+    drawCard(doc, 'Student Profile', 15, 60, 180, 27);
+    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 79, 40);
+    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 130);
+    drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 105, 79, 130);
+
+    // Subjects Card
+    const selectedSubjects = await getDownloadSchedule();
+    const subjY = 92;
+    drawCard(doc, 'Registered Subjects', 15, subjY, 180, 10 + (selectedSubjects.length * 8) + 12);
+    
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, subjY + 8, 180, 7, 'F');
+    doc.setTextColor(71, 85, 105);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('REGISTRANT IDENTIFICATION', 15, 59);
-
-    doc.setDrawColor(226, 232, 240);
-    doc.setFillColor(250, 250, 250);
-    doc.rect(12, 62, 186, 42, 'FD'); // Box for student info
-
-    const rowHeight = 7;
-    let labelX = 16;
-    let valueX = 45;
-    let labelX2 = 110;
-    let valueX2 = 150;
-
-    let currentInfoY = 68;
-
-    // Row 1
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student ID:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.studentId || student.id, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Enrollment Type:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(truncatePdfText(enrollmentType), valueX2, currentInfoY);
-
-    currentInfoY += rowHeight;
-
-    // Row 2
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Full Name:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`${student.lastName}, ${student.firstName}`, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Program/Course:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(truncatePdfText(program), valueX2, currentInfoY);
-
-    currentInfoY += rowHeight;
-
-    // Row 3
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Email Address:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.email || 'Not provided', valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Academic Term:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text('1st Semester 2026-2027', valueX2, currentInfoY);
-
-    currentInfoY += rowHeight;
-
-    // Row 4
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Contact Phone:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.phone || 'Not provided', valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Registration Status:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(16, 185, 129); // Green
-    doc.text('VALIDATED & ENROLLED', valueX2, currentInfoY);
-    doc.setTextColor(15, 23, 42); // Reset
-
-    currentInfoY += rowHeight;
-
-    // Row 5
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Birth Date:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.birthDate || 'Not provided', valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Permanent Address:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    const addr = truncatePdfText(address);
-    doc.text(addr, valueX2, currentInfoY);
-
-    // Central Certification Box
-    doc.setFillColor(248, 250, 252); // slate-50
-    doc.setDrawColor(217, 119, 6); // Gold border
-    doc.setLineWidth(0.4);
-    doc.rect(12, 112, 186, 36, 'FD');
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text('ACADEMIC CERTIFICATION STATEMENT', 105, 119, { align: 'center' });
-
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(51, 65, 85);
-
-    const certText1 = `This certifies that the individual named herein is officially enrolled and registered as a student of the`;
-    const certText2 = `National College of Science and Technology for the specified academic term. The student has submitted`;
-    const certText3 = `the required academic admission credentials and cleared the financial payment obligations.`;
-    const certText4 = `Any alterations to this document render it null and void. Verification can be performed at the Registrar's Office.`;
-
-    doc.text(certText1, 105, 126, { align: 'center' });
-    doc.text(certText2, 105, 131, { align: 'center' });
-    doc.text(certText3, 105, 136, { align: 'center' });
-    doc.setFont('Helvetica', 'oblique');
     doc.setFontSize(7.5);
-    doc.text(certText4, 105, 143, { align: 'center' });
+    doc.text('CODE', 20, subjY + 12.5);
+    doc.text('DESCRIPTION', 50, subjY + 12.5);
+    doc.text('UNITS', 160, subjY + 12.5, { align: 'center' });
+    doc.text('SECTION', 180, subjY + 12.5, { align: 'center' });
 
-    // Subject list inside COR
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('APPROVED SUBJECT DETAILS', 15, 156);
-
-    // Header row
-    doc.setFillColor(15, 23, 42);
-    doc.rect(12, 159, 186, 7, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text('SUBJECT CODE', 15, 164);
-    doc.text('DESCRIPTION / TITLE', 50, 164);
-    doc.text('UNITS', 145, 164);
-    doc.text('INSTRUCTOR', 160, 164);
-
-    let corY = 166;
-    doc.setTextColor(51, 65, 85);
-    doc.setFont('Helvetica', 'normal');
-
-    selectedSubjects.forEach((s, idx) => {
-      const sub = resolveSubject(s.subjectId);
-      if (sub) {
-        const section = findMatchingSection(sub, s.sectionId);
-        const subjectCode = String(sub.code || '—');
-        const subjectName = String(sub.name || 'Untitled subject');
-        const instructor = String(section?.instructor || sub.instructor || 'TBA');
-        if (idx % 2 === 0) {
-          doc.setFillColor(248, 250, 252);
-          doc.rect(12, corY, 186, 6.5, 'F');
-        }
-        doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.3);
-        doc.line(12, corY + 6.5, 198, corY + 6.5);
-
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('Helvetica', 'bold');
-        doc.text(subjectCode, 15, corY + 4.5);
-        
-        doc.setTextColor(51, 65, 85);
-        doc.setFont('Helvetica', 'normal');
-        
-        const nameText = subjectName.length > 40 ? subjectName.substring(0, 38) + '...' : subjectName;
-        doc.text(nameText, 50, corY + 4.5);
-        doc.text('3.0', 145, corY + 4.5);
-        doc.text(instructor, 160, corY + 4.5);
-        corY += 6.5;
+    let rowY = subjY + 20;
+    let totalUnits = 0;
+    selectedSubjects.forEach((sub, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, rowY - 5, 180, 7, 'F');
       }
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(7.5);
+      
+      const desc = doc.splitTextToSize(sub.subjectName || '', 100);
+      doc.text(sub.subjectCode || '', 20, rowY);
+      doc.text(desc[0], 50, rowY);
+      doc.text(String(sub.units || 0), 160, rowY, { align: 'center' });
+      doc.text(String(sub.sectionCode || 'TBA'), 180, rowY, { align: 'center' });
+      totalUnits += Number(sub.units || 0);
+      rowY += 8;
     });
 
-    // Final outer border line for table
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.line(12, 159, 12, corY);
-    doc.line(198, 159, 198, corY);
-    doc.line(12, corY, 198, corY);
+    // Total Units line
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, rowY - 2, 195, rowY - 2);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('TOTAL UNITS:', 130, rowY + 4);
+    doc.text(String(totalUnits), 160, rowY + 4, { align: 'center' });
 
-    // Signatures block
-    let corSigY = corY + 12;
-    if (corSigY > 235) {
+    // Assessment Card
+    let feesY = rowY + 10;
+    const { tuition, misc } = partitionFees(student.tuitionBreakdown);
+    const cardHeight = 10 + (tuition.length * 6.5) + 10 + (misc.length * 6.5) + 12;
+    
+    if (feesY + cardHeight > 250) {
       doc.addPage();
-      drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
+      drawHeader(doc, logoImg, 'Certificate of Registration');
       drawFooter(doc, 2);
-      corSigY = 60;
+      feesY = 60;
     }
 
-    // Green Validation seal
-    doc.setDrawColor(16, 185, 129);
-    doc.setLineWidth(0.6);
-    doc.rect(15, corSigY, 65, 25);
-    doc.setTextColor(16, 185, 129);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('OFFICIAL REGISTRATION SEAL', 20, corSigY + 5);
-    doc.setFontSize(10);
-    doc.text('STATUS: VALIDATED', 20, corSigY + 12);
-    doc.setFontSize(6.5);
+    drawCard(doc, 'Assessment Summary', 15, feesY, 180, cardHeight);
+    
+    let fy = feesY + 13;
     doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${new Date().toLocaleDateString()}`, 20, corSigY + 18);
-    doc.text('OFFICE OF THE REGISTRAR', 20, corSigY + 22);
-
-    // Registrar Signature
-    doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.line(130, corSigY + 15, 185, corSigY + 15);
-    doc.text('MR. FLORENCIO FLORES JR.', 130, corSigY + 20);
+    doc.setFontSize(7);
+    doc.text('TUITION & SUBJECT FEES', 20, fy);
+    fy += 5.5;
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    tuition.forEach(t => {
+      doc.text(t.label, 25, fy);
+      doc.text(formatCurrency(t.amount), 185, fy, { align: 'right' });
+      fy += 6.5;
+    });
+
+    fy += 3.5;
     doc.setTextColor(100, 116, 139);
-    doc.text('University Registrar, NCST', 130, corSigY + 24);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('MISCELLANEOUS FEES', 20, fy);
+    fy += 5.5;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    misc.forEach(m => {
+      doc.text(m.label, 25, fy);
+      doc.text(formatCurrency(m.amount), 185, fy, { align: 'right' });
+      fy += 6.5;
+    });
 
-    // Registrar signature scribble
-    doc.setDrawColor(30, 58, 138);
-    doc.setLineWidth(0.5);
-    doc.line(135, corSigY + 12, 140, corSigY + 6);
-    doc.line(140, corSigY + 6, 148, corSigY + 14);
-    doc.line(148, corSigY + 14, 155, corSigY + 4);
-    doc.line(155, corSigY + 4, 162, corSigY + 16);
-    doc.line(162, corSigY + 16, 175, corSigY + 10);
+    fy += 1.5;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(15, fy, 180, 8, 'F');
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('TOTAL ASSESSMENT', 20, fy + 5.5);
+    doc.text(formatCurrency(student.totalTuition), 185, fy + 5.5, { align: 'right' });
 
-    doc.save(`Registration_Form_${student.id}.pdf`);
+    // Signatures
+    let sigY = fy + 20;
+    if (sigY > 260) {
+      doc.addPage();
+      drawHeader(doc, logoImg, 'Certificate of Registration');
+      drawFooter(doc, 3);
+      sigY = 60;
+    }
+
+    drawSeal(doc, 15, sigY, 'OFFICIAL REGISTRATION', 'NCST REGISTRAR');
+    doc.setDrawColor(15, 23, 42);
+    doc.line(130, sigY + 12, 185, sigY + 12);
+    doc.setTextColor(15, 23, 42);
+    doc.text('UNIVERSITY REGISTRAR', 157.5, sigY + 16, { align: 'center' });
+
+    doc.save(`COR_${student.id}.pdf`);
   };
 
   const handleDownloadReceipt = async () => {
     if (!student) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfLogo = logoImg;
-    
-    drawHeader(doc, pdfLogo, 'Official Payment Receipt');
+    drawHeader(doc, logoImg, 'Official Payment Receipt');
     drawFooter(doc, 1);
 
-    // Receipt Information Block (2 columns)
-    doc.setTextColor(15, 23, 42); // Navy
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('PAYMENT & TRANSACTION INFORMATION', 15, 59);
+    // Transaction Card
+    drawCard(doc, 'Payment & Transaction Info', 15, 60, 180, 22);
+    drawLabelValue(doc, 'Receipt No:', `OR-${Math.floor(100000 + Math.random() * 900000)}`, 20, 73, 45);
+    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 78, 45);
+    drawLabelValue(doc, 'Date:', new Date().toLocaleDateString(), 105, 73, 135);
+    drawLabelValue(doc, 'Method:', (student.paymentMethod || 'N/A').toUpperCase(), 105, 78, 135);
 
-    doc.setDrawColor(226, 232, 240);
-    doc.setFillColor(250, 250, 250);
-    doc.rect(12, 62, 186, 32, 'FD'); // Box for transaction info
-
-    let orY = 68;
-    // Column 1
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Receipt Number:', 16, orY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`OR-${Math.floor(100000 + Math.random() * 900000)}`, 45, orY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student ID:', 16, orY + 6);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.studentId || student.id, 45, orY + 6);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student Name:', 16, orY + 12);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`${student.lastName}, ${student.firstName}`, 45, orY + 12);
-
-    // Column 2
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Transaction Date:', 115, orY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(new Date().toLocaleDateString(), 145, orY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Payment Method:', 115, orY + 6);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.paymentMethod ? student.paymentMethod.toUpperCase() : 'N/A', 145, orY + 6);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Payment Status:', 115, orY + 12);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(16, 185, 129); // green
-    doc.text('PAID / CLEARED', 145, orY + 12);
-    doc.setTextColor(15, 23, 42); // reset
-
-    // Tuition Breakdown Table
-    let feeTableY = 105;
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('ITEMIZED ASSESSMENT BREAKDOWN', 15, feeTableY - 3);
-
-    // Table Header Row
-    doc.setFillColor(15, 23, 42);
-    doc.rect(12, feeTableY, 186, 7, 'F');
+    // Badge
+    doc.setFillColor(16, 185, 129); // emerald-500
+    doc.roundedRect(165, 63, 25, 6, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text('DESCRIPTION OF ASSESSMENT', 15, feeTableY + 5);
-    doc.text('AMOUNT (PHP)', 190, feeTableY + 5, { align: 'right' });
-
-    let currentFeeY = feeTableY + 7;
-    doc.setTextColor(51, 65, 85);
-    doc.setFont('Helvetica', 'normal');
-
-    student.tuitionBreakdown.forEach((item, index) => {
-      if (index % 2 === 0) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(12, currentFeeY, 186, 7, 'F');
-      }
-      doc.setDrawColor(241, 245, 249);
-      doc.setLineWidth(0.3);
-      doc.line(12, currentFeeY + 7, 198, currentFeeY + 7);
-
-      doc.text(item.label, 15, currentFeeY + 4.8);
-      doc.text(`Php ${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, currentFeeY + 4.8, { align: 'right' });
-      currentFeeY += 7;
-    });
-
-    // Total line
-    doc.setFillColor(240, 253, 250); // very light mint green for total
-    doc.rect(12, currentFeeY, 186, 9, 'F');
-    doc.setDrawColor(16, 185, 129); // green line above total
-    doc.setLineWidth(0.5);
-    doc.line(12, currentFeeY, 198, currentFeeY);
-    doc.line(12, currentFeeY + 9, 198, currentFeeY + 9);
-
-    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(6);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text('TOTAL AMOUNT PAID:', 15, currentFeeY + 6);
-    doc.text(`Php ${student.totalTuition.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, currentFeeY + 6, { align: 'right' });
+    doc.text('PAID / CLEARED', 177.5, 67, { align: 'center' });
 
-    // Border lines
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.line(12, feeTableY, 12, currentFeeY + 9);
-    doc.line(198, feeTableY, 198, currentFeeY + 9);
-
-    // Signatures block
-    let feeSigY = currentFeeY + 15;
-    if (feeSigY > 235) {
-      doc.addPage();
-      drawHeader(doc, pdfLogo, 'Official Payment Receipt');
-      drawFooter(doc, 2);
-      feeSigY = 60;
-    }
-
-    // Green/Blue Cashier Seal
-    doc.setDrawColor(30, 58, 138); // blue
-    doc.setLineWidth(0.6);
-    doc.rect(15, feeSigY, 65, 25);
-    doc.setTextColor(30, 58, 138);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('FINANCE CLEARANCE SEAL', 20, feeSigY + 5);
-    doc.setFontSize(10);
-    doc.text('STATUS: FULLY PAID', 20, feeSigY + 12);
-    doc.setFontSize(6.5);
+    // Breakdown Card
+    const { tuition, misc } = partitionFees(student.tuitionBreakdown);
+    const cardHeight = 10 + (tuition.length * 6.5) + 10 + (misc.length * 6.5) + 12;
+    drawCard(doc, 'Itemized Assessment Breakdown', 15, 88, 180, cardHeight);
+    
+    let fy = 101;
     doc.setTextColor(100, 116, 139);
-    doc.text(`TRANSACTION DATE: ${new Date().toLocaleDateString()}`, 20, feeSigY + 18);
-    doc.text('NCST ACCOUNTING OFFICE', 20, feeSigY + 22);
-
-    // Cashier Signature
-    doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.line(130, feeSigY + 15, 185, feeSigY + 15);
-    doc.text('MS. CORAZON DELA CRUZ', 130, feeSigY + 20);
+    doc.setFontSize(7);
+    doc.text('TUITION & SUBJECT FEES', 20, fy);
+    fy += 5.5;
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Chief Cashier, NCST Finance', 130, feeSigY + 24);
+    doc.setTextColor(15, 23, 42);
+    tuition.forEach(t => {
+      doc.text(t.label, 25, fy);
+      doc.text(formatCurrency(t.amount), 185, fy, { align: 'right' });
+      fy += 6.5;
+    });
 
-    // Cashier scribble
-    doc.setDrawColor(30, 58, 138);
-    doc.setLineWidth(0.5);
-    doc.line(132, feeSigY + 14, 138, feeSigY + 7);
-    doc.line(138, feeSigY + 7, 142, feeSigY + 15);
-    doc.line(142, feeSigY + 15, 150, feeSigY + 5);
-    doc.line(150, feeSigY + 5, 155, feeSigY + 13);
-    doc.line(155, feeSigY + 13, 170, feeSigY + 8);
+    fy += 3.5;
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('MISCELLANEOUS FEES', 20, fy);
+    fy += 5.5;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    misc.forEach(m => {
+      doc.text(m.label, 25, fy);
+      doc.text(formatCurrency(m.amount), 185, fy, { align: 'right' });
+      fy += 6.5;
+    });
+
+    fy += 1.5;
+    doc.setFillColor(236, 253, 245); // emerald-50
+    doc.rect(15, fy, 180, 10, 'F');
+    doc.setDrawColor(16, 185, 129);
+    doc.line(15, fy, 195, fy);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(6, 78, 59); // emerald-900
+    doc.text('TOTAL AMOUNT PAID', 20, fy + 6);
+    doc.text(formatCurrency(student.totalTuition), 185, fy + 6, { align: 'right' });
+
+    // Sig
+    let sigY = fy + 22;
+    if (sigY > 260) {
+      doc.addPage();
+      drawHeader(doc, logoImg, 'Official Payment Receipt');
+      drawFooter(doc, 2);
+      sigY = 60;
+    }
+
+    drawSeal(doc, 15, sigY, 'FINANCE CLEARANCE', 'NCST ACCOUNTING OFFICE');
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.line(130, sigY + 12, 185, sigY + 12);
+    doc.text('MS. CORAZON DELA CRUZ', 157.5, sigY + 16, { align: 'center' });
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Chief Cashier, NCST Finance', 157.5, sigY + 19, { align: 'center' });
 
     doc.save(`Official_Receipt_${student.id}.pdf`);
   };
 
   const handleDownloadAllCombined = async () => {
+    // Generate them sequentially to avoid a massive blob, but for this requested feature,
+    // we'll combine them all using the updated styles.
     if (!student) return;
     const scheduleRows = await getDownloadSchedule();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfLogo = logoImg;
-    let overallPageNum = 1;
+    let pageNum = 1;
 
-    // --- PAGE 1: Class Schedule ---
-    drawHeader(doc, pdfLogo, 'Official Class Schedule');
-    drawFooter(doc, overallPageNum);
+    // --- COR PAGE ---
+    drawHeader(doc, logoImg, 'Certificate of Registration');
+    drawFooter(doc, pageNum++);
+    
+    // Copy COR generation code exactly
+    drawCard(doc, 'Student Profile', 15, 60, 180, 27);
+    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 79, 40);
+    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 130);
+    drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 105, 79, 130);
 
-    // Student details block
-    doc.setTextColor(15, 23, 42); // Navy
+    const selectedSubjects = await getDownloadSchedule();
+    let subjY = 92;
+    drawCard(doc, 'Registered Subjects', 15, subjY, 180, 10 + (selectedSubjects.length * 8) + 12);
+    
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, subjY + 8, 180, 7, 'F');
+    doc.setTextColor(71, 85, 105);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('STUDENT INFORMATION', 15, 59);
+    doc.setFontSize(7.5);
+    doc.text('CODE', 20, subjY + 12.5);
+    doc.text('DESCRIPTION', 50, subjY + 12.5);
+    doc.text('UNITS', 160, subjY + 12.5, { align: 'center' });
+    doc.text('SECTION', 180, subjY + 12.5, { align: 'center' });
 
-    doc.setDrawColor(226, 232, 240); // slate-200
-    doc.setFillColor(250, 250, 250);
-    doc.rect(12, 62, 186, 22, 'FD'); // Box for student info
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student ID:', 16, 68);
-    doc.text('Name:', 16, 74);
-    doc.text('Program:', 16, 80);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.studentId || student.id, 40, 68);
-    doc.text(`${student.lastName}, ${student.firstName}`, 40, 74);
-    doc.text(getProgramLabel(student.programId), 40, 80);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Term:', 115, 68);
-    doc.text('Status:', 115, 74);
-    doc.text('Date Enrolled:', 115, 80);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.text(getAcademicTermLabel(student.academicTerm), 140, 68);
-    doc.setTextColor(16, 185, 129); // green
-    doc.setFont('Helvetica', 'bold');
-    doc.text('ENROLLED (OFFICIAL)', 140, 74);
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(getEnrollmentDate(student), 140, 80);
-
-    // Schedule Table Header
-    let tableY = 92;
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.text('ACADEMIC CLASS SCHEDULE', 15, tableY - 3);
-
-    // Header row background
-    doc.setFillColor(15, 23, 42); // navy header row
-    doc.rect(12, tableY, 186, 7, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text('CODE', 15, tableY + 5);
-    doc.text('DESCRIPTION', 38, tableY + 5);
-    doc.text('SCHEDULE', 92, tableY + 5);
-    doc.text('ROOM', 145, tableY + 5);
-    doc.text('INSTRUCTOR', 165, tableY + 5);
-
-    // Table rows
-    let currentY = tableY + 7;
-    doc.setTextColor(51, 65, 85); // slate-700
-    doc.setFont('Helvetica', 'normal');
-
-    scheduleRows.forEach((row, index) => {
-      if (row) {
-        const dayTimeStr = `${row.schedule.day} ${row.schedule.time}`;
-        const roomStr = row.schedule.room;
-        const instructorStr = row.instructor || '—';
-        const codeStr = row.sectionCode || row.subjectCode;
-
-        if (index % 2 === 0) {
-          doc.setFillColor(248, 250, 252); // slate-50
-          doc.rect(12, currentY, 186, 8, 'F');
-        }
-        
-        doc.setDrawColor(241, 245, 249); // slate-100
-        doc.setLineWidth(0.3);
-        doc.line(12, currentY + 8, 198, currentY + 8);
-
-        doc.setTextColor(15, 23, 42); // Code in navy bold
-        doc.setFont('Helvetica', 'bold');
-        doc.text(codeStr, 15, currentY + 5.5);
-        
-        doc.setTextColor(51, 65, 85);
-        doc.setFont('Helvetica', 'normal');
-        
-        const nameText = row.subjectName.length > 32
-          ? row.subjectName.substring(0, 30) + '...'
-          : row.subjectName;
-        doc.text(nameText, 38, currentY + 5.5);
-        doc.text(dayTimeStr, 92, currentY + 5.5);
-        doc.text(roomStr, 145, currentY + 5.5);
-        doc.text(instructorStr, 165, currentY + 5.5);
-        
-        currentY += 8;
+    let rowY = subjY + 20;
+    let totalUnits = 0;
+    selectedSubjects.forEach((sub, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, rowY - 5, 180, 7, 'F');
       }
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(7.5);
+      
+      const desc = doc.splitTextToSize(sub.subjectName || '', 100);
+      doc.text(sub.subjectCode || '', 20, rowY);
+      doc.text(desc[0], 50, rowY);
+      doc.text(String(sub.units || 0), 160, rowY, { align: 'center' });
+      doc.text(String(sub.sectionCode || 'TBA'), 180, rowY, { align: 'center' });
+      totalUnits += Number(sub.units || 0);
+      rowY += 8;
     });
 
-    // Final outer border line for table
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.line(12, tableY, 12, currentY);
-    doc.line(198, tableY, 198, currentY);
-    doc.line(12, currentY, 198, currentY);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, rowY - 2, 195, rowY - 2);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('TOTAL UNITS:', 130, rowY + 4);
+    doc.text(String(totalUnits), 160, rowY + 4, { align: 'center' });
 
-    // Signatures block
-    let sigY = currentY + 15;
-    if (sigY > 235) {
+    let sigY = rowY + 15;
+    if (sigY > 260) {
       doc.addPage();
-      overallPageNum++;
-      drawHeader(doc, pdfLogo, 'Official Class Schedule');
-      drawFooter(doc, overallPageNum);
+      drawHeader(doc, logoImg, 'Certificate of Registration');
+      drawFooter(doc, pageNum++);
       sigY = 60;
     }
 
-    doc.setDrawColor(16, 185, 129); // green validation stamp
-    doc.setLineWidth(0.6);
-    doc.rect(15, sigY, 65, 25);
-    doc.setTextColor(16, 185, 129);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('OFFICIAL VALIDATION SEAL', 20, sigY + 5);
-    doc.setFontSize(10);
-    doc.text('STATUS: ENROLLED', 20, sigY + 12);
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, sigY + 18);
-    doc.text('NCST REGISTRAR OFFICE', 20, sigY + 22);
+    drawSeal(doc, 15, sigY, 'OFFICIAL REGISTRATION', 'NCST REGISTRAR');
+    doc.line(130, sigY + 12, 185, sigY + 12);
+    doc.text('UNIVERSITY REGISTRAR', 157.5, sigY + 16, { align: 'center' });
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.line(130, sigY + 15, 185, sigY + 15);
-    doc.text('MR. FLORENCIO FLORES JR.', 130, sigY + 20);
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('University Registrar, NCST', 130, sigY + 24);
-
-    doc.setDrawColor(30, 58, 138); // blue ink signature
-    doc.setLineWidth(0.5);
-    doc.line(135, sigY + 12, 140, sigY + 6);
-    doc.line(140, sigY + 6, 148, sigY + 14);
-    doc.line(148, sigY + 14, 155, sigY + 4);
-    doc.line(155, sigY + 4, 162, sigY + 16);
-    doc.line(162, sigY + 16, 175, sigY + 10);
-
-    // --- PAGE 2: Certificate of Registration ---
+    // --- RECEIPT PAGE ---
     doc.addPage();
-    overallPageNum++;
-    drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
-    drawFooter(doc, overallPageNum);
+    drawHeader(doc, logoImg, 'Official Payment Receipt');
+    drawFooter(doc, pageNum++);
 
-    doc.setTextColor(15, 23, 42); // Navy
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('REGISTRANT IDENTIFICATION', 15, 59);
+    drawCard(doc, 'Payment & Transaction Info', 15, 60, 180, 22);
+    drawLabelValue(doc, 'Receipt No:', `OR-${Math.floor(100000 + Math.random() * 900000)}`, 20, 73, 45);
+    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 78, 45);
+    drawLabelValue(doc, 'Date:', new Date().toLocaleDateString(), 105, 73, 135);
+    drawLabelValue(doc, 'Method:', (student.paymentMethod || 'N/A').toUpperCase(), 105, 78, 135);
 
-    doc.setDrawColor(226, 232, 240);
-    doc.setFillColor(250, 250, 250);
-    doc.rect(12, 62, 186, 42, 'FD'); // Box for student info
-
-    let labelX = 16;
-    let valueX = 45;
-    let labelX2 = 110;
-    let valueX2 = 138;
-    let currentInfoY = 68;
-
-    // Row 1
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student ID:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.id, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Enrollment Type:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.enrollmentType.toUpperCase(), valueX2, currentInfoY);
-
-    currentInfoY += 7;
-
-    // Row 2
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Full Name:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`${student.lastName}, ${student.firstName}`, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Program/Course:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.programId.toUpperCase(), valueX2, currentInfoY);
-
-    currentInfoY += 7;
-
-    // Row 3
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Email Address:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.email, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Academic Term:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.academicTerm === '2s-2026' ? '2nd Semester 2026-2027' : '1st Semester 2026-2027', valueX2, currentInfoY);
-
-    currentInfoY += 7;
-
-    // Row 4
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Contact Phone:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.phone, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Registration Status:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(16, 185, 129); // Green
-    doc.text('VALIDATED & ENROLLED', valueX2, currentInfoY);
-    doc.setTextColor(15, 23, 42); // Reset
-
-    currentInfoY += 7;
-
-    // Row 5
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Birth Date:', labelX, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.birthDate, valueX, currentInfoY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Permanent Address:', labelX2, currentInfoY);
-    doc.setFont('Helvetica', 'normal');
-    const addr = student.address.length > 30 ? student.address.substring(0, 28) + '...' : student.address;
-    doc.text(addr, valueX2, currentInfoY);
-
-    // Central Certification Box
-    doc.setFillColor(248, 250, 252); // slate-50
-    doc.setDrawColor(217, 119, 6); // Gold border
-    doc.setLineWidth(0.4);
-    doc.rect(12, 112, 186, 36, 'FD');
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text('ACADEMIC CERTIFICATION STATEMENT', 105, 119, { align: 'center' });
-
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(51, 65, 85);
-
-    const certText1 = `This certifies that the individual named herein is officially enrolled and registered as a student of the`;
-    const certText2 = `National College of Science and Technology for the specified academic term. The student has submitted`;
-    const certText3 = `the required academic admission credentials and cleared the financial payment obligations.`;
-    const certText4 = `Any alterations to this document render it null and void. Verification can be performed at the Registrar's Office.`;
-
-    doc.text(certText1, 105, 126, { align: 'center' });
-    doc.text(certText2, 105, 131, { align: 'center' });
-    doc.text(certText3, 105, 136, { align: 'center' });
-    doc.setFont('Helvetica', 'oblique');
-    doc.setFontSize(7.5);
-    doc.text(certText4, 105, 143, { align: 'center' });
-
-    // Subject list inside COR
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('APPROVED SUBJECT DETAILS', 15, 156);
-
-    // Header row
-    doc.setFillColor(15, 23, 42);
-    doc.rect(12, 159, 186, 7, 'F');
+    doc.setFillColor(16, 185, 129);
+    doc.roundedRect(165, 63, 25, 6, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text('SUBJECT CODE', 15, 164);
-    doc.text('DESCRIPTION / TITLE', 50, 164);
-    doc.text('UNITS', 145, 164);
-    doc.text('INSTRUCTOR', 160, 164);
+    doc.setFontSize(6);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('PAID / CLEARED', 177.5, 67, { align: 'center' });
 
-    let corY = 166;
-    doc.setTextColor(51, 65, 85);
+    const { tuition, misc } = partitionFees(student.tuitionBreakdown);
+    const cardHeight = 10 + (tuition.length * 6.5) + 10 + (misc.length * 6.5) + 12;
+    drawCard(doc, 'Itemized Assessment Breakdown', 15, 88, 180, cardHeight);
+    
+    let fy = 101;
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('TUITION & SUBJECT FEES', 20, fy);
+    fy += 5.5;
     doc.setFont('Helvetica', 'normal');
-
-    student.selectedSubjects.forEach((s, idx) => {
-      const sub = resolveSubject(s.subjectId);
-      if (sub) {
-        if (idx % 2 === 0) {
-          doc.setFillColor(248, 250, 252);
-          doc.rect(12, corY, 186, 6.5, 'F');
-        }
-        doc.setDrawColor(241, 245, 249);
-        doc.setLineWidth(0.3);
-        doc.line(12, corY + 6.5, 198, corY + 6.5);
-
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('Helvetica', 'bold');
-        doc.text(sub.code, 15, corY + 4.5);
-        
-        doc.setTextColor(51, 65, 85);
-        doc.setFont('Helvetica', 'normal');
-        
-        const nameText = sub.name.length > 40 ? sub.name.substring(0, 38) + '...' : sub.name;
-        doc.text(nameText, 50, corY + 4.5);
-        doc.text('3.0', 145, corY + 4.5);
-        doc.text(sub.instructor, 160, corY + 4.5);
-        corY += 6.5;
-      }
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    tuition.forEach(t => {
+      doc.text(t.label, 25, fy);
+      doc.text(formatCurrency(t.amount), 185, fy, { align: 'right' });
+      fy += 6.5;
     });
 
-    // Final outer border line for table
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.line(12, 159, 12, corY);
-    doc.line(198, 159, 198, corY);
-    doc.line(12, corY, 198, corY);
+    fy += 3.5;
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('MISCELLANEOUS FEES', 20, fy);
+    fy += 5.5;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    misc.forEach(m => {
+      doc.text(m.label, 25, fy);
+      doc.text(formatCurrency(m.amount), 185, fy, { align: 'right' });
+      fy += 6.5;
+    });
 
-    // Signatures block
-    let corSigY = corY + 12;
-    if (corSigY > 235) {
-      doc.addPage();
-      overallPageNum++;
-      drawHeader(doc, pdfLogo, 'Student Certificate of Registration');
-      drawFooter(doc, overallPageNum);
-      corSigY = 60;
-    }
-
+    fy += 1.5;
+    doc.setFillColor(236, 253, 245);
+    doc.rect(15, fy, 180, 10, 'F');
     doc.setDrawColor(16, 185, 129);
-    doc.setLineWidth(0.6);
-    doc.rect(15, corSigY, 65, 25);
-    doc.setTextColor(16, 185, 129);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('OFFICIAL REGISTRATION SEAL', 20, corSigY + 5);
-    doc.setFontSize(10);
-    doc.text('STATUS: VALIDATED', 20, corSigY + 12);
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`DATE: ${new Date().toLocaleDateString()}`, 20, corSigY + 18);
-    doc.text('OFFICE OF THE REGISTRAR', 20, corSigY + 22);
-
-    doc.setTextColor(15, 23, 42);
+    doc.line(15, fy, 195, fy);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.line(130, corSigY + 15, 185, corSigY + 15);
-    doc.text('MR. FLORENCIO FLORES JR.', 130, corSigY + 20);
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('University Registrar, NCST', 130, corSigY + 24);
+    doc.setTextColor(6, 78, 59);
+    doc.text('TOTAL AMOUNT PAID', 20, fy + 6);
+    doc.text(formatCurrency(student.totalTuition), 185, fy + 6, { align: 'right' });
 
-    doc.setDrawColor(30, 58, 138);
-    doc.setLineWidth(0.5);
-    doc.line(135, corSigY + 12, 140, corSigY + 6);
-    doc.line(140, corSigY + 6, 148, corSigY + 14);
-    doc.line(148, corSigY + 14, 155, corSigY + 4);
-    doc.line(155, corSigY + 4, 162, corSigY + 16);
-    doc.line(162, corSigY + 16, 175, corSigY + 10);
-
-    // --- PAGE 3: Official Payment Receipt ---
-    doc.addPage();
-    overallPageNum++;
-    drawHeader(doc, pdfLogo, 'Official Payment Receipt');
-    drawFooter(doc, overallPageNum);
-
-    doc.setTextColor(15, 23, 42); // Navy
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('PAYMENT & TRANSACTION INFORMATION', 15, 59);
-
-    doc.setDrawColor(226, 232, 240);
-    doc.setFillColor(250, 250, 250);
-    doc.rect(12, 62, 186, 32, 'FD'); // Box for transaction info
-
-    let orY = 68;
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Receipt Number:', 16, orY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`OR-${Math.floor(100000 + Math.random() * 900000)}`, 45, orY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student ID:', 16, orY + 6);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.id, 45, orY + 6);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Student Name:', 16, orY + 12);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`${student.lastName}, ${student.firstName}`, 45, orY + 12);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Transaction Date:', 115, orY);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(new Date().toLocaleDateString(), 145, orY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Payment Method:', 115, orY + 6);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(student.paymentMethod ? student.paymentMethod.toUpperCase() : 'N/A', 145, orY + 6);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Payment Status:', 115, orY + 12);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(16, 185, 129); // green
-    doc.text('PAID / CLEARED', 145, orY + 12);
-    doc.setTextColor(15, 23, 42); // reset
-
-    let feeTableY = 105;
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('ITEMIZED ASSESSMENT BREAKDOWN', 15, feeTableY - 3);
-
-    doc.setFillColor(15, 23, 42);
-    doc.rect(12, feeTableY, 186, 7, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text('DESCRIPTION OF ASSESSMENT', 15, feeTableY + 5);
-    doc.text('AMOUNT (PHP)', 190, feeTableY + 5, { align: 'right' });
-
-    let currentFeeY = feeTableY + 7;
-    doc.setTextColor(51, 65, 85);
-    doc.setFont('Helvetica', 'normal');
-
-    student.tuitionBreakdown.forEach((item, index) => {
-      if (index % 2 === 0) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(12, currentFeeY, 186, 7, 'F');
-      }
-      doc.setDrawColor(241, 245, 249);
-      doc.setLineWidth(0.3);
-      doc.line(12, currentFeeY + 7, 198, currentFeeY + 7);
-
-      doc.text(item.label, 15, currentFeeY + 4.8);
-      doc.text(`Php ${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, currentFeeY + 4.8, { align: 'right' });
-      currentFeeY += 7;
-    });
-
-    doc.setFillColor(240, 253, 250); // very light mint green for total
-    doc.rect(12, currentFeeY, 186, 9, 'F');
-    doc.setDrawColor(16, 185, 129); // green line above total
-    doc.setLineWidth(0.5);
-    doc.line(12, currentFeeY, 198, currentFeeY);
-    doc.line(12, currentFeeY + 9, 198, currentFeeY + 9);
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text('TOTAL AMOUNT PAID:', 15, currentFeeY + 6);
-    doc.text(`Php ${student.totalTuition.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 190, currentFeeY + 6, { align: 'right' });
-
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.5);
-    doc.line(12, feeTableY, 12, currentFeeY + 9);
-    doc.line(198, feeTableY, 198, currentFeeY + 9);
-
-    let feeSigY = currentFeeY + 15;
-    if (feeSigY > 235) {
+    sigY = fy + 22;
+    if (sigY > 260) {
       doc.addPage();
-      overallPageNum++;
-      drawHeader(doc, pdfLogo, 'Official Payment Receipt');
-      drawFooter(doc, overallPageNum);
-      feeSigY = 60;
+      drawHeader(doc, logoImg, 'Official Payment Receipt');
+      drawFooter(doc, pageNum++);
+      sigY = 60;
     }
 
-    doc.setDrawColor(30, 58, 138); // blue
-    doc.setLineWidth(0.6);
-    doc.rect(15, feeSigY, 65, 25);
-    doc.setTextColor(30, 58, 138);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('FINANCE CLEARANCE SEAL', 20, feeSigY + 5);
-    doc.setFontSize(10);
-    doc.text('STATUS: FULLY PAID', 20, feeSigY + 12);
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`TRANSACTION DATE: ${new Date().toLocaleDateString()}`, 20, feeSigY + 18);
-    doc.text('NCST ACCOUNTING OFFICE', 20, feeSigY + 22);
-
+    drawSeal(doc, 15, sigY, 'FINANCE CLEARANCE', 'NCST ACCOUNTING OFFICE');
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.line(130, feeSigY + 15, 185, feeSigY + 15);
-    doc.text('MS. CORAZON DELA CRUZ', 130, feeSigY + 20);
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Chief Cashier, NCST Finance', 130, feeSigY + 24);
+    doc.setFontSize(8);
+    doc.line(130, sigY + 12, 185, sigY + 12);
+    doc.text('MS. CORAZON DELA CRUZ', 157.5, sigY + 16, { align: 'center' });
 
-    doc.setDrawColor(30, 58, 138);
-    doc.setLineWidth(0.5);
-    doc.line(132, feeSigY + 14, 138, feeSigY + 7);
-    doc.line(138, feeSigY + 7, 142, feeSigY + 15);
-    doc.line(142, feeSigY + 15, 150, feeSigY + 5);
-    doc.line(150, feeSigY + 5, 155, feeSigY + 13);
-    doc.line(155, feeSigY + 13, 170, feeSigY + 8);
+    // --- SCHEDULE PAGE ---
+    doc.addPage();
+    drawHeader(doc, logoImg, 'Official Class Schedule');
+    drawFooter(doc, pageNum++);
+
+    drawCard(doc, 'Student Information', 15, 60, 180, 22);
+    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 40);
+    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 125);
+    drawLabelValue(doc, 'Status:', student.status.toUpperCase(), 105, 78, 125);
+
+    const schedY = 88;
+    drawCard(doc, 'Enrolled Subjects & Schedule', 15, schedY, 180, 10 + (scheduleRows.length * 8) + 5);
+    
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, schedY + 8, 180, 7, 'F');
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('CODE', 20, schedY + 12.5);
+    doc.text('DESCRIPTION', 45, schedY + 12.5);
+    doc.text('UNITS', 120, schedY + 12.5, { align: 'center' });
+    doc.text('DAY', 135, schedY + 12.5);
+    doc.text('TIME', 155, schedY + 12.5);
+    doc.text('ROOM', 185, schedY + 12.5);
+
+    let sRowY = schedY + 20;
+    scheduleRows.forEach((row, idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, sRowY - 5, 180, 7, 'F');
+      }
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(7.5);
+      
+      const desc = doc.splitTextToSize(row.subjectName || '', 65);
+      doc.text(row.subjectCode || '', 20, sRowY);
+      doc.text(desc[0], 45, sRowY);
+      doc.text(String(row.units), 120, sRowY, { align: 'center' });
+      doc.text(row.schedule?.day || 'TBA', 135, sRowY);
+      doc.text(row.schedule?.time || 'TBA', 155, sRowY);
+      doc.text(row.schedule?.room || 'TBA', 185, sRowY);
+      sRowY += 8;
+    });
+
+    drawSeal(doc, 15, sRowY + 5, 'SCHEDULE VERIFIED', `DATE: ${new Date().toLocaleDateString()}`);
 
     doc.save(`Enrollment_Documents_${student.id}.pdf`);
-  };
-
-  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const handleDownloadAll = async () => {
-    await handleDownloadAllCombined();
-  };
-
-  const _handleDownloadAndReturn = async () => {
-    try {
-      await handleDownloadAll();
-    } finally {
-      // Give the browser a short window to register the file save before redirecting.
-      await delay(1200);
-      onReturnToGateway?.();
-    }
   };
 
   return (

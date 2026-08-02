@@ -445,12 +445,6 @@ export const REQUIRED_DOCUMENTS = [
     description: 'Issued by a licensed physician or the school clinic. Certifies you are fit to enroll.',
     optionalFor: ['new', 'transfer', 'returning'],
   },
-  {
-    id: 'marriage-cert',
-    label: 'Marriage Certificate (if applicable)',
-    description: 'PSA-authenticated Marriage Certificate if your current name differs from your documents.',
-    optionalFor: ['new', 'transfer', 'returning'],
-  },
 ];
 
 // ---------------------------------------------------------------------------

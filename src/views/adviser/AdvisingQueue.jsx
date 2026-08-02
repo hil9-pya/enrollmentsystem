@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, ArrowRight, Clock, CheckCircle, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
+import { Search, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import Badge from '../../components/Badge';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { toast } from 'react-hot-toast';
 
@@ -187,9 +188,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     {PROGRAMS.find(p => p.id === student.programId)?.name || '—'}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                      {student.enrollmentType}
-                    </span>
+                    <Badge>{student.enrollmentType}</Badge>
                     <span className="text-[10px]">
                       <StatusBadge status={student.status} />
                     </span>
@@ -295,7 +294,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                                    <p className="text-xs text-slate-500">Year {sub.yearLevel || 1} • {sub.units || 3} Units</p>
                                  </div>
                                </div>
-                               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-1 rounded">Eligible</span>
+                               <Badge tone="success">Eligible</Badge>
                              </div>
                            ))}
                         </div>
@@ -313,7 +312,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                                   <p className="text-sm font-bold text-slate-700">{sub.code} - {sub.name}</p>
                                   <p className="text-xs font-semibold text-slate-400 mt-0.5">{sub.units || 3} Units</p>
                                 </div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded">Assigned</span>
+                                <Badge tone="success">Assigned</Badge>
                               </div>
                             );
                          })}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ShieldCheck, CheckCircle, Users, FileText, Settings, Download } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, CheckCircle, Users, Settings, Download } from 'lucide-react';
 
 export default function RegistrarSidebar({ activeTab, onTabChange, pendingCount }) {
   const tabs = [
