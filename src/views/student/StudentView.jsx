@@ -101,6 +101,7 @@ function getResumeStepFromStudent(student) {
       }
       return 'evaluation';
     case 'advising_approved':
+      return 'evaluation';
     case 'enrollment_pending':
       return 'enrollment';
     default:
@@ -121,9 +122,10 @@ function getFurthestStep(storedStep, resumeStep) {
 }
 
 export default function StudentView() {
-  const { state, getActiveStudent, setActiveStudent } = useEnrollment();
+  const { getActiveStudent, setActiveStudent, refreshActiveStudent } = useEnrollment();
   const { user, logout } = useAuth();
   const student = getActiveStudent();
+  const [isProfileReady, setIsProfileReady] = useState(false);
 
   const hasActiveHolds = student?.holds?.some(h => h.status === 'active');
   const [currentStep, setCurrentStep] = useState(() => {
@@ -144,15 +146,31 @@ export default function StudentView() {
   const lastInitializedStudentId = useRef(null);
   const lastKnownStatus = useRef(null);
 
-  // Sync verification if user logs in/out
+  // Load fresh status before choosing the resume step. Approved applicants
+  // still review Course Evaluation before proceeding to Subject Enrollment.
   useEffect(() => {
-    if (user?.role === 'student') {
-      setIsVerified(true);
-      if (user.studentId) {
-        setActiveStudent(user.studentId);
-      }
+    if (user?.role !== 'student' || !user.studentId) {
+      setIsProfileReady(false);
+      return;
     }
-  }, [user, setActiveStudent]);
+
+    let cancelled = false;
+    setIsVerified(true);
+    setIsProfileReady(false);
+    setActiveStudent(user.studentId);
+
+    refreshActiveStudent(user.studentId)
+      .catch((error) => {
+        console.error('Failed to refresh student profile:', error.message || error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsProfileReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.role, user?.studentId, setActiveStudent, refreshActiveStudent]);
 
   // Initialize resume state on student switch, then let users navigate manually.
   useEffect(() => {
@@ -301,14 +319,15 @@ export default function StudentView() {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
   }
 
-  if (!student) {
+  const isAuthenticatedProfile = Boolean(
+    student && (student.id === user?.studentId || student.studentId === user?.studentId)
+  );
+  if (!isProfileReady || !isAuthenticatedProfile) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-4 border-univ-blue border-t-transparent"></div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Loading profile... ({user?.studentId} / {getActiveStudent()?.id} / {state?.students?.length} / {localStorage.getItem('student_active_id')})
-          </p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading profile...</p>
         </div>
       </div>
     );

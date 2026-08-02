@@ -54,7 +54,7 @@ export default function AcceptanceLetterStep() {
           <Mail className="w-8 h-8 text-white" />
         </div>
         <h2 className="text-2xl font-extrabold text-white relative z-10">Acceptance Notification</h2>
-        <p className="text-blue-100 mt-2 relative z-10">Simulation of Official Email</p>
+        <p className="text-blue-100 mt-2 relative z-10">Official Admission Summary</p>
       </div>
 
       <div className="p-10">

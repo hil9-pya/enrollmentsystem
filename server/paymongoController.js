@@ -1,11 +1,4 @@
 import Student from './Student.js';
-import User from './User.js';
-import { generateNextId } from './studentsController.js'; // We can generate STU- ID and OR- receipt number
-
-// Utility to generate a random receipt number
-const generateReceiptNumber = () => {
-  return `OR-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-};
 
 // @desc    Simulate POST https://api.paymongo.com/v1/checkout_sessions
 export const createMockCheckoutSession = async (req, res) => {
@@ -172,32 +165,15 @@ export const payMockCheckoutSession = async (req, res) => {
     student.paymentDetails.referenceCode = finalRefCode;
     student.paymentDetails.billing = billingInfo || student.paymentDetails.billing;
 
-    // Apply enrollment clearance standards (auto-clear online payment)
+    // A successful gateway payment clears the payment step only. The
+    // Registrar remains responsible for final enrollment and STU- ID creation.
     student.paymentMethod = paymentMethod || 'gcash';
     const paidAmount = Number(student.paymentDetails.amount) || 0;
     student.amountPaid = paidAmount;
     student.remainingBalance = Math.max(0, (Number(student.totalTuition) || 0) - paidAmount);
     student.paymentStatus = student.remainingBalance > 0 ? 'partial' : 'paid';
-    student.status = student.remainingBalance > 0 ? 'payment_confirmed' : 'enrolled';
-    if (student.remainingBalance === 0) {
-      student.enrolledAt = student.enrolledAt || new Date();
-      student.scheduleGenerated = true;
-      student.registrationFormGenerated = true;
-      student.receiptGenerated = true;
-      student.receiptNumber = generateReceiptNumber();
-    }
+    student.status = 'payment_confirmed';
     student.paymentReference = finalRefCode;
-
-    // Generate STU- ID if not already assigned
-    if (!student.studentId) {
-      student.studentId = await generateNextId('STU-');
-      
-      // Update username to student ID in auth system
-      await User.updateOne(
-        { username: student._id },
-        { $set: { username: student.studentId } }
-      );
-    }
 
     student.auditLogs.push({
       action: `${student.remainingBalance > 0 ? 'Paid Downpayment' : 'Paid Tuition'} (Paymongo Online - ${paymentMethod?.toUpperCase()})`,
@@ -214,8 +190,9 @@ export const payMockCheckoutSession = async (req, res) => {
         sessionId: id,
         paymentId: mockPaymentId,
         referenceCode: finalRefCode,
-        receiptNumber: student.receiptNumber,
-        studentId: student.studentId
+        applicationId: student._id,
+        studentId: student.studentId,
+        status: student.status
       }
     });
   } catch (error) {

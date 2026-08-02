@@ -48,7 +48,7 @@ function getCompletedStepsFromApplicant(student) {
     student.phone?.trim() &&
     student.birthDate &&
     student.address?.trim() &&
-    student.applicantPassword
+    student.emailVerified
   ) {
     completed.push('registration');
   }
@@ -65,7 +65,7 @@ function getResumeStepFromApplicant(student) {
 
   if (!student.enrollmentType) return 'type';
   if (!student.programId) return 'program';
-  if (!student.firstName || !student.lastName || !student.email) return 'registration';
+  if (!student.firstName || !student.lastName || !student.email || !student.emailVerified) return 'registration';
 
   switch (status) {
     case 'documents_rejected':

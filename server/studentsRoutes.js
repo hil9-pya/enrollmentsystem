@@ -7,6 +7,8 @@ import {
   createDraft,
   applicantLogin,
   checkEmailAvailability,
+  sendEmailVerificationOtp,
+  verifyEmailOtp,
   getStudentById,
   registerStudent,
   updateStudent,
@@ -62,6 +64,8 @@ router.post('/draft', createDraft);
 router.post('/applicant-login', applicantLogin);
 router.post('/register', registerStudent);
 router.get('/email-availability', checkEmailAvailability);
+router.post('/:id/email-verification/send', sendEmailVerificationOtp);
+router.post('/:id/email-verification/verify', verifyEmailOtp);
 router.get('/:id', getStudentById);
 router.put('/:id', updateStudent);
 

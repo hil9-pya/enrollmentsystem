@@ -198,7 +198,7 @@ export async function seedStudents() {
   for (const studentData of INITIAL_STUDENTS) {
     const exists = await Student.exists({ _id: studentData._id });
     if (!exists) {
-      await Student.create(studentData);
+      await Student.create({ ...studentData, emailVerified: Boolean(studentData.email) });
       console.log(`Seeded student: ${studentData._id}`);
     }
   }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../../context/EnrollmentContext';
+import Badge from '../../../components/Badge';
 import { PAYMENT_METHODS } from '../../../data/mockData';
 import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
@@ -516,9 +517,7 @@ export default function PaymentStep({ onNext, onBack }) {
                   <label htmlFor="payment-mode-online" className="text-xs font-extrabold text-univ-navy cursor-pointer">
                     Pay Online via PayMongo (Instant)
                   </label>
-                  <span className="px-2 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-700 rounded-full tracking-wide uppercase ml-auto">
-                    Fastest
-                  </span>
+                  <Badge tone="success" className="ml-auto">Fastest</Badge>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
                   Complete your payment securely using GCash or Credit/Debit Card. Your enrollment will clear instantly upon payment completion.

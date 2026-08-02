@@ -4,6 +4,7 @@ import { useConfirm } from '../../../context/ConfirmationContext';
 import { REQUIRED_DOCUMENTS } from '../../../data/mockData';
 import { Upload, FileText, Check, Clock, X, AlertCircle, Loader2, Image, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Badge from '../../../components/Badge';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -183,11 +184,11 @@ export default function DocumentUploadStep({ onNext, onBack }) {
   function renderStatusLabel(docStatus) {
     switch (docStatus) {
       case 'approved':
-        return <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200">Approved</span>;
+        return <Badge tone="success">Approved</Badge>;
       case 'pending':
-        return <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200">Pending Review</span>;
+        return <Badge tone="warning">Pending review</Badge>;
       case 'rejected':
-        return <span className="text-[10px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-rose-200">Rejected</span>;
+        return <Badge tone="danger">Rejected</Badge>;
       default:
         return null;
     }
@@ -293,9 +294,9 @@ export default function DocumentUploadStep({ onNext, onBack }) {
                   <span className="text-xs font-bold text-univ-navy uppercase tracking-wide">{doc.label}</span>
                   {doc.requiredFor && doc.requiredFor.includes(enrollmentType) && (
                     docsToUploadOnline.some(d => d.id === doc.id) ? (
-                      <span className="text-[9px] bg-rose-50 border border-rose-100 text-rose-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+                      <Badge tone="warning">Required</Badge>
                     ) : (
-                      <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">On-Campus</span>
+                      <Badge>On-campus</Badge>
                     )
                   )}
                 </div>

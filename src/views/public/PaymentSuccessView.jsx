@@ -111,14 +111,14 @@ export default function PaymentSuccessView() {
         </div>
 
         <span className="text-[10px] font-extrabold tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase">
-          Online Payment Settled
+          Online Payment Confirmed
         </span>
 
         <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d1e3d] mt-4 mb-2 tracking-tight">
-          Tuition Payment Cleared!
+          Payment Received!
         </h2>
         <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto leading-relaxed font-medium">
-          Congratulations! Your payment has been processed and automatically verified by NCST Secure Online Billing. You are now officially enrolled!
+          Your payment has been processed and verified. Your enrollment is awaiting final validation by the Registrar.
         </p>
 
         {/* Receipt Details Card */}
@@ -133,12 +133,12 @@ export default function PaymentSuccessView() {
               <p className="font-extrabold text-[#0d1e3d]">{verifiedStudent?.firstName} {verifiedStudent?.lastName}</p>
             </div>
             <div>
-              <p className="text-slate-400 font-medium">Student ID Assigned</p>
-              <p className="font-mono font-extrabold text-[#0d1e3d]">{verifiedStudent?.studentId || 'N/A'}</p>
+              <p className="text-slate-400 font-medium">Application ID</p>
+              <p className="font-mono font-extrabold text-[#0d1e3d]">{verifiedStudent?.id || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-slate-400 font-medium">OR Receipt No.</p>
-              <p className="font-mono font-extrabold text-[#0d1e3d]">{verifiedStudent?.receiptNumber || 'N/A'}</p>
+              <p className="text-slate-400 font-medium">Payment Reference</p>
+              <p className="font-mono font-extrabold text-[#0d1e3d]">{verifiedStudent?.paymentReference || verifiedStudent?.paymentDetails?.referenceCode || 'N/A'}</p>
             </div>
             <div>
               <p className="text-slate-400 font-medium">Amount Paid</p>
@@ -170,7 +170,7 @@ export default function PaymentSuccessView() {
             </span>
             <span className="flex items-center gap-1.5 text-slate-400">
               <FileText className="w-3.5 h-3.5" />
-              Receipt Auto-Generated
+              Payment Recorded
             </span>
           </div>
         </div>

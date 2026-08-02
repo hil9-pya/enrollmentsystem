@@ -66,6 +66,11 @@ const StudentSchema = new mongoose.Schema(
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     email: { type: String, default: '', lowercase: true, trim: true },
+    emailVerified: { type: Boolean, default: false },
+    emailOtpHash: { type: String, default: null },
+    emailOtpExpiresAt: { type: Date, default: null },
+    emailOtpLastSentAt: { type: Date, default: null },
+    emailOtpAttempts: { type: Number, default: 0 },
     phone: { type: String, default: '' },
     birthDate: { type: String, default: '' },
     address: { type: String, default: '' },
@@ -146,6 +151,10 @@ const StudentSchema = new mongoose.Schema(
         ret.id = ret._id;
         delete ret.__v;
         delete ret.applicantPassword; // Exclude password from API responses
+        delete ret.emailOtpHash;
+        delete ret.emailOtpExpiresAt;
+        delete ret.emailOtpLastSentAt;
+        delete ret.emailOtpAttempts;
         return ret;
       },
     },
@@ -154,6 +163,11 @@ const StudentSchema = new mongoose.Schema(
       transform: (_doc, ret) => {
         ret.id = ret._id;
         delete ret.__v;
+        delete ret.applicantPassword;
+        delete ret.emailOtpHash;
+        delete ret.emailOtpExpiresAt;
+        delete ret.emailOtpLastSentAt;
+        delete ret.emailOtpAttempts;
         return ret;
       },
     },

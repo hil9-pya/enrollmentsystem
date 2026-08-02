@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { FilePlus, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import Badge from '../../components/Badge';
 
 export default function StudentPortalAccess({ onVerified }) {
   const { state, setActiveStudent } = useEnrollment();
@@ -285,15 +286,15 @@ export default function StudentPortalAccess({ onVerified }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button onClick={() => handleQuickDemo('STU-2026-0001')} className="px-4 py-3 border border-slate-100 hover:border-univ-indigo hover:shadow-sm rounded-xl text-left transition-all bg-slate-50/50 hover:bg-white cursor-pointer flex flex-col justify-between h-20">
             <p className="text-xs font-bold text-univ-navy">Maria Santos</p>
-            <span className="px-2 py-0.5 text-[9px] font-bold bg-slate-100 text-slate-600 rounded mt-2 self-start uppercase tracking-wider">Docs Pending</span>
+            <Badge className="mt-2 self-start">Documents pending</Badge>
           </button>
           <button onClick={() => handleQuickDemo('STU-2026-0002')} className="px-4 py-3 border border-slate-100 hover:border-univ-indigo hover:shadow-sm rounded-xl text-left transition-all bg-slate-50/50 hover:bg-white cursor-pointer flex flex-col justify-between h-20">
             <p className="text-xs font-bold text-univ-navy">Carlos Reyes</p>
-            <span className="px-2 py-0.5 text-[9px] font-bold bg-amber-50 text-univ-gold border border-univ-gold/20 rounded mt-2 self-start uppercase tracking-wider">Advising</span>
+            <Badge tone="warning" className="mt-2 self-start">Advising</Badge>
           </button>
           <button onClick={() => handleQuickDemo('STU-2026-0003')} className="px-4 py-3 border border-slate-100 hover:border-univ-indigo hover:shadow-sm rounded-xl text-left transition-all bg-slate-50/50 hover:bg-white cursor-pointer flex flex-col justify-between h-20">
             <p className="text-xs font-bold text-univ-navy">Ana Torres</p>
-            <span className="px-2 py-0.5 text-[9px] font-bold bg-purple-50 text-purple-600 border border-purple-200/40 rounded mt-2 self-start uppercase tracking-wider">Payment</span>
+            <Badge tone="info" className="mt-2 self-start">Payment</Badge>
           </button>
         </div>
       </div>

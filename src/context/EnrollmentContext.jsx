@@ -40,14 +40,30 @@ export function EnrollmentProvider({ children }) {
     return localStorage.getItem('student_active_id') || 'STU-2026-0006';
   });
 
-  const setActiveStudent = (id) => {
+  const setActiveStudent = useCallback((id) => {
     setActiveStudentId(id);
     if (id) {
       localStorage.setItem('student_active_id', id);
     } else {
       localStorage.removeItem('student_active_id');
     }
-  };
+  }, []);
+
+  const refreshActiveStudent = useCallback(async (studentId = activeStudentId) => {
+    if (!studentId) return null;
+
+    const res = await fetch(`/api/students/${studentId}`, { cache: 'no-store' });
+    const data = await safeJson(res);
+    if (data?.id) {
+      setStudents((prev) => {
+        const exists = prev.some((student) => student.id === data.id);
+        return exists
+          ? prev.map((student) => (student.id === data.id ? data : student))
+          : [...prev, data];
+      });
+    }
+    return data;
+  }, [activeStudentId]);
 
   // 1. Fetch initial students array from backend SQLite on mount and poll periodically
   useEffect(() => {
@@ -99,18 +115,7 @@ export function EnrollmentProvider({ children }) {
       // applicant draft retained in browser storage after staff sign-in.
       if (!activeStudentId || (token && user?.role !== 'student')) return;
       try {
-        const res = await fetch(`/api/students/${activeStudentId}`);
-        const data = await safeJson(res);
-        if (data && data.id) {
-          setStudents((prev) => {
-            const exists = prev.some((s) => s.id === data.id);
-            if (exists) {
-              return prev.map((s) => (s.id === data.id ? data : s));
-            } else {
-              return [...prev, data];
-            }
-          });
-        }
+        await refreshActiveStudent(activeStudentId);
       } catch (err) {
         console.error('Failed to load active student:', err.message || err);
       }
@@ -119,7 +124,7 @@ export function EnrollmentProvider({ children }) {
 
     const interval = setInterval(loadActiveStudent, 10000);
     return () => clearInterval(interval);
-  }, [activeStudentId, token, user?.role]);
+  }, [activeStudentId, token, user?.role, refreshActiveStudent]);
 
   // 2. Custom Dispatch Interceptor to handle async HTTP calls and synchronize state
   const dispatch = useCallback(async (action) => {
@@ -442,8 +447,9 @@ export function EnrollmentProvider({ children }) {
       getActiveStudent,
       getSubjectById,
       setActiveStudent,
+      refreshActiveStudent,
     }),
-    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById]
+    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent]
   );
 
   return (

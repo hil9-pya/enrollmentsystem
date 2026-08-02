@@ -9,6 +9,7 @@ export default function FloatingInput({
   value, 
   onChange, 
   required = false,
+  disabled = false,
   error = null,
   placeholder = " ",
   ...props 
@@ -31,13 +32,16 @@ export default function FloatingInput({
           value={value}
           onChange={onChange}
           required={required}
+          disabled={disabled}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           autoComplete={type === 'password' ? 'new-password' : 'off'}
           className={`peer w-full px-4 pt-5 pb-2 rounded-xl text-sm font-medium transition-all duration-300 outline-none placeholder-slate-400/70
             ${Icon ? 'pl-11' : ''}
-            ${error 
+            ${disabled
+              ? 'bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed'
+              : error
               ? 'bg-rose-50/50 border border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' 
               : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10 hover:border-slate-300'
             }

@@ -10,6 +10,7 @@ import SearchInput from '../../../components/SearchInput';
 import Modal from '../../../components/Modal';
 import ScheduleGrid from '../../../components/ScheduleGrid';
 import { ACADEMIC_TERMS } from '../../../data/mockData';
+import Badge from '../../../components/Badge';
 
 // ─── View Modes ──────────────────────────────────────────────────────────────
 const VIEW_LIST = 'list';
@@ -73,9 +74,9 @@ function getScheduleConflict(targetSubjectId, targetSection, selectedSubjects, s
 }
 
 function slotBadge(remaining, maxSlots) {
-  if (remaining <= 0) return { label: 'FULL', cls: 'bg-rose-50 text-rose-600 border-rose-100' };
-  if (remaining / maxSlots <= 0.2) return { label: `${remaining} slots left`, cls: 'bg-amber-50 text-amber-600 border-amber-150' };
-  return { label: `${remaining} slots left`, cls: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
+  if (remaining <= 0) return { label: 'Full', tone: 'danger' };
+  if (remaining / maxSlots <= 0.2) return { label: `${remaining} slots left`, tone: 'warning' };
+  return { label: `${remaining} slots left`, tone: 'success' };
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -492,22 +493,22 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
 
                           <div className="flex items-center gap-2 shrink-0">
                             {isCompleted && (
-                              <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg flex items-center gap-1">
+                              <Badge tone="success">
                                 <CheckCircle className="w-3 h-3" /> Completed
-                              </span>
+                              </Badge>
                             )}
                             {prereqBlocked && (
-                              <span
+                              <Badge
+                                tone="warning"
                                 title={`Missing: ${sub.missingPrereqNames?.join(', ')}`}
-                                className="text-[9px] font-extrabold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg flex items-center gap-1"
                               >
-                                <Lock className="w-3 h-3" /> Prereq
-                              </span>
+                                <Lock className="w-3 h-3" /> Prerequisite required
+                              </Badge>
                             )}
                             {isSelected && !isCompleted && !prereqBlocked && (
-                              <span className="text-[9px] font-extrabold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg flex items-center gap-1">
+                              <Badge tone="info">
                                 <CheckCircle className="w-3 h-3" /> Enrolled
-                              </span>
+                              </Badge>
                             )}
                             {!isCompleted && !prereqBlocked && (
                               isExpanded
@@ -552,9 +553,9 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                                       <span className="font-mono text-[10px] font-bold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
                                         {sec.code}
                                       </span>
-                                      <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                                      <Badge tone={badge.tone}>
                                         {badge.label}
-                                      </span>
+                                      </Badge>
                                     </div>
                                     <p className="text-[11px] text-slate-500 font-mono font-medium">
                                       {(sec.schedule?.day || sec.days)} · {(sec.schedule?.time || sec.time)} · {(sec.schedule?.room || sec.room)}

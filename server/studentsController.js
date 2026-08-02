@@ -3,16 +3,36 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
+import crypto from 'crypto';
 import Student from './Student.js';
 import User from './User.js';
 import Settings from './Settings.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
+import {
+  sendAdmissionApprovedEmail,
+  sendAdmissionRejectedEmail,
+  sendApplicationSubmittedEmail,
+  sendVerificationOtpEmail,
+} from './services/emailService.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DOWNPAYMENT_AMOUNT = 3000;
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+
+function hashEmailOtp(studentId, otp) {
+  const secret = process.env.EMAIL_OTP_SECRET || process.env.JWT_SECRET;
+  if (!secret) throw new Error('EMAIL_OTP_SECRET or JWT_SECRET must be configured.');
+  return crypto.createHmac('sha256', secret).update(`${studentId}:${otp}`).digest('hex');
+}
+
+function logEmailFailure(kind, student, error) {
+  console.error(`${kind} email failed for ${student._id}:`, error.message);
+}
 
 function getPaymentAmounts(student, paymentPlan) {
   const total = Math.max(0, Number(student.totalTuition) || 0);
@@ -256,6 +276,106 @@ const registerStudent = asyncHandler(async (req, res) => {
   res.status(201).json(student);
 });
 
+// @desc    Send email ownership verification OTP
+// @route   POST /api/students/:id/email-verification/send
+const sendEmailVerificationOtp = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  const normalizedEmail = String(req.body.email || student.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    res.status(400);
+    throw new Error('Enter a valid email address before requesting a verification code.');
+  }
+
+  const duplicate = await Student.exists({ _id: { $ne: student._id }, email: normalizedEmail });
+  if (duplicate) {
+    res.status(400);
+    throw new Error('An application with this email already exists.');
+  }
+  if (student.emailVerified && student.email === normalizedEmail) {
+    res.json({ message: 'Email is already verified.', emailVerified: true });
+    return;
+  }
+
+  const now = Date.now();
+  if (student.emailOtpLastSentAt && now - new Date(student.emailOtpLastSentAt).getTime() < OTP_RESEND_COOLDOWN_MS) {
+    res.status(429);
+    throw new Error('Please wait 60 seconds before requesting another code.');
+  }
+
+  const otp = String(crypto.randomInt(100000, 1000000));
+  student.email = normalizedEmail;
+  student.emailVerified = false;
+  student.emailOtpHash = hashEmailOtp(student._id, otp);
+  student.emailOtpExpiresAt = new Date(now + OTP_TTL_MS);
+  student.emailOtpLastSentAt = new Date(now);
+  student.emailOtpAttempts = 0;
+  await student.save();
+
+  try {
+    await sendVerificationOtpEmail({ to: student.email, firstName: student.firstName, otp });
+  } catch (error) {
+    student.emailOtpHash = null;
+    student.emailOtpExpiresAt = null;
+    student.emailOtpLastSentAt = null;
+    await student.save();
+    res.status(503);
+    throw new Error(`Verification email could not be sent. ${error.message}`);
+  }
+
+  res.json({ message: 'Verification code sent.', emailVerified: false });
+});
+
+// @desc    Verify email ownership OTP
+// @route   POST /api/students/:id/email-verification/verify
+const verifyEmailOtp = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  if (student.emailVerified) {
+    res.json({ message: 'Email is already verified.', emailVerified: true });
+    return;
+  }
+
+  const otp = String(req.body.otp || '').trim();
+  if (!/^\d{6}$/.test(otp)) {
+    res.status(400);
+    throw new Error('Enter the 6-digit verification code.');
+  }
+  if (!student.emailOtpHash || !student.emailOtpExpiresAt) {
+    res.status(400);
+    throw new Error('Request a verification code first.');
+  }
+  if (new Date(student.emailOtpExpiresAt).getTime() <= Date.now()) {
+    student.emailOtpHash = null;
+    student.emailOtpExpiresAt = null;
+    await student.save();
+    res.status(400);
+    throw new Error('Verification code expired. Request a new code.');
+  }
+  if (student.emailOtpAttempts >= OTP_MAX_ATTEMPTS) {
+    res.status(429);
+    throw new Error('Too many incorrect attempts. Request a new code.');
+  }
+
+  const submittedHash = hashEmailOtp(student._id, otp);
+  const matches = crypto.timingSafeEqual(Buffer.from(submittedHash, 'hex'), Buffer.from(student.emailOtpHash, 'hex'));
+  if (!matches) {
+    student.emailOtpAttempts += 1;
+    await student.save();
+    res.status(400);
+    throw new Error('Incorrect verification code.');
+  }
+
+  student.emailVerified = true;
+  student.emailOtpHash = null;
+  student.emailOtpExpiresAt = null;
+  student.emailOtpLastSentAt = null;
+  student.emailOtpAttempts = 0;
+  await student.save();
+  res.json({ message: 'Email verified successfully.', emailVerified: true });
+});
+
 // @desc    Generic partial update (enrollment type, personal info, payment method, etc.)
 // @route   PUT /api/students/:id
 const updateStudent = asyncHandler(async (req, res) => {
@@ -324,10 +444,21 @@ const updateStudent = asyncHandler(async (req, res) => {
   }
   if (req.body.email !== undefined) {
     const email = String(req.body.email).trim().toLowerCase();
+    if (email !== student.email && student.status !== 'registration') {
+      res.status(400).json({ error: 'Email cannot be changed after documents are submitted. Contact Admissions for assistance.' });
+      return;
+    }
     const existing = email ? await Student.findOne({ email }).select('_id') : null;
     if (existing && String(existing._id) !== String(student._id)) {
       res.status(400).json({ error: 'An application with this email already exists.' });
       return;
+    }
+    if (email !== student.email) {
+      student.emailVerified = false;
+      student.emailOtpHash = null;
+      student.emailOtpExpiresAt = null;
+      student.emailOtpLastSentAt = null;
+      student.emailOtpAttempts = 0;
     }
     req.body.email = email;
   }
@@ -392,6 +523,10 @@ const submitDocuments = asyncHandler(async (req, res) => {
   if (student.enrollmentType === 'continuing') {
     student.status = 'advising_pending';
   } else {
+    if (!student.emailVerified) {
+      res.status(400).json({ error: 'Verify your email before submitting documents.' });
+      return;
+    }
     if (!['registration', 'documents_rejected'].includes(student.status)) {
       res.status(400).json({ error: 'Application has already been submitted for review.' });
       return;
@@ -429,6 +564,13 @@ const submitDocuments = asyncHandler(async (req, res) => {
   }
   student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
+  if (student.emailVerified && student.email) {
+    try {
+      await sendApplicationSubmittedEmail(student);
+    } catch (error) {
+      logEmailFailure('Application confirmation', student, error);
+    }
+  }
   res.json(student);
 });
 
@@ -714,6 +856,13 @@ const approveAdmission = asyncHandler(async (req, res) => {
   });
 
   await student.save();
+  if (student.emailVerified && student.email) {
+    try {
+      await sendAdmissionApprovedEmail(student);
+    } catch (error) {
+      logEmailFailure('Admission approval', student, error);
+    }
+  }
   res.json(student);
 });
 
@@ -739,6 +888,13 @@ const rejectAdmission = asyncHandler(async (req, res) => {
   });
 
   await student.save();
+  if (student.emailVerified && student.email) {
+    try {
+      await sendAdmissionRejectedEmail(student);
+    } catch (error) {
+      logEmailFailure('Admission action-required', student, error);
+    }
+  }
   res.json(student);
 });
 
@@ -1054,6 +1210,8 @@ export {
   getStudents,
   getStudentById,
   registerStudent,
+  sendEmailVerificationOtp,
+  verifyEmailOtp,
   updateStudent,
   submitDocuments,
   uploadDocument,

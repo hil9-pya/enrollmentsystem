@@ -12,18 +12,19 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { toast } from 'react-hot-toast';
 import StatusBadge from '../../components/StatusBadge';
+import Badge from '../../components/Badge';
 import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
 import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
-const ROLE_COLORS = {
-  admin: 'bg-rose-100 text-rose-700 border-rose-200',
-  admission: 'bg-blue-100 text-blue-700 border-blue-200',
-  adviser: 'bg-purple-100 text-purple-700 border-purple-200',
-  accounting: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  registrar: 'bg-amber-100 text-amber-700 border-amber-200',
+const ROLE_TONES = {
+  admin: 'neutral',
+  admission: 'info',
+  adviser: 'info',
+  accounting: 'success',
+  registrar: 'warning',
 };
 
 const authFetch = (url, options = {}) => {
@@ -520,11 +521,9 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex px-2.5 py-0.5 text-[10px] font-bold border rounded-lg uppercase tracking-wider ${
-                      stud.paymentStatus === 'paid' ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                      : stud.paymentStatus === 'processing' ? 'bg-amber-50 border-amber-100 text-amber-700'
-                      : 'bg-slate-100 border-slate-200 text-slate-500'
-                    }`}>{stud.paymentStatus || 'unpaid'}</span>
+                    <Badge tone={stud.paymentStatus === 'paid' ? 'success' : stud.paymentStatus === 'processing' ? 'warning' : 'neutral'}>
+                      {stud.paymentStatus || 'Unpaid'}
+                    </Badge>
                     {stud.totalTuition > 0 && <p className="text-[10px] text-slate-400 mt-1">₱{stud.totalTuition?.toLocaleString()}</p>}
                   </td>
                   <td className="px-5 py-4">
@@ -676,7 +675,7 @@ function TrashTab() {
                     <td className="px-5 py-4 text-slate-500 font-medium">{stud.programId?.toUpperCase() || '—'}</td>
                     <td className="px-5 py-4"><StatusBadge status={stud.status} /></td>
                     <td className="px-5 py-4">
-                      <span className="px-2 py-0.5 text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 rounded-lg uppercase">{stud.paymentStatus || 'unpaid'}</span>
+                      <Badge>{stud.paymentStatus || 'Unpaid'}</Badge>
                     </td>
                     <td className="px-5 py-4 text-center">
                       <button onClick={() => handleRestore(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-bold transition-all cursor-pointer">
@@ -865,10 +864,10 @@ function StaffTab() {
                     </td>
                     <td className="px-5 py-4 font-mono text-slate-600 text-xs">@{user.username}</td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold border rounded-lg uppercase tracking-wider ${ROLE_COLORS[user.role] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      <Badge tone={ROLE_TONES[user.role] || 'neutral'}>
                         <RoleIcon className="w-3 h-3" />
                         {user.role}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-5 py-4 text-slate-500">{user.email}</td>
                     <td className="px-5 py-4 text-center">

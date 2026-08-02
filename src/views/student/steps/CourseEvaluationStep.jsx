@@ -2,6 +2,7 @@ import React from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { SUBJECTS, PROGRAMS } from '../../../data/mockData';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import Badge from '../../../components/Badge';
 
 export default function CourseEvaluationStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
@@ -20,6 +21,11 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
 
   const status = student?.status || 'registration';
   const isApproved = ['advising_approved', 'enrollment_pending', 'payment_pending', 'payment_confirmed', 'validation_pending', 'enrolled'].includes(status);
+  const passedSubjectIds = new Set(
+    (student?.academicRecord || [])
+      .filter((record) => Number(record.grade) <= 3.0)
+      .map((record) => record.subjectId)
+  );
 
   const handleRequestReevaluation = async () => {
     try {
@@ -162,6 +168,9 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
                       </tr>
                       {groupedSubjects[yl].map((sub) => {
                         const hasPrereq = sub.prerequisites && sub.prerequisites.length > 0;
+                        const hasMetPrerequisites = !hasPrereq || sub.prerequisites.every(
+                          (prerequisite) => passedSubjectIds.has(prerequisite)
+                        );
                         return (
                           <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors duration-150">
                             <td className="px-4 py-3.5 font-mono font-bold text-univ-navy bg-slate-50/30">{sub.code}</td>
@@ -169,18 +178,12 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
                             <td className="px-4 py-3.5 text-center font-bold text-slate-600">{sub.units}</td>
                             <td className="px-4 py-3.5 text-slate-500 font-mono text-[10px]">{getPrereqsText(sub.prerequisites)}</td>
                             <td className="px-4 py-3.5">
-                              {isApproved ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
-                                  Eligible
-                                </span>
-                              ) : !hasPrereq ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
-                                  Eligible
-                                </span>
+                              {isApproved && hasMetPrerequisites ? (
+                                <Badge tone="success">Eligible</Badge>
+                              ) : !hasMetPrerequisites ? (
+                                <Badge tone="warning">Prerequisite required</Badge>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-univ-gold bg-amber-50 px-2 py-0.5 rounded border border-univ-gold/15 uppercase tracking-wider">
-                                  Pending Review
-                                </span>
+                                <Badge tone="neutral">Pending review</Badge>
                               )}
                             </td>
                           </tr>
