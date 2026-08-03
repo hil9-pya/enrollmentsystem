@@ -681,7 +681,7 @@ export default function CourseManagementTab() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Course & Section Management</h1>
+            <h1 className="text-xl font-semibold text-slate-900">Course and section management</h1>
             <p className="text-sm font-medium text-slate-500 mt-1">
               Manage section offerings. Room and instructor conflicts are validated on save.
             </p>

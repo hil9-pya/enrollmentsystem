@@ -8,6 +8,7 @@ import RegistrationStep from '../student/steps/RegistrationStep';
 import DocumentUploadStep from '../student/steps/DocumentUploadStep';
 import AcceptanceLetterStep from './steps/AcceptanceLetterStep';
 import PortalShell from '../../components/PortalShell';
+import Badge from '../../components/Badge';
 
 export const APPLICANT_STEPS = [
   { key: 'type', label: 'Enrollment Type' },
@@ -203,17 +204,21 @@ export default function ApplicantView() {
   if (settings?.systemMaintenance) {
     return (
       <div className="flex h-screen bg-slate-50 items-center justify-center p-6">
-        <div className="bg-white rounded-3xl border border-slate-200/60 p-10 shadow-premium max-w-md text-center">
-          <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Wrench className="w-8 h-8" />
+        <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5">
+          <div className="flex items-start gap-3">
+            <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div>
+              <h1 className="text-sm font-semibold text-univ-navy">System maintenance</h1>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
+                The Admissions Portal is undergoing scheduled maintenance. Please check back later.
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold text-univ-navy mb-3">System Maintenance</h1>
-          <p className="text-sm text-slate-500 leading-relaxed font-medium mb-8">
-            The Admissions Portal is currently undergoing scheduled maintenance. Please check back later.
-          </p>
-          <button onClick={() => { setActiveStudent(null); window.location.href = '/'; }} className="px-6 py-2.5 bg-univ-navy text-white text-xs font-bold rounded-xl shadow-md cursor-pointer hover:bg-slate-800 transition-all">
-            Return to Home
-          </button>
+          <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
+            <button onClick={() => { setActiveStudent(null); window.location.href = '/'; }} className="rounded-lg bg-univ-navy px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-slate-800 cursor-pointer">
+              Return home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -221,15 +226,7 @@ export default function ApplicantView() {
 
   const sidebar = (
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
-          <img src="/logo.png" alt="NCST Logo" className="h-12 w-auto object-contain drop-shadow-sm" />
-          <h2 className="text-[10px] font-extrabold text-univ-navy uppercase tracking-widest text-center leading-relaxed">
-            National College of<br />Science &amp; Technology
-          </h2>
-          <span className="text-[9px] font-bold text-univ-gold uppercase tracking-wider">Applicant Gateway</span>
-        </div>
-
-        <div className="p-5 flex-1 overflow-y-auto">
+        <div className="p-5 flex flex-1 items-center overflow-y-auto">
           <StepIndicator
             currentStep={effectiveStep}
             completedSteps={completedSteps}
@@ -242,11 +239,9 @@ export default function ApplicantView() {
         {hasStudentInfo && (
           <div className="p-5 border-t border-slate-100 bg-slate-50/30">
             <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-premium">
-              <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider inline-block ${
-                getStatusRank(student?.status) >= 2
-                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/40'
-                  : 'bg-univ-blue/10 text-univ-blue border border-univ-blue/20'
-              }`}>{getStatusRank(student?.status) >= 2 ? 'Approved' : 'Active Applicant'}</span>
+              <Badge tone={getStatusRank(student?.status) >= 2 ? 'success' : 'info'}>
+                {getStatusRank(student?.status) >= 2 ? 'Approved' : 'Active applicant'}
+              </Badge>
               <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
                 {student.firstName} {student.lastName}
               </p>

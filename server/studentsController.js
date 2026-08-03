@@ -9,6 +9,7 @@ import User from './User.js';
 import Settings from './Settings.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
+import { ensureReceiptNumber, markPaymentReceived } from './paymentReceipt.js';
 import {
   sendAdmissionApprovedEmail,
   sendAdmissionRejectedEmail,
@@ -955,6 +956,7 @@ const confirmPayment = asyncHandler(async (req, res) => {
   if (student.status === 'payment_pending') {
     student.status = 'payment_confirmed';
   }
+  markPaymentReceived(student);
 
   await student.save();
   res.json(student);
@@ -996,6 +998,7 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   student.scheduleGenerated = true;
   student.registrationFormGenerated = true;
   student.receiptGenerated = true;
+  ensureReceiptNumber(student);
   
   // Track term for auto-archiving logic
   student.missedSemesters = 0;

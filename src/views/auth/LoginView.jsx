@@ -38,8 +38,7 @@ export default function LoginView({ portalType, onLogin }) {
   return (
     <div className="w-full flex-1 flex flex-col justify-start pt-2 outline-none focus:outline-none">
       <div className="text-center mb-8 flex flex-col items-center">
-        <h3 className="text-2xl font-heading font-extrabold text-univ-navy capitalize tracking-tight">{portalType} Portal</h3>
-        <p className="text-sm text-slate-500 mt-1.5 font-medium">Sign in to securely manage your account</p>
+        <h3 className="text-2xl font-heading font-extrabold text-univ-navy capitalize tracking-tight">{portalType} sign in</h3>
       </div>
 
       {error && (

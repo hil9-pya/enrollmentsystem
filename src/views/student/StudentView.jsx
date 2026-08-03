@@ -12,6 +12,7 @@ import ClearanceStep from './steps/ClearanceStep';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import PortalShell from '../../components/PortalShell';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import Badge from '../../components/Badge';
 
 export const STUDENT_STEPS = [
   { key: 'clearance', label: 'Holds & Clearances' },
@@ -301,7 +302,7 @@ export default function StudentView() {
       case 'payment':
         return <PaymentStep onNext={onNext} onBack={onBack} />;
       case 'fulfillment':
-        return <FulfillmentStep onReturnToGateway={() => {
+        return <FulfillmentStep onRefresh={() => refreshActiveStudent(user.studentId)} onReturnToGateway={() => {
               if (logout) logout();
               setActiveStudent(null);
               window.location.href = '/?portal=gateway&tab=student';
@@ -315,6 +316,10 @@ export default function StudentView() {
   const hasStudentInfo = student && student.firstName && student.lastName;
   const currentStepDefinition = STUDENT_STEPS.find((step) => step.key === effectiveStep);
   const currentStepNumber = STUDENT_STEPS.findIndex((step) => step.key === effectiveStep) + 1;
+  const isWaitingForFulfillment = effectiveStep === 'fulfillment' && student?.status !== 'enrolled';
+  const isClearedForEnrollment = effectiveStep === 'clearance'
+    && !(student?.holds || []).some((hold) => hold.status === 'active');
+  const isCenteredStatusStep = isWaitingForFulfillment || isClearedForEnrollment;
 
   if (!isVerified) {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
@@ -337,14 +342,7 @@ export default function StudentView() {
   const sidebar = (<>
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex flex-col items-center gap-2 bg-slate-50/50">
-          <img src="/logo.png" alt="NCST Logo" className="h-12 w-auto object-contain drop-shadow-sm" />
-          <h2 className="text-[10px] font-extrabold text-univ-navy uppercase tracking-widest text-center leading-relaxed">
-            National College of<br />Science &amp; Technology
-          </h2>
-        </div>
-
-        <div className="p-5 flex-1 overflow-y-auto">
+        <div className="p-5 flex flex-1 items-center overflow-y-auto">
           <StepIndicator
             currentStep={effectiveStep}
             completedSteps={completedSteps}
@@ -359,11 +357,9 @@ export default function StudentView() {
         {hasStudentInfo && (
           <div className="p-5 border-t border-slate-100 bg-slate-50/30">
             <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-premium">
-              <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider inline-block ${
-                student?.status === 'enrolled'
-                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/40'
-                  : 'bg-univ-blue/10 text-univ-blue border border-univ-blue/20'
-              }`}>{student?.status === 'enrolled' ? '✓ Enrolled Student' : 'Active Applicant'}</span>
+              <Badge tone={student?.status === 'enrolled' ? 'success' : 'info'}>
+                {student?.status === 'enrolled' ? 'Enrolled' : 'Active applicant'}
+              </Badge>
               <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
                 {student.firstName} {student.lastName}
               </p>
@@ -393,13 +389,12 @@ export default function StudentView() {
     >
       {/* Main Content */}
       <main className="h-full min-w-0 overflow-y-auto bg-slate-50/70">
-        <div className="max-w-4xl mx-auto p-4 sm:p-5 lg:p-8">
-          <div className="mb-4 flex justify-end">
-            <PortalRefreshButton
-              label="Refresh profile"
-              onRefresh={() => refreshActiveStudent(user.studentId)}
-            />
-          </div>
+        <div className={`${isCenteredStatusStep ? 'flex min-h-full items-center justify-center' : 'max-w-4xl mx-auto'} p-4 sm:p-5 lg:p-8`}>
+          {!isCenteredStatusStep && (
+            <div className="mb-4 flex justify-end">
+              <PortalRefreshButton onRefresh={() => refreshActiveStudent(user.studentId)} />
+            </div>
+          )}
           <ErrorBoundary>
             {renderStep()}
           </ErrorBoundary>

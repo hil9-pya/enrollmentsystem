@@ -42,7 +42,7 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
       </div>
       
       {/* Right side: Access Panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8 sm:p-12 xl:p-24 relative bg-white overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-8 sm:p-12 xl:p-24 relative bg-white overflow-y-auto">
         {/* Top bar for mobile only */}
         <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
            <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-univ-navy rounded-lg transition-colors">
@@ -52,22 +52,22 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
            <span className="font-heading font-bold text-univ-navy uppercase text-xs tracking-wider">NCST Gateway</span>
         </div>
         
-        <div className="w-full max-w-md mt-12 lg:mt-0">
+        <div className="w-full max-w-md mt-20 sm:mt-16 lg:mt-0">
            <div className="mb-6 text-center lg:text-left">
-             <h2 className="font-heading text-3xl sm:text-4xl font-extrabold text-univ-navy tracking-tight mb-3">Welcome Back</h2>
-             <p className="text-slate-500 font-medium text-sm">Please select your portal access option below to begin.</p>
+             <h2 className="font-heading text-3xl sm:text-4xl font-extrabold text-univ-navy tracking-tight mb-3">Sign in to NCST</h2>
+             <p className="text-slate-500 font-medium text-sm">Choose your portal to continue.</p>
            </div>
            
            <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-sm border border-slate-200/60 mb-6">
               {[
                 { id: 'applicant', label: 'Admissions' },
-                { id: 'student', label: 'Student Portal' },
-                { id: 'staff', label: 'Staff / Admin' }
+                { id: 'student', label: 'Student' },
+                { id: 'staff', label: 'Staff & admin' }
               ].map((tab) => (
                 <button 
                   key={tab.id}
                   onClick={() => setViewMode(tab.id)}
-                className={`flex-1 min-h-11 px-2 py-3 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
+                className={`flex-1 min-h-11 px-2 py-3 text-xs font-bold rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
                 aria-pressed={viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin')}
                 >
                   {tab.label}

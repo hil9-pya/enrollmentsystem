@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import Badge from '../../../components/Badge';
 import { PAYMENT_METHODS } from '../../../data/mockData';
 import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
@@ -408,7 +407,7 @@ export default function PaymentStep({ onNext, onBack }) {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200/60 rounded-3xl p-8 shadow-premium">
-        <h2 className="text-2xl font-heading font-extrabold text-univ-navy mb-1.5">Tuition Assessment &amp; Payment</h2>
+        <h2 className="mb-1.5 text-xl font-semibold text-univ-navy">Tuition and payment</h2>
         <p className="text-sm text-slate-500 mb-8 leading-relaxed font-medium">
           Review your assessed tuition fees and authorize your payment to proceed with enrollment verification.
         </p>
@@ -494,103 +493,82 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* Payment Mode (Online vs Manual) Selector */}
         {!isPaid && ['card', 'gcash'].includes(selectedMethodId) && (
-          <div className="mb-8 bg-slate-50/50 border border-slate-200/60 rounded-2xl p-6 shadow-sm animate-in fade-in duration-300">
-            <h4 className="text-xs font-extrabold text-univ-navy uppercase tracking-widest mb-4">Payment Channel Option</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div 
-                onClick={() => setPaymentMode('online')}
-                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
-                  paymentMode === 'online'
-                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <input 
-                    type="radio" 
-                    id="payment-mode-online" 
-                    name="payment-mode" 
-                    checked={paymentMode === 'online'} 
-                    onChange={() => setPaymentMode('online')}
-                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
-                  />
-                  <label htmlFor="payment-mode-online" className="text-xs font-extrabold text-univ-navy cursor-pointer">
-                    Pay Online via PayMongo (Instant)
-                  </label>
-                  <Badge tone="success" className="ml-auto">Fastest</Badge>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
-                  Complete your payment securely using GCash or Credit/Debit Card. Your enrollment will clear instantly upon payment completion.
-                </p>
-              </div>
+          <fieldset className="mb-8 animate-in fade-in duration-300">
+            <legend className="mb-3 text-sm font-semibold text-univ-navy">Payment method</legend>
+            <div className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <label className={`flex cursor-pointer items-start gap-3 p-4 transition-colors ${paymentMode === 'online' ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
+                <input
+                  type="radio"
+                  name="payment-mode"
+                  checked={paymentMode === 'online'}
+                  onChange={() => setPaymentMode('online')}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-univ-blue"
+                />
+                <span>
+                  <span className="block text-xs font-semibold text-univ-navy">Pay online with PayMongo</span>
+                  <span className="mt-1 block text-[11px] font-medium leading-relaxed text-slate-500">
+                    Pay with GCash or card. Confirmation is instant.
+                  </span>
+                </span>
+              </label>
 
-              <div 
-                onClick={() => setPaymentMode('manual')}
-                className={`border rounded-xl p-4 cursor-pointer transition-all duration-300 ${
-                  paymentMode === 'manual'
-                    ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/10'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <input 
-                    type="radio" 
-                    id="payment-mode-manual" 
-                    name="payment-mode" 
-                    checked={paymentMode === 'manual'} 
-                    onChange={() => setPaymentMode('manual')}
-                    className="h-4 w-4 text-univ-blue border-slate-300 focus:ring-univ-blue/30"
-                  />
-                  <label htmlFor="payment-mode-manual" className="text-xs font-extrabold text-univ-navy cursor-pointer">
-                    Manual Receipt Verification
-                  </label>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed font-medium pl-7">
-                  Submit details of your bank deposit or GCash receipt manually. Requires 1-2 business days for Accounting approval.
-                </p>
-              </div>
+              <label className={`flex cursor-pointer items-start gap-3 p-4 transition-colors ${paymentMode === 'manual' ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
+                <input
+                  type="radio"
+                  name="payment-mode"
+                  checked={paymentMode === 'manual'}
+                  onChange={() => setPaymentMode('manual')}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-univ-blue"
+                />
+                <span>
+                  <span className="block text-xs font-semibold text-univ-navy">Manual receipt review</span>
+                  <span className="mt-1 block text-[11px] font-medium leading-relaxed text-slate-500">
+                    Upload a deposit or GCash receipt. Review takes 1–2 business days.
+                  </span>
+                </span>
+              </label>
             </div>
-          </div>
+          </fieldset>
         )}
 
         {/* 3. Transaction Feedback Banners */}
         {isProcessing && (
-          <div className="flex items-center justify-center gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-6 mb-4 shadow-sm">
-            <Loader2 className="h-5 w-5 animate-spin text-univ-blue" />
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Verifying transaction details... Please wait.</span>
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4">
+            <Loader2 className="h-4 w-4 animate-spin text-univ-blue" />
+            <span className="text-xs font-medium text-slate-600">Verifying transaction details. Please wait.</span>
           </div>
         )}
 
         {paymentStatus === 'processing' && (
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-5 mb-4 shadow-sm">
-            <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div>
-              <h4 className="text-xs font-extrabold text-amber-700 uppercase tracking-wider">Payment Verification Pending</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
-                Your payment of ₱{paymentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} has been submitted. The Office of the Accounting department is currently reviewing and verifying your transaction.
+              <h4 className="text-xs font-semibold text-amber-700">Payment verification pending</h4>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
+                Your payment of ₱{paymentAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} was submitted. Accounting is reviewing the transaction.
               </p>
             </div>
           </div>
         )}
 
         {(paymentStatus === 'paid' || paymentStatus === 'partial' || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status)) && (
-          <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200/50 rounded-xl p-5 mb-4 shadow-sm">
-            <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
             <div>
-              <h4 className="text-xs font-extrabold text-emerald-700 uppercase tracking-wider">Payment Verified</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
-                ₱{(student?.amountPaid || paymentAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })} has been verified by Accounting.{(student?.remainingBalance || remainingBalance) > 0 ? ` Remaining balance: ₱${(student?.remainingBalance || remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}.` : ' Tuition is fully settled.'}
+              <h4 className="text-xs font-semibold text-emerald-700">Payment verified</h4>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
+                ₱{(student?.amountPaid || paymentAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })} received.{(student?.remainingBalance || remainingBalance) > 0 ? ` Remaining balance: ₱${(student?.remainingBalance || remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}.` : ' Tuition is fully settled.'}
               </p>
             </div>
           </div>
         )}
 
         {paymentStatus === 'failed' && !isProcessing && (
-          <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-5 mb-4 shadow-sm">
-            <XCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
             <div>
-              <h4 className="text-xs font-extrabold text-rose-700 uppercase tracking-wider">Transaction Declined</h4>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
+              <h4 className="text-xs font-semibold text-rose-700">Transaction declined</h4>
+              <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
                 The transaction could not be authorized. Please try again or select a different payment channel.
               </p>
             </div>
@@ -604,15 +582,13 @@ export default function PaymentStep({ onNext, onBack }) {
               type="button"
               onClick={paymentMode === 'online' ? handleOnlinePayment : handleProcessPayment}
               disabled={!selectedMethodId}
-              className={`px-8 py-3 text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer ${
+              className={`px-4 py-3 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 selectedMethodId
-                  ? 'bg-univ-blue text-white hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
+                  ? 'bg-univ-blue text-white hover:bg-blue-700'
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
-              {paymentStatus === 'failed'
-                ? (paymentMode === 'online' ? 'Retry Online Payment' : 'Retry Payment')
-                : (paymentMode === 'online' ? `Pay ₱${paymentAmount.toLocaleString()} via PayMongo` : `Pay ₱${paymentAmount.toLocaleString()}`)}
+              {paymentStatus === 'failed' ? 'Retry payment' : `Pay ₱${paymentAmount.toLocaleString()}`}
             </button>
           </div>
         )}
@@ -623,7 +599,7 @@ export default function PaymentStep({ onNext, onBack }) {
         <button
           onClick={onBack}
           disabled={isProcessing}
-          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
         >
           Back
         </button>
@@ -631,13 +607,13 @@ export default function PaymentStep({ onNext, onBack }) {
         <button
           onClick={onNext}
           disabled={!isPaid}
-          className={`px-8 py-3 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer ${
+          className={`min-w-24 rounded-lg px-4 py-3 text-xs font-bold text-white transition-colors cursor-pointer ${
             isPaid
-              ? 'bg-univ-blue hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
+              ? 'bg-univ-blue hover:bg-blue-700'
               : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >
-          Proceed to Verification
+          Continue
         </button>
       </div>
 
@@ -674,16 +650,15 @@ export default function PaymentStep({ onNext, onBack }) {
                     setShowValidationModal(false);
                     setErrors({});
                   }}
-                  className="px-6 py-2.5 text-xs font-extrabold text-slate-600 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
+                  className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-8 py-2.5 text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex items-center gap-2"
+                  className="min-w-24 rounded-lg bg-univ-blue px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  Authorize Payment
+                  Pay ₱{paymentAmount.toLocaleString()}
                 </button>
               </div>
             </form>

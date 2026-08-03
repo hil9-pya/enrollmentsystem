@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
@@ -28,8 +28,8 @@ export default function ApplicantDetails({ studentId, onBack }) {
 
   async function handleApprove() {
     const isConfirmed = await confirm({
-      title: 'Confirm Approval',
-      message: 'Are you sure you want to approve this applicant? This action will officially verify the submitted admission documents.',
+      title: 'Approve applicant?',
+      message: 'This will verify the submitted admission documents and move the applicant to academic evaluation.',
       confirmText: 'Approve',
       cancelText: 'Cancel',
       type: 'success',
@@ -57,9 +57,9 @@ export default function ApplicantDetails({ studentId, onBack }) {
 
   async function handleReject() {
     const isConfirmed = await confirm({
-      title: 'Confirm Refusal',
-      message: 'Are you sure you want to refuse this applicant? This applicant will be notified that the submitted requirements were not accepted.',
-      confirmText: 'Refuse',
+      title: 'Reject applicant?',
+      message: 'The applicant will be notified that the submitted requirements were not accepted.',
+      confirmText: 'Reject',
       cancelText: 'Cancel',
       type: 'danger',
     });
@@ -71,7 +71,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
         type: 'REJECT_DOCUMENTS',
         payload: { studentId: student.id, notes },
       });
-      toast.success('Applicant refused successfully.');
+      toast.success('Applicant rejected successfully.');
       setNotes('');
     } catch {
       toast.error('Unable to update applicant status. Please try again.');
@@ -131,11 +131,11 @@ export default function ApplicantDetails({ studentId, onBack }) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-xl font-extrabold text-univ-navy">Applicant Details</h1>
+          <h1 className="text-xl font-semibold text-univ-navy">Applicant details</h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">Review information and process applications.</p>
         </div>
         <div className="ml-auto">
-          <PortalRefreshButton label="Refresh applicant" />
+          <PortalRefreshButton />
         </div>
       </div>
 
@@ -165,11 +165,13 @@ export default function ApplicantDetails({ studentId, onBack }) {
         </div>
 
         {student.submitDocumentsOnCampus && (
-          <div className="bg-amber-50 border border-amber-250/50 text-amber-800 text-xs font-medium px-4.5 py-3.5 rounded-2xl flex items-center gap-3 shadow-sm">
-            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+          <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-amber-50/50 px-4 py-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div>
-              <span className="font-extrabold uppercase tracking-wide text-amber-800 text-[10px] block mb-0.5">On-Campus Submission Selected</span>
-              This applicant has requested to submit their Form 137 and PSA Birth Certificate physically on-campus. Only Form 138 (Report Card) is required to be submitted online.
+              <p className="text-xs font-semibold text-slate-800">On-campus document submission</p>
+              <p className="mt-0.5 text-xs font-medium leading-relaxed text-slate-600">
+                Applicant will submit Form 137 and PSA birth certificate on campus. Form 138 must still be uploaded online.
+              </p>
             </div>
           </div>
         )}
@@ -278,44 +280,36 @@ export default function ApplicantDetails({ studentId, onBack }) {
                 <button
                   onClick={handleApprove}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="min-w-24 rounded-lg bg-univ-blue px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 cursor-pointer"
                 >
-                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                  Approve Application
+                  Approve
                 </button>
                 <button
                   onClick={handleReject}
                   disabled={isProcessing}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="min-w-24 rounded-lg border border-rose-200 bg-white px-4 py-2.5 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 cursor-pointer"
                 >
-                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                  Refuse Application
+                  Reject
                 </button>
               </div>
             </>
           ) : (
-            <div className={`flex items-center gap-3 px-5 py-4 rounded-xl border shadow-sm ${
-              student.status === 'documents_rejected' 
-                ? 'bg-rose-50 border-rose-200 text-rose-700' 
-                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-            }`}>
+            <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
               {student.status === 'documents_rejected' ? (
-                <>
-                  <XCircle className="w-6 h-6 shrink-0" />
-                  <div>
-                    <p className="font-extrabold uppercase tracking-widest text-[10px]">Decision Finalized</p>
-                    <p className="font-semibold text-sm">Applicant Refused</p>
-                  </div>
-                </>
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
               ) : (
-                <>
-                  <CheckCircle className="w-6 h-6 shrink-0" />
-                  <div>
-                    <p className="font-extrabold uppercase tracking-widest text-[10px]">Decision Finalized</p>
-                    <p className="font-semibold text-sm">Applicant Approved</p>
-                  </div>
-                </>
+                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
               )}
+              <div>
+                <p className={`text-xs font-semibold ${
+              student.status === 'documents_rejected'
+                ? 'text-rose-700'
+                : 'text-emerald-700'
+                }`}>Decision finalized</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {student.status === 'documents_rejected' ? 'Application rejected.' : 'Application approved.'}
+                </p>
+              </div>
             </div>
           )}
         </div>

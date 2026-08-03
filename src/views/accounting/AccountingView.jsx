@@ -50,7 +50,7 @@ export default function AccountingView() {
       case 'settings':
         return (
           <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-extrabold text-univ-navy">Settings</h1>
+            <h1 className="text-xl font-semibold text-univ-navy">Settings</h1>
             <p className="text-slate-500 font-medium mt-2">Accounting settings are currently managed by the System Admin.</p>
           </div>
         );

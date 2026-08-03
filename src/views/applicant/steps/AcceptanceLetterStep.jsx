@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { Mail, ArrowRight, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Mail, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 
 export default function AcceptanceLetterStep() {
@@ -15,32 +15,33 @@ export default function AcceptanceLetterStep() {
 
   if (!isApproved && !isRejected) {
     return (
-      <div className="bg-white rounded-2xl shadow-premium border border-slate-100 p-10 text-center">
-        <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Clock className="w-10 h-10 text-amber-500" />
+      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-5">
+        <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div>
+          <h2 className="text-sm font-semibold text-univ-navy">Application under review</h2>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
+            Admission staff are reviewing your documents. Check this page later or wait for an email update.
+          </p>
         </div>
-        <h2 className="text-2xl font-extrabold text-univ-navy mb-4">Application Under Review</h2>
-        <p className="text-slate-600 max-w-lg mx-auto leading-relaxed">
-          Your documents have been submitted and are currently being reviewed by our admission staff. Please check back later or wait for an email notification regarding your admission status.
-        </p>
       </div>
     );
   }
 
   if (isRejected) {
     return (
-      <div className="bg-white rounded-2xl shadow-premium border border-rose-100 p-10 text-center relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500"></div>
-        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <AlertTriangle className="w-10 h-10 text-rose-500" />
-        </div>
-        <h2 className="text-2xl font-extrabold text-univ-navy mb-4">Resubmission Required</h2>
-        <p className="text-slate-600 max-w-lg mx-auto leading-relaxed mb-6">
-          There was an issue with your submitted documents. Please check the admission notes below and re-upload the required files.
-        </p>
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-left max-w-lg mx-auto">
-          <p className="font-bold text-sm mb-1">Admission Notes:</p>
-          <p className="text-sm">{student.admissionNotes || 'No specific notes provided. Please ensure all documents are clear and valid.'}</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold text-rose-700">Resubmission required</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              Some submitted documents need attention. Review the admission note and upload corrected files.
+            </p>
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <p className="text-xs font-semibold text-univ-navy">Admission note</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{student.admissionNotes || 'No specific note was provided. Make sure every document is clear and valid.'}</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -53,7 +54,7 @@ export default function AcceptanceLetterStep() {
         <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
           <Mail className="w-8 h-8 text-white" />
         </div>
-        <h2 className="text-2xl font-extrabold text-white relative z-10">Acceptance Notification</h2>
+        <h2 className="relative z-10 text-xl font-semibold text-white">Acceptance notification</h2>
         <p className="text-blue-100 mt-2 relative z-10">Official Admission Summary</p>
       </div>
 
@@ -101,10 +102,9 @@ export default function AcceptanceLetterStep() {
               // Redirect to student portal
               window.location.href = '/?portal=gateway&tab=student';
             }}
-            className="flex items-center gap-2 px-6 py-3 bg-univ-navy hover:bg-univ-navy/90 text-white rounded-xl font-bold transition-all shadow-sm group"
+            className="rounded-lg bg-univ-navy px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-univ-navy/90 cursor-pointer"
           >
-            Go to Student Portal
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            Go to student portal
           </button>
         </div>
       </div>

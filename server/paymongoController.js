@@ -1,4 +1,5 @@
 import Student from './Student.js';
+import { ensureReceiptNumber } from './paymentReceipt.js';
 
 // @desc    Simulate POST https://api.paymongo.com/v1/checkout_sessions
 export const createMockCheckoutSession = async (req, res) => {
@@ -112,10 +113,7 @@ export const getMockCheckoutSession = async (req, res) => {
               reference_number: details.referenceCode,
             }
           }] : [],
-          reference_number: student._id,
           status: details.status,
-          success_url: details.successUrl,
-          cancel_url: details.cancelUrl,
           checkout_url: `/?portal=paymongo-checkout&session_id=${id}`,
         }
       }
@@ -174,6 +172,7 @@ export const payMockCheckoutSession = async (req, res) => {
     student.paymentStatus = student.remainingBalance > 0 ? 'partial' : 'paid';
     student.status = 'payment_confirmed';
     student.paymentReference = finalRefCode;
+    ensureReceiptNumber(student);
 
     student.auditLogs.push({
       action: `${student.remainingBalance > 0 ? 'Paid Downpayment' : 'Paid Tuition'} (Paymongo Online - ${paymentMethod?.toUpperCase()})`,

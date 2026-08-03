@@ -34,10 +34,10 @@ export default function AdviserDashboard({ students, onNavigate }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Evaluation Overview</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Evaluation overview</h1>
           <p className="text-sm text-slate-500 mt-1">High-level view of curriculum evaluation progress.</p>
         </div>
-        <PortalRefreshButton label="Refresh evaluations" />
+        <PortalRefreshButton />
       </div>
 
       {/* Mini Stats Row */}

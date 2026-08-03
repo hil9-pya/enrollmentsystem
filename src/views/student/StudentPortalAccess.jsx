@@ -154,7 +154,7 @@ export default function StudentPortalAccess({ onVerified }) {
     <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-4xl mx-auto w-full">
       {/* Header */}
       <div className="text-center mb-8 flex flex-col items-center">
-        <h2 className="text-2xl font-extrabold text-univ-navy mb-2">Student Enrollment Portal</h2>
+        <h2 className="mb-2 text-xl font-semibold text-univ-navy">Student enrollment portal</h2>
         <p className="text-xs text-slate-500 max-w-md leading-relaxed font-medium">
           {mode === 'new'
             ? 'Fill in your details below to begin your enrollment application.'

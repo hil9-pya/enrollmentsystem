@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, FileWarning, FileText, Check, X, GraduationCap } from 'lucide-react';
+import { Search, FileWarning, FileText, GraduationCap } from 'lucide-react';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
@@ -131,7 +131,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
               <h2 className="text-sm font-extrabold text-slate-900 tracking-wide">Evaluation Queue</h2>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{filter} records</p>
             </div>
-            <PortalRefreshButton label="Refresh" className="px-2.5" />
+            <PortalRefreshButton className="px-2.5" />
           </div>
           
           <div className="relative">
@@ -213,7 +213,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
               <div className="max-w-3xl mx-auto">
                 <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
-                    <h1 className="text-2xl font-extrabold text-slate-900 mb-1 tracking-tight">
+                    <h1 className="mb-1 text-xl font-semibold text-slate-900">
                       {selectedStudent.firstName} {selectedStudent.lastName}
                     </h1>
                     <div className="flex items-center gap-3 text-sm font-semibold text-slate-500">
@@ -355,13 +355,11 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     <button onClick={() => setSelectedStudentId(null)} className="sm:hidden flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold transition-colors">
                       Back
                     </button>
-                    <button onClick={handleReject} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-rose-100 text-rose-600 rounded-lg text-sm font-bold hover:bg-rose-50 hover:border-rose-200 transition-colors">
-                      <X className="w-4 h-4" />
-                      Return
+                    <button onClick={handleReject} className="flex-1 rounded-lg border border-rose-200 bg-white px-4 py-2.5 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50 sm:flex-none">
+                      Return for changes
                     </button>
-                    <button onClick={handleApprove} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm">
-                      <Check className="w-4 h-4" />
-                      Approve Evaluation
+                    <button onClick={handleApprove} className="flex-1 rounded-lg bg-univ-blue px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-700 sm:flex-none">
+                      Approve
                     </button>
                   </div>
                 </div>

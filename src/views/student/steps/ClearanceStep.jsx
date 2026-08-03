@@ -49,19 +49,21 @@ export default function ClearanceStep({ onNext }) {
 
   if (!hasActiveHolds) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8" />
+      <div className="flex w-full max-w-2xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <div>
+            <h2 className="text-sm font-semibold text-univ-navy">Cleared for enrollment</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              You have no active holds on your account. You may proceed to the next step.
+            </p>
+          </div>
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">You are cleared for enrollment!</h2>
-        <p className="text-sm text-slate-500 mb-8 max-w-md mx-auto">
-          You have no active holds on your account. You may proceed to the next step.
-        </p>
         <button
           onClick={onNext}
-          className="px-6 py-2.5 bg-univ-indigo text-white font-bold text-sm rounded-lg hover:bg-univ-blue transition-colors cursor-pointer"
+          className="min-w-24 shrink-0 rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"
         >
-          Continue to Enrollment
+          Continue
         </button>
       </div>
     );
