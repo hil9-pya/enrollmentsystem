@@ -3,6 +3,7 @@ import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare } from
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function RegistrarDashboard({ students, onNavigate, initialFilter, onViewDetails, showOverview = true }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,10 +58,11 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Registrar Workspace</h1>
+            <h1 className="text-xl font-semibold text-slate-900">Registrar workspace</h1>
             <p className="text-sm font-medium text-slate-500 mt-1">Manage enrollment validations and official student records.</p>
           </div>
           <div className="flex items-center gap-3">
+             <PortalRefreshButton />
              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
                <Download className="w-4 h-4" /> Export CSV
              </button>
@@ -113,6 +115,7 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
         {/* Toolbar */}
         <div className="shrink-0 p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
           <div className="flex items-center gap-2">
+            {!showOverview && <PortalRefreshButton />}
             <div className="flex bg-white rounded-md border border-slate-200 p-1 shadow-sm">
               <button 
                 onClick={() => onNavigate('records')}

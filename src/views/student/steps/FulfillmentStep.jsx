@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
-import { CheckCircle, FileDown, Clock, Printer, Home } from 'lucide-react';
+import { CheckCircle, FileDown, Clock, Printer } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ACADEMIC_TERMS, PROGRAMS } from '../../../data/mockData';
+import PortalRefreshButton from '../../../components/PortalRefreshButton';
 
 // Helper to preload the university logo image
 const loadLogo = () => {
@@ -123,12 +124,33 @@ function getEnrollmentDate(student) {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
 }
 
+function getPaymentDate(student) {
+  const value = student?.paymentDetails?.paidAt;
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : 'Not recorded';
+}
+
+function getPaidAmount(student) {
+  const recorded = Number(student?.amountPaid ?? student?.paymentDetails?.amount);
+  if (Number.isFinite(recorded) && recorded > 0) return recorded;
+  return student?.paymentStatus === 'paid' ? Number(student?.totalTuition) || 0 : 0;
+}
+
+function getReceiptNumber(student) {
+  if (student?.receiptNumber) return student.receiptNumber;
+  const sourceId = String(student?.id || '').toUpperCase();
+  const applicationMatch = sourceId.match(/^APP-(\d{4})-(\d+)$/);
+  return applicationMatch
+    ? `OR-${applicationMatch[1]}-${applicationMatch[2].padStart(4, '0')}`
+    : 'Not recorded';
+}
+
 function truncatePdfText(value, maxLength = 24) {
   const text = String(value || '—');
   return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
 }
 
-export default function FulfillmentStep({ onReturnToGateway }) {
+export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
   const { getActiveStudent, getSubjectById } = useEnrollment();
   const student = getActiveStudent();
   const [logoImg, setLogoImg] = useState(null);
@@ -309,7 +331,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
   };
 
   const handleDownloadSchedule = async () => {
-    if (!student) return;
+    if (!student?.studentId) return;
     const scheduleRows = await getDownloadSchedule();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     drawHeader(doc, logoImg, 'Official Class Schedule');
@@ -317,7 +339,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
 
     // Student Info Card
     drawCard(doc, 'Student Information', 15, 60, 180, 22);
-    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
     drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 40);
     drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 125);
     drawLabelValue(doc, 'Status:', student.status.toUpperCase(), 105, 78, 125);
@@ -360,18 +382,18 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     });
 
     drawSeal(doc, 15, rowY + 5, 'SCHEDULE VERIFIED', `DATE: ${new Date().toLocaleDateString()}`);
-    doc.save(`Class_Schedule_${student.id}.pdf`);
+    doc.save(`Class_Schedule_${student.studentId}.pdf`);
   };
 
   const handleDownloadRegForm = async () => {
-    if (!student) return;
+    if (!student?.studentId) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     drawHeader(doc, logoImg, 'Certificate of Registration');
     drawFooter(doc, 1);
 
     // Profile Card
     drawCard(doc, 'Student Profile', 15, 60, 180, 27);
-    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
     drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 79, 40);
     drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 130);
     drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 105, 79, 130);
@@ -485,20 +507,20 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(15, 23, 42);
     doc.text('UNIVERSITY REGISTRAR', 157.5, sigY + 16, { align: 'center' });
 
-    doc.save(`COR_${student.id}.pdf`);
+    doc.save(`COR_${student.studentId}.pdf`);
   };
 
   const handleDownloadReceipt = async () => {
-    if (!student) return;
+    if (!student?.studentId) return;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     drawHeader(doc, logoImg, 'Official Payment Receipt');
     drawFooter(doc, 1);
 
     // Transaction Card
     drawCard(doc, 'Payment & Transaction Info', 15, 60, 180, 22);
-    drawLabelValue(doc, 'Receipt No:', `OR-${Math.floor(100000 + Math.random() * 900000)}`, 20, 73, 45);
-    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 78, 45);
-    drawLabelValue(doc, 'Date:', new Date().toLocaleDateString(), 105, 73, 135);
+    drawLabelValue(doc, 'Receipt No:', getReceiptNumber(student), 20, 73, 45);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 78, 45);
+    drawLabelValue(doc, 'Payment Date:', getPaymentDate(student), 105, 73, 135);
     drawLabelValue(doc, 'Method:', (student.paymentMethod || 'N/A').toUpperCase(), 105, 78, 135);
 
     // Badge
@@ -507,7 +529,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(6);
     doc.setFont('Helvetica', 'bold');
-    doc.text('PAID / CLEARED', 177.5, 67, { align: 'center' });
+    doc.text(student.paymentStatus === 'paid' ? 'PAID IN FULL' : 'PAYMENT RECEIVED', 177.5, 67, { align: 'center' });
 
     // Breakdown Card
     const { tuition, misc } = partitionFees(student.tuitionBreakdown);
@@ -552,8 +574,22 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(6, 78, 59); // emerald-900
-    doc.text('TOTAL AMOUNT PAID', 20, fy + 6);
-    doc.text(formatCurrency(student.totalTuition), 185, fy + 6, { align: 'right' });
+    doc.text('AMOUNT RECEIVED', 20, fy + 6);
+    doc.text(formatCurrency(getPaidAmount(student)), 185, fy + 6, { align: 'right' });
+
+    fy += 10;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(15, fy, 180, 14, 'F');
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(7.5);
+    doc.text('TOTAL ASSESSMENT', 20, fy + 5);
+    doc.text(formatCurrency(student.totalTuition), 185, fy + 5, { align: 'right' });
+    doc.text('REMAINING BALANCE', 20, fy + 10.5);
+    doc.text(formatCurrency(student.remainingBalance || 0), 185, fy + 10.5, { align: 'right' });
+    if (student.paymentReference) {
+      doc.text(`REFERENCE: ${student.paymentReference}`, 20, fy + 18);
+      fy += 7;
+    }
 
     // Sig
     let sigY = fy + 22;
@@ -564,7 +600,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
       sigY = 60;
     }
 
-    drawSeal(doc, 15, sigY, 'FINANCE CLEARANCE', 'NCST ACCOUNTING OFFICE');
+    drawSeal(doc, 15, sigY, 'PAYMENT VERIFIED', 'NCST ACCOUNTING OFFICE');
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8);
@@ -575,13 +611,13 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(100, 116, 139);
     doc.text('Chief Cashier, NCST Finance', 157.5, sigY + 19, { align: 'center' });
 
-    doc.save(`Official_Receipt_${student.id}.pdf`);
+    doc.save(`Official_Receipt_${student.studentId}.pdf`);
   };
 
   const handleDownloadAllCombined = async () => {
     // Generate them sequentially to avoid a massive blob, but for this requested feature,
     // we'll combine them all using the updated styles.
-    if (!student) return;
+    if (!student?.studentId) return;
     const scheduleRows = await getDownloadSchedule();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     let pageNum = 1;
@@ -592,7 +628,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     
     // Copy COR generation code exactly
     drawCard(doc, 'Student Profile', 15, 60, 180, 27);
-    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
     drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 79, 40);
     drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 130);
     drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 105, 79, 130);
@@ -637,7 +673,56 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.text('TOTAL UNITS:', 130, rowY + 4);
     doc.text(String(totalUnits), 160, rowY + 4, { align: 'center' });
 
-    let sigY = rowY + 15;
+    let corFeesY = rowY + 10;
+    const { tuition: corTuition, misc: corMisc } = partitionFees(student.tuitionBreakdown);
+    const corCardHeight = 10 + (corTuition.length * 6.5) + 10 + (corMisc.length * 6.5) + 12;
+    if (corFeesY + corCardHeight > 250) {
+      doc.addPage();
+      drawHeader(doc, logoImg, 'Certificate of Registration');
+      drawFooter(doc, pageNum++);
+      corFeesY = 60;
+    }
+
+    drawCard(doc, 'Assessment Summary', 15, corFeesY, 180, corCardHeight);
+    let corFy = corFeesY + 13;
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('TUITION & SUBJECT FEES', 20, corFy);
+    corFy += 5.5;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    corTuition.forEach(item => {
+      doc.text(item.label, 25, corFy);
+      doc.text(formatCurrency(item.amount), 185, corFy, { align: 'right' });
+      corFy += 6.5;
+    });
+
+    corFy += 3.5;
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('MISCELLANEOUS FEES', 20, corFy);
+    corFy += 5.5;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    corMisc.forEach(item => {
+      doc.text(item.label, 25, corFy);
+      doc.text(formatCurrency(item.amount), 185, corFy, { align: 'right' });
+      corFy += 6.5;
+    });
+
+    corFy += 1.5;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(15, corFy, 180, 8, 'F');
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('TOTAL ASSESSMENT', 20, corFy + 5.5);
+    doc.text(formatCurrency(student.totalTuition), 185, corFy + 5.5, { align: 'right' });
+
+    let sigY = corFy + 20;
     if (sigY > 260) {
       doc.addPage();
       drawHeader(doc, logoImg, 'Certificate of Registration');
@@ -655,9 +740,9 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     drawFooter(doc, pageNum++);
 
     drawCard(doc, 'Payment & Transaction Info', 15, 60, 180, 22);
-    drawLabelValue(doc, 'Receipt No:', `OR-${Math.floor(100000 + Math.random() * 900000)}`, 20, 73, 45);
-    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 78, 45);
-    drawLabelValue(doc, 'Date:', new Date().toLocaleDateString(), 105, 73, 135);
+    drawLabelValue(doc, 'Receipt No:', getReceiptNumber(student), 20, 73, 45);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 78, 45);
+    drawLabelValue(doc, 'Payment Date:', getPaymentDate(student), 105, 73, 135);
     drawLabelValue(doc, 'Method:', (student.paymentMethod || 'N/A').toUpperCase(), 105, 78, 135);
 
     doc.setFillColor(16, 185, 129);
@@ -665,7 +750,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(6);
     doc.setFont('Helvetica', 'bold');
-    doc.text('PAID / CLEARED', 177.5, 67, { align: 'center' });
+    doc.text(student.paymentStatus === 'paid' ? 'PAID IN FULL' : 'PAYMENT RECEIVED', 177.5, 67, { align: 'center' });
 
     const { tuition, misc } = partitionFees(student.tuitionBreakdown);
     const cardHeight = 10 + (tuition.length * 6.5) + 10 + (misc.length * 6.5) + 12;
@@ -709,8 +794,22 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(6, 78, 59);
-    doc.text('TOTAL AMOUNT PAID', 20, fy + 6);
-    doc.text(formatCurrency(student.totalTuition), 185, fy + 6, { align: 'right' });
+    doc.text('AMOUNT RECEIVED', 20, fy + 6);
+    doc.text(formatCurrency(getPaidAmount(student)), 185, fy + 6, { align: 'right' });
+
+    fy += 10;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(15, fy, 180, 14, 'F');
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(7.5);
+    doc.text('TOTAL ASSESSMENT', 20, fy + 5);
+    doc.text(formatCurrency(student.totalTuition), 185, fy + 5, { align: 'right' });
+    doc.text('REMAINING BALANCE', 20, fy + 10.5);
+    doc.text(formatCurrency(student.remainingBalance || 0), 185, fy + 10.5, { align: 'right' });
+    if (student.paymentReference) {
+      doc.text(`REFERENCE: ${student.paymentReference}`, 20, fy + 18);
+      fy += 7;
+    }
 
     sigY = fy + 22;
     if (sigY > 260) {
@@ -720,7 +819,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
       sigY = 60;
     }
 
-    drawSeal(doc, 15, sigY, 'FINANCE CLEARANCE', 'NCST ACCOUNTING OFFICE');
+    drawSeal(doc, 15, sigY, 'PAYMENT VERIFIED', 'NCST ACCOUNTING OFFICE');
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8);
@@ -733,7 +832,7 @@ export default function FulfillmentStep({ onReturnToGateway }) {
     drawFooter(doc, pageNum++);
 
     drawCard(doc, 'Student Information', 15, 60, 180, 22);
-    drawLabelValue(doc, 'Student ID:', student.studentId || student.id, 20, 73, 40);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
     drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 40);
     drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 125);
     drawLabelValue(doc, 'Status:', student.status.toUpperCase(), 105, 78, 125);
@@ -775,59 +874,49 @@ export default function FulfillmentStep({ onReturnToGateway }) {
 
     drawSeal(doc, 15, sRowY + 5, 'SCHEDULE VERIFIED', `DATE: ${new Date().toLocaleDateString()}`);
 
-    doc.save(`Enrollment_Documents_${student.id}.pdf`);
+    doc.save(`Enrollment_Documents_${student.studentId}.pdf`);
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${!isEnrolled ? 'w-full max-w-2xl' : ''}`}>
       {!isEnrolled ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-6 shadow-premium">
-          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto shadow-sm animate-pulse border border-univ-gold/10">
-            <Clock className="h-8 w-8 text-univ-gold" />
+        <div className="w-full rounded-lg border border-slate-200 bg-white p-6">
+          <div className="flex items-start gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <Clock className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-xl font-semibold text-univ-navy">
+                {student?.status === 'payment_pending' ? 'Awaiting accounting verification' : 'Awaiting registrar confirmation'}
+              </h2>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-slate-500">
+                {student?.status === 'payment_pending'
+                  ? 'Accounting is reviewing your payment. This page will update when verification is complete.'
+                  : 'Payment is verified. The Registrar is reviewing your enrollment. This page will update when validation is complete.'}
+              </p>
+              <p className="mt-4 text-xs font-medium text-slate-500">
+                {student?.status === 'payment_pending'
+                  ? 'Next: Accounting verifies your payment, then the Registrar validates your enrollment.'
+                  : 'Next: The Registrar validates your enrollment and releases your registration documents.'}
+              </p>
+            </div>
           </div>
-          
-          {student?.status === 'payment_pending' ? (
-            <>
-              <h2 className="text-xl font-extrabold text-univ-navy">Awaiting Accounting Verification</h2>
-              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
-                Your payment details have been submitted to the Accounting department. We are currently verifying your transaction. Once cleared, your application will proceed to the Office of the Registrar.
-              </p>
-              <div className="bg-amber-50 border border-univ-gold/20 text-univ-gold text-[10px] font-bold px-5 py-2.5 rounded-xl max-w-sm mx-auto shadow-sm uppercase tracking-wider">
-                Status: Payment Clearance Pending
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl font-extrabold text-univ-navy">Awaiting Registrar Confirmation</h2>
-              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
-                Your payment is verified. Your registration details and documents are now under review by the Office of the Registrar for final validation and enrollment confirmation.
-              </p>
-              <div className="bg-amber-50 border border-univ-gold/20 text-univ-gold text-[10px] font-bold px-5 py-2.5 rounded-xl max-w-sm mx-auto shadow-sm uppercase tracking-wider">
-                Status: Registrar Approval Pending
-              </div>
-            </>
-          )}
-
-          <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl max-w-md mx-auto text-center">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Office Action Required</p>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Our administrative staff is reviewing your application. You will be notified automatically on this page as soon as your enrollment is officially confirmed.
-            </p>
+          <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+            <span className="text-xs text-slate-400">Status updates automatically.</span>
+            <PortalRefreshButton variant="text" onRefresh={onRefresh} />
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Header Banner */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-6 shadow-premium">
-            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto shadow-sm border border-emerald-100/50">
-              <CheckCircle className="h-10 w-10 text-emerald-500 stroke-[2]" />
+          <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-5">
+            <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <div>
+              <h2 className="text-sm font-semibold text-univ-navy">Enrollment complete</h2>
+              <p className="mt-1 max-w-2xl text-xs font-medium leading-relaxed text-slate-600">
+                Your registration records were verified by the Registrar. You are officially enrolled for the upcoming semester.
+              </p>
             </div>
-            <h2 className="text-2xl font-extrabold text-univ-navy">Enrollment Complete!</h2>
-            <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed font-medium">
-              Congratulations! Your official registration records have been verified by the Registrar. You are now officially enrolled for the upcoming academic semester at NCST.
-            </p>
- 
-            
           </div>
 
           {/* Individual Document Downloads */}
@@ -897,10 +986,9 @@ export default function FulfillmentStep({ onReturnToGateway }) {
           <div className="text-center pt-2">
             <button
               onClick={onReturnToGateway}
-              className="inline-flex items-center gap-2 px-6 py-3 text-xs font-bold text-slate-500 hover:text-univ-navy bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all duration-200 shadow-sm cursor-pointer"
+              className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-univ-navy cursor-pointer"
             >
-              <Home className="h-4 w-4" />
-              Return to Login Page
+              Return to login
             </button>
           </div>
         </div>

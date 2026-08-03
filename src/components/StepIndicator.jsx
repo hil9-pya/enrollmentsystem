@@ -14,85 +14,62 @@ const STEPS = [
 export { STEPS };
 
 export default function StepIndicator({ currentStep, completedSteps = [], onStepClick, allCompleted = false, steps = STEPS }) {
-  const currentIndex = steps.findIndex((s) => s.key === currentStep);
+  const currentIndex = steps.findIndex((step) => step.key === currentStep);
   const canClickSteps = typeof onStepClick === 'function';
-
   return (
-    <nav className="flex flex-col gap-1">
-      {steps.map((step, index) => {
+    <nav aria-label="Enrollment progress" className="w-full">
+      <ol>
+        {steps.map((step, index) => {
+          const isCompleted = allCompleted || completedSteps.includes(step.key);
+          const isCurrent = step.key === currentStep;
+          const isPast = index < currentIndex;
+          const canOpen = canClickSteps && (isCurrent || isPast || isCompleted);
+          const isFinalConfirmation = allCompleted && isCurrent;
+          const showCompletedMarker = isCompleted && !isCurrent;
 
-        const isCompleted = completedSteps.includes(step.key);
-        const isCurrent = step.key === currentStep;
-        const isPast = index < currentIndex;
-        const canOpen = canClickSteps && (isCurrent || isPast || isCompleted);
-
-        // When allCompleted (enrolled), every step is completed
-        const isFullyDone = allCompleted || isCompleted;
-
-        return (
-          <button
-            key={step.key}
-            type="button"
-            onClick={() => canOpen && onStepClick(step.key)}
-            disabled={!canOpen}
-            aria-current={isCurrent ? 'step' : undefined}
-            className={`flex w-full items-center gap-3.5 p-3 rounded-xl border transition-all duration-200 text-left ${
-              isCurrent && !allCompleted
-                ? 'bg-white shadow-premium border-slate-200 text-univ-navy ring-1 ring-slate-100'
-                : isCurrent && allCompleted
-                ? 'bg-emerald-50/50 shadow-premium border-emerald-200/60 text-univ-navy ring-1 ring-emerald-100/50'
-                : canOpen
-                ? 'bg-transparent border-transparent hover:bg-slate-100/50 cursor-pointer text-slate-700'
-                : 'bg-transparent border-transparent opacity-45 cursor-not-allowed text-slate-400'
-            }`}
-            title={canOpen ? `Open ${step.label}` : `${step.label} is not available yet`}
-          >
-            {/* Connector + Circle */}
-            <div className="flex items-center justify-center shrink-0">
-              <div
-                className={`w-7.5 h-7.5 rounded-full flex items-center justify-center border-2 text-xs font-bold transition-all duration-200 ${
-                  allCompleted
-                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
-                    : isCompleted
-                    ? 'bg-univ-blue border-univ-blue text-white shadow-sm'
-                    : isCurrent
-                    ? 'bg-univ-gold border-univ-gold text-univ-navy shadow-sm'
-                    : 'border-slate-200 text-slate-400 bg-slate-50'
-                }`}
-              >
-                {allCompleted || isCompleted ? (
-                  <Check className="h-4 w-4 stroke-[3]" />
-                ) : (
-                  index + 1
-                )}
-              </div>
-            </div>
-            {/* Label & Status Info */}
-            <div className="flex flex-col">
-              <span
-                className={`text-xs tracking-wide transition-colors ${
+          return (
+            <li key={step.key} className="relative min-h-16 last:min-h-0">
+              {index < steps.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className={`absolute left-[13px] top-7 bottom-0 w-px ${isCompleted ? 'bg-univ-blue/60' : 'bg-slate-200'}`}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => canOpen && onStepClick(step.key)}
+                disabled={!canOpen}
+                aria-current={isCurrent ? 'step' : undefined}
+                className={`relative flex w-full items-center gap-3 text-left transition-colors ${
                   isCurrent
-                    ? 'font-extrabold text-univ-navy'
-                    : isPast || isCompleted || allCompleted
-                    ? 'font-bold text-slate-700'
-                    : 'font-medium text-slate-400'
+                    ? 'text-univ-navy'
+                    : canOpen
+                    ? 'text-slate-600 hover:text-univ-navy cursor-pointer'
+                    : 'text-slate-400 cursor-not-allowed'
                 }`}
+                title={canOpen ? `Open ${step.label}` : `${step.label} is not available yet`}
               >
-                {step.label}
-              </span>
-              {isCurrent && !allCompleted && (
-                <span className="text-[9px] text-univ-gold font-bold uppercase tracking-wider mt-0.5 animate-pulse">Active Step</span>
-              )}
-              {isCurrent && allCompleted && (
-                <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">✓ Completed</span>
-              )}
-              {(isFullyDone || isCompleted) && !isCurrent && (
-                <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">Completed</span>
-              )}
-            </div>
-          </button>
-        );
-      })}
+                <span
+                  className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    isFinalConfirmation
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : showCompletedMarker
+                      ? 'bg-univ-blue text-white'
+                      : isCurrent
+                      ? 'border-2 border-white bg-univ-blue text-white ring-2 ring-univ-blue/35'
+                      : 'bg-slate-200 text-slate-500'
+                  }`}
+                >
+                  {isFinalConfirmation || showCompletedMarker ? <Check className="h-3.5 w-3.5 stroke-[2.5]" /> : index + 1}
+                </span>
+                <span className={`text-sm ${isCurrent ? 'font-bold text-univ-navy' : isCompleted ? 'font-medium text-slate-600' : 'font-medium text-slate-400'}`}>
+                  {step.label}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
     </nav>
   );
 }

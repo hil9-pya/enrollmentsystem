@@ -21,7 +21,7 @@ export default function EnrollmentTypeStep({ onNext }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
-      <h1 className="text-xl font-extrabold text-univ-navy">Select Enrollment Type</h1>
+      <h1 className="text-xl font-semibold text-univ-navy">Select enrollment type</h1>
       <p className="text-xs text-slate-500 mt-1 mb-8 leading-relaxed font-medium">
         Please select the category that matches your current enrollment status at NCST.
       </p>

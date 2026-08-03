@@ -172,9 +172,9 @@ export default function PaymongoCheckoutView() {
           <p className="text-slate-500 text-sm leading-relaxed mb-6">{error}</p>
           <button
             onClick={() => (window.location.href = '/?portal=student')}
-            className="w-full py-3 bg-[#0d1e3d] text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
+            className="w-full rounded-lg bg-[#0d1e3d] px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-slate-800"
           >
-            Return to Student Portal
+            Return to student portal
           </button>
         </div>
       </div>
@@ -445,10 +445,10 @@ export default function PaymongoCheckoutView() {
             <button
               type="submit"
               disabled={isPaying || sessionData.status === 'paid'}
-              className={`w-full py-4 text-xs font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-md mt-6 cursor-pointer flex items-center justify-center gap-2 ${
+              className={`mt-6 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-xs font-bold transition-colors cursor-pointer ${
                 sessionData.status === 'paid'
                   ? 'bg-emerald-500 text-white cursor-not-allowed'
-                  : 'bg-[#3b82f6] text-white hover:bg-blue-600 shadow-blue-500/10 hover:shadow-lg'
+                  : 'bg-[#3b82f6] text-white hover:bg-blue-600'
               }`}
             >
               {isPaying ? (
@@ -459,10 +459,10 @@ export default function PaymongoCheckoutView() {
               ) : sessionData.status === 'paid' ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-white" />
-                  Already Settled
+                  Payment complete
                 </>
               ) : (
-                `Authorize ₱${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                `Pay ₱${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
               )}
             </button>
           </form>

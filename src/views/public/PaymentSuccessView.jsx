@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
-import { CheckCircle, ArrowRight, Loader2, FileText, ShieldCheck } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 export default function PaymentSuccessView() {
   const { dispatch, setActiveStudent } = useEnrollment();
@@ -90,9 +90,9 @@ export default function PaymentSuccessView() {
           <p className="text-slate-500 text-sm leading-relaxed mb-6">{error}</p>
           <button
             onClick={() => (window.location.href = '/?portal=student')}
-            className="w-full py-3 bg-[#0d1e3d] text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
+            className="w-full rounded-lg bg-[#0d1e3d] px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-slate-800"
           >
-            Return to Student Portal
+            Return to student portal
           </button>
         </div>
       </div>
@@ -102,94 +102,66 @@ export default function PaymentSuccessView() {
   const amountPaid = verifiedStudent?.paymentDetails?.amount || verifiedStudent?.totalTuition || 0;
 
   return (
-    <div className="min-h-screen w-full bg-[#f4f6fb] flex flex-col items-center justify-center p-6 font-sans">
-      <div className="bg-white max-w-lg w-full rounded-3xl border border-slate-200/80 shadow-premium p-8 sm:p-10 text-center animate-in fade-in zoom-in duration-300">
-        
-        {/* Animated Check Banner */}
-        <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-100 shadow-inner">
-          <CheckCircle className="w-10 h-10 text-emerald-500 animate-pulse" />
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#f4f6fb] p-6 font-sans">
+      <div className="w-full max-w-lg animate-in rounded-xl border border-slate-200 bg-white p-6 shadow-sm fade-in duration-300 sm:p-8">
+        <div className="flex items-start gap-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <CheckCircle className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-xl font-semibold text-[#0d1e3d]">Payment received</h2>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-slate-500">
+              Payment is verified. Enrollment now awaits final validation by the Registrar.
+            </p>
+          </div>
         </div>
 
-        <span className="text-[10px] font-extrabold tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase">
-          Online Payment Confirmed
-        </span>
-
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0d1e3d] mt-4 mb-2 tracking-tight">
-          Payment Received!
-        </h2>
-        <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto leading-relaxed font-medium">
-          Your payment has been processed and verified. Your enrollment is awaiting final validation by the Registrar.
-        </p>
-
-        {/* Receipt Details Card */}
-        <div className="bg-[#f8fafc] border border-slate-200/50 rounded-2xl p-6 text-left my-8 space-y-4">
-          <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/50 pb-2.5">
-            Official Receipt Summary
-          </h4>
-          
-          <div className="grid grid-cols-2 gap-y-3.5 gap-x-4 text-xs">
-            <div>
-              <p className="text-slate-400 font-medium">Student Name</p>
-              <p className="font-extrabold text-[#0d1e3d]">{verifiedStudent?.firstName} {verifiedStudent?.lastName}</p>
+        <section className="mt-6" aria-labelledby="receipt-details-title">
+          <h3 id="receipt-details-title" className="text-sm font-semibold text-[#0d1e3d]">Receipt details</h3>
+          <dl className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 px-4 text-sm">
+            <div className="flex items-start justify-between gap-6 py-3">
+              <dt className="text-slate-500">Student</dt>
+              <dd className="text-right font-medium text-[#0d1e3d]">{verifiedStudent?.firstName} {verifiedStudent?.lastName}</dd>
             </div>
-            <div>
-              <p className="text-slate-400 font-medium">Application ID</p>
-              <p className="font-mono font-extrabold text-[#0d1e3d]">{verifiedStudent?.id || 'N/A'}</p>
+            <div className="flex items-start justify-between gap-6 py-3">
+              <dt className="text-slate-500">Application ID</dt>
+              <dd className="font-mono text-right font-medium text-[#0d1e3d]">{verifiedStudent?.id || 'N/A'}</dd>
             </div>
-            <div>
-              <p className="text-slate-400 font-medium">Payment Reference</p>
-              <p className="font-mono font-extrabold text-[#0d1e3d]">{verifiedStudent?.paymentReference || verifiedStudent?.paymentDetails?.referenceCode || 'N/A'}</p>
+            <div className="flex items-start justify-between gap-6 py-3">
+              <dt className="text-slate-500">Payment reference</dt>
+              <dd className="break-all font-mono text-right font-medium text-[#0d1e3d]">{verifiedStudent?.paymentReference || verifiedStudent?.paymentDetails?.referenceCode || 'N/A'}</dd>
             </div>
-            <div>
-              <p className="text-slate-400 font-medium">Amount Paid</p>
-              <p className="font-mono font-extrabold text-emerald-600">
-                ₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </p>
+            <div className="flex items-start justify-between gap-6 py-3">
+              <dt className="text-slate-500">Amount paid</dt>
+              <dd className="font-mono text-right font-semibold text-emerald-700">₱{amountPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</dd>
             </div>
-            <div>
-              <p className="text-slate-400 font-medium">Payment Method</p>
-              <p className="font-extrabold text-[#0d1e3d] uppercase">
-                {verifiedStudent?.paymentDetails?.paymentMethod || verifiedStudent?.paymentMethod || 'PayMongo Online'}
-              </p>
+            <div className="flex items-start justify-between gap-6 py-3">
+              <dt className="text-slate-500">Payment method</dt>
+              <dd className="text-right font-medium text-[#0d1e3d]">{verifiedStudent?.paymentDetails?.paymentMethod || verifiedStudent?.paymentMethod || 'PayMongo online'}</dd>
             </div>
-            <div>
-              <p className="text-slate-400 font-medium">Transaction Date</p>
-              <p className="font-extrabold text-[#0d1e3d]">
-                {verifiedStudent?.paymentDetails?.paidAt 
+            <div className="flex items-start justify-between gap-6 py-3">
+              <dt className="text-slate-500">Transaction date</dt>
+              <dd className="text-right font-medium text-[#0d1e3d]">
+                {verifiedStudent?.paymentDetails?.paidAt
                   ? new Date(verifiedStudent.paymentDetails.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                }
-              </p>
+                  : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </dd>
             </div>
-          </div>
+          </dl>
+          <p className="mt-3 text-xs text-slate-500">Payment processed securely by PayMongo.</p>
+        </section>
 
-          <div className="border-t border-slate-200/60 pt-4 flex items-center justify-between text-[11px] text-slate-500 font-semibold leading-relaxed">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-[#3b82f6]" />
-              Secured by PayMongo
-            </span>
-            <span className="flex items-center gap-1.5 text-slate-400">
-              <FileText className="w-3.5 h-3.5" />
-              Payment Recorded
-            </span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-3">
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 border-t border-slate-100 pt-5 sm:flex-row sm:items-center">
+          <p className="max-w-xs text-xs leading-relaxed text-slate-500">
+            Registration documents and receipt will be available in the student portal.
+          </p>
           <button
             onClick={handleContinue}
-            className="w-full py-4 px-6 bg-[#0d1e3d] hover:bg-slate-800 text-white text-xs font-extrabold uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-slate-900/10 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2 group"
+            className="shrink-0 rounded-lg bg-[#0d1e3d] px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-slate-800 cursor-pointer"
           >
-            Go to Student Dashboard
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            Go to student portal
           </button>
-          
-          <p className="text-[10px] text-slate-400 font-medium">
-            A copy of your Certificate of Registration (COR) and receipt will be available on your portal.
-          </p>
         </div>
-
       </div>
     </div>
   );

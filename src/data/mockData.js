@@ -492,6 +492,8 @@ export const STATUS_CONFIG = {
   enrollment_pending:   { label: 'Subject Enrollment', color: 'indigo' },
   payment_pending:      { label: 'Payment Pending', color: 'amber' },
   payment_confirmed:    { label: 'Payment Confirmed', color: 'emerald' },
+  partial:              { label: 'Downpayment Confirmed', color: 'emerald' },
+  paid:                 { label: 'Fully Paid', color: 'emerald' },
   validation_pending:   { label: 'Pending Validation', color: 'amber' },
   enrolled:             { label: 'Enrolled', color: 'emerald' },
 };

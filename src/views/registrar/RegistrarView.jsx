@@ -53,13 +53,13 @@ export default function RegistrarView() {
       case 'export':
         return (
           <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-extrabold text-univ-navy">Export Records</h1>
+            <h1 className="text-xl font-semibold text-univ-navy">Export records</h1>
             <p className="text-slate-500 font-medium mt-2">Export functionality is available from the Data Grid.</p>
             <button 
               onClick={() => handleTabChange('records')}
-              className="mt-4 px-4 py-2 bg-univ-blue text-white font-bold rounded-lg cursor-pointer"
+              className="mt-4 rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"
             >
-              Go to Data Grid
+              Open data grid
             </button>
           </div>
         );
@@ -67,7 +67,7 @@ export default function RegistrarView() {
       case 'settings':
         return (
           <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-extrabold text-univ-navy">Settings</h1>
+            <h1 className="text-xl font-semibold text-univ-navy">Settings</h1>
             <p className="text-slate-500 font-medium mt-2">Registrar settings are currently managed by the System Admin.</p>
           </div>
         );

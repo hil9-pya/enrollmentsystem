@@ -367,7 +367,7 @@ export default function RegistrationStep({ onNext, onBack }) {
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-premium">
-      <h1 className="text-2xl font-heading font-extrabold text-univ-navy mb-1">Student Registration</h1>
+      <h1 className="mb-1 text-xl font-semibold text-univ-navy">Student registration</h1>
       <p className="text-sm text-slate-500 mb-8 font-medium">
         Please fill in your correct personal details below.
       </p>
@@ -630,7 +630,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm"
+          className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
         >
           Back
         </button>
@@ -638,9 +638,9 @@ export default function RegistrationStep({ onNext, onBack }) {
           type="button"
           onClick={otpSent ? handleVerifyOtp : handleNext}
           disabled={isEmailAction}
-          className="px-8 py-3 rounded-xl text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 disabled:bg-slate-400 transition-all shadow-md shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+          className="rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:bg-slate-400 cursor-pointer"
         >
-          {isEmailAction ? 'Please wait...' : otpSent ? 'Verify & Continue' : 'Send Verification Code'}
+          {isEmailAction ? 'Please wait...' : otpSent ? 'Verify and continue' : 'Send verification code'}
         </button>
       </div>
     </div>

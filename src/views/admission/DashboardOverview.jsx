@@ -3,6 +3,7 @@ import { ArrowRight, Inbox, Activity, CheckCircle, Clock } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function DashboardOverview({ students, onNavigate }) {
   const metrics = useMemo(() => {
@@ -30,9 +31,10 @@ export default function DashboardOverview({ students, onNavigate }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Overview of applicant pipeline and recent activity.</p>
         </div>
+        <PortalRefreshButton />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -54,8 +56,8 @@ export default function DashboardOverview({ students, onNavigate }) {
                   </span>
                   <span className="text-xs font-semibold text-indigo-200 uppercase tracking-wider">Action Required</span>
                 </div>
-                <h2 className="text-2xl font-bold">
-                  {metrics.pendingReview.length} Applications Ready
+                <h2 className="text-xl font-semibold">
+                  {metrics.pendingReview.length} applications ready
                 </h2>
                 <p className="text-sm text-indigo-100/70 mt-1">
                   Documents submitted and waiting for verification.

@@ -44,41 +44,37 @@ export function ConfirmationProvider({ children }) {
     switch (modalState.type) {
       case 'success':
         return (
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center border border-emerald-100/50 shadow-sm mb-2">
-            <CheckCircle className="w-6 h-6 stroke-[2]" />
-          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <CheckCircle className="h-4.5 w-4.5 stroke-[2]" />
+          </span>
         );
       case 'warning':
         return (
-          <div className="w-12 h-12 bg-amber-50 text-univ-gold rounded-full flex items-center justify-center border border-univ-gold/20 shadow-sm mb-2 animate-pulse">
-            <AlertTriangle className="w-6 h-6 stroke-[2]" />
-          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+            <AlertTriangle className="h-4.5 w-4.5 stroke-[2]" />
+          </span>
         );
       case 'danger':
         return (
-          <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center border border-rose-100/50 shadow-sm mb-2">
-            <AlertTriangle className="w-6 h-6 stroke-[2]" />
-          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+            <AlertTriangle className="h-4.5 w-4.5 stroke-[2]" />
+          </span>
         );
       default:
         return (
-          <div className="w-12 h-12 bg-indigo-50 text-univ-indigo rounded-full flex items-center justify-center border border-indigo-100/50 shadow-sm mb-2">
-            <HelpCircle className="w-6 h-6 stroke-[2]" />
-          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-univ-indigo">
+            <HelpCircle className="h-4.5 w-4.5 stroke-[2]" />
+          </span>
         );
     }
   };
 
   const getConfirmButtonClass = () => {
     switch (modalState.type) {
-      case 'success':
-        return 'bg-emerald-600 hover:bg-emerald-700 text-white';
       case 'danger':
         return 'bg-rose-600 hover:bg-rose-700 text-white';
-      case 'warning':
-        return 'bg-univ-gold hover:bg-amber-600 text-white';
       default:
-        return 'bg-univ-indigo hover:bg-univ-blue text-white';
+        return 'bg-univ-blue hover:bg-blue-700 text-white';
     }
   };
 
@@ -86,23 +82,30 @@ export function ConfirmationProvider({ children }) {
     <ConfirmationContext.Provider value={{ confirm }}>
       {children}
       {modalState.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-premium max-w-sm w-full mx-4 p-6 flex flex-col items-center text-center space-y-4">
-            {renderIcon()}
-            <div className="space-y-1.5">
-              <h3 className="text-xs font-extrabold text-univ-navy uppercase tracking-wider">{modalState.title}</h3>
-              <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{modalState.message}</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/55 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmation-title"
+            className="mx-4 w-full max-w-sm rounded-xl border border-slate-200 bg-white p-5 shadow-xl"
+          >
+            <div className="flex items-start gap-3">
+              {renderIcon()}
+              <div className="min-w-0 pt-0.5">
+                <h3 id="confirmation-title" className="text-sm font-semibold text-univ-navy">{modalState.title}</h3>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{modalState.message}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 w-full pt-2">
+            <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 onClick={handleCancel}
-                className="flex-1 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-350 transition-all cursor-pointer shadow-sm"
+                className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
               >
                 {modalState.cancelText}
               </button>
               <button
                 onClick={handleConfirm}
-                className={`flex-1 px-4 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer shadow-sm ${getConfirmButtonClass()}`}
+                className={`min-w-24 rounded-lg px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer ${getConfirmButtonClass()}`}
               >
                 {modalState.confirmText}
               </button>

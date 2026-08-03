@@ -21,6 +21,7 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
 
   const status = student?.status || 'registration';
   const isApproved = ['advising_approved', 'enrollment_pending', 'payment_pending', 'payment_confirmed', 'validation_pending', 'enrolled'].includes(status);
+  const isAutoClearedFreshman = student?.enrollmentType === 'new' && isApproved;
   const passedSubjectIds = new Set(
     (student?.academicRecord || [])
       .filter((record) => Number(record.grade) <= 3.0)
@@ -52,9 +53,11 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-premium">
-        <h2 className="text-xl font-extrabold text-univ-navy mb-1.5">Course Evaluation &amp; Eligibility</h2>
+        <h2 className="mb-1.5 text-xl font-semibold text-univ-navy">Course evaluation and eligibility</h2>
         <p className="text-xs text-slate-500 mb-8 leading-relaxed font-medium">
-          Your program requirements and academic eligibility are reviewed by an Academic Adviser before subject selection.
+          {student?.enrollmentType === 'new'
+            ? 'Your prescribed first-year curriculum is automatically prepared from your selected program.'
+            : 'Your program requirements and academic eligibility are reviewed by an Academic Adviser before subject selection.'}
         </p>
  
         {/* Status Indicator */}
@@ -107,9 +110,13 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
           <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200/50 rounded-xl p-4.5 mb-6">
             <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Eligibility Approved</h3>
+              <h3 className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                {isAutoClearedFreshman ? 'Prescribed Curriculum Cleared' : 'Eligibility Approved'}
+              </h3>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Your eligibility has been officially approved by the Academic Adviser. You can now proceed to subject enrollment.
+                {isAutoClearedFreshman
+                  ? 'As a regular freshman, you may proceed directly to section selection for your prescribed subjects. Adviser approval is only needed for exceptions or requested changes.'
+                  : 'Your eligibility has been officially approved by the Academic Adviser. You can now proceed to subject enrollment.'}
               </p>
               {student.adviserNotes && (
                 <div className="mt-3 text-xs text-emerald-800 border-t border-emerald-100 pt-3">
@@ -202,7 +209,7 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
       <div className="flex justify-between items-center mt-8 border-t border-slate-100 pt-6">
         <button
           onClick={onBack}
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-all cursor-pointer"
+          className="min-w-24 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 rounded-lg transition-colors cursor-pointer"
         >
           Back
         </button>
@@ -210,7 +217,7 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
         {status === 'advising_rejected' ? (
           <button
             onClick={handleRequestReevaluation}
-            className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer bg-univ-indigo text-white hover:bg-univ-blue"
+            className="min-w-24 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer bg-univ-blue text-white hover:bg-blue-700"
           >
             Request Re-evaluation
           </button>
@@ -218,13 +225,19 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
           <button
             onClick={onNext}
             disabled={!isApproved || !program}
-            className={`flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg transition-all shadow-sm cursor-pointer ${
+            className={`min-w-24 px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
               isApproved && program
-                ? 'bg-univ-indigo text-white hover:bg-univ-blue'
+                ? 'bg-univ-blue text-white hover:bg-blue-700'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
-            {!program ? 'Program Selection Required' : isApproved ? 'Proceed to Subject Enrollment' : 'Awaiting Adviser Approval'}
+            {!program
+              ? 'Program Selection Required'
+              : isApproved
+              ? 'Proceed'
+              : student?.enrollmentType === 'new'
+              ? 'Preparing Prescribed Curriculum'
+              : 'Awaiting Adviser Approval'}
           </button>
         )}
       </div>

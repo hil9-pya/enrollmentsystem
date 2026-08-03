@@ -45,7 +45,7 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-premium">
-      <h1 className="text-xl font-extrabold text-univ-navy">Program Selection</h1>
+      <h1 className="text-xl font-semibold text-univ-navy">Program selection</h1>
       <p className="text-xs text-slate-500 mt-1 mb-8 leading-relaxed font-medium">
         Choose your desired degree program and the academic term you wish to enroll in.
       </p>
@@ -123,9 +123,9 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
           type="button"
           onClick={onNext}
           disabled={!isComplete}
-          className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
+          className={`min-w-24 rounded-lg px-4 py-3 text-xs font-bold text-white transition-colors cursor-pointer ${
             isComplete
-              ? 'bg-univ-indigo hover:bg-univ-blue'
+              ? 'bg-univ-blue hover:bg-blue-700'
               : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >

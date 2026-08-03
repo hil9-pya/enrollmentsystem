@@ -3,6 +3,7 @@ import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import SearchInput from '../../components/SearchInput';
 import { ExternalLink } from 'lucide-react';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function ApplicantManagement({ students, initialFilter, onViewDetails, onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,9 +41,10 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-8 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2 shrink-0">
         <div>
-          <h1 className="text-2xl font-extrabold text-univ-navy">Applicant Management</h1>
+          <h1 className="text-xl font-semibold text-univ-navy">Applicant management</h1>
           <p className="text-xs text-slate-500 mt-1.5 font-medium">View and manage all student applications.</p>
         </div>
+        <PortalRefreshButton />
       </div>
 
       <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4 shrink-0">

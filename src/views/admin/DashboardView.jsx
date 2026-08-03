@@ -17,6 +17,7 @@ import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
 import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_TONES = {
@@ -61,11 +62,14 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Administration Overview</h1>
-        <p className="text-sm font-medium text-slate-500 mt-1">
-          Monitor enrollment operations, student activity, and system performance.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Administration overview</h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            Monitor enrollment operations, student activity, and system performance.
+          </p>
+        </div>
+        <PortalRefreshButton />
       </div>
 
       {/* Metric Cards */}
@@ -428,9 +432,12 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
         />
       )}
 
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h1>
-        <p className="text-sm font-medium text-slate-500 mt-1">{description}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">{description}</p>
+        </div>
+        <PortalRefreshButton />
       </div>
 
       {/* Filters */}
@@ -521,8 +528,8 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                     )}
                   </td>
                   <td className="px-5 py-4">
-                    <Badge tone={stud.paymentStatus === 'paid' ? 'success' : stud.paymentStatus === 'processing' ? 'warning' : 'neutral'}>
-                      {stud.paymentStatus || 'Unpaid'}
+                    <Badge tone={['paid', 'partial'].includes(stud.paymentStatus) ? 'success' : stud.paymentStatus === 'processing' ? 'warning' : 'neutral'}>
+                      {stud.paymentStatus === 'partial' ? 'Downpayment Confirmed' : stud.paymentStatus === 'paid' ? 'Fully Paid' : stud.paymentStatus || 'Unpaid'}
                     </Badge>
                     {stud.totalTuition > 0 && <p className="text-[10px] text-slate-400 mt-1">₱{stud.totalTuition?.toLocaleString()}</p>}
                   </td>
@@ -531,10 +538,10 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                       {hasActiveHolds && (
                         <ActionBtn color="rose" onClick={() => handleResolveHolds(stud.id, stud)} label="Resolve Holds" />
                       )}
-                      {stud.status === 'documents_submitted' && <ActionBtn color="indigo" onClick={() => handleOverrideAdmission(stud.id)} label="Approve Docs" />}
-                      {stud.status === 'advising_pending' && <ActionBtn color="purple" onClick={() => handleOverrideAdvising(stud.id, stud)} label="Approve Advising" />}
-                      {['payment_pending', 'processing'].includes(stud.status) && <ActionBtn color="emerald" onClick={() => handleOverridePayment(stud.id)} label="Confirm Payment" />}
-                      {stud.status === 'validation_pending' && <ActionBtn color="blue" onClick={() => handleOverrideFinalize(stud.id)} label="Finalize Enrollment" />}
+                      {stud.status === 'documents_submitted' && <ActionBtn color="indigo" onClick={() => handleOverrideAdmission(stud.id)} label="Approve documents" />}
+                      {stud.status === 'advising_pending' && <ActionBtn color="purple" onClick={() => handleOverrideAdvising(stud.id, stud)} label="Approve advising" />}
+                      {['payment_pending', 'processing'].includes(stud.status) && <ActionBtn color="emerald" onClick={() => handleOverridePayment(stud.id)} label="Confirm payment" />}
+                      {stud.status === 'validation_pending' && <ActionBtn color="blue" onClick={() => handleOverrideFinalize(stud.id)} label="Finalize enrollment" />}
                       {stud.status === 'enrolled' && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
                           <CheckCircle className="w-3.5 h-3.5" /> Enrolled
@@ -567,16 +574,16 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
 
 function ActionBtn({ color, onClick, label }) {
   const cls = {
-    indigo: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200',
-    purple: 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200',
-    emerald: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200',
-    blue: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200',
+    indigo: 'bg-white hover:bg-blue-50 text-univ-blue border-blue-200',
+    purple: 'bg-white hover:bg-blue-50 text-univ-blue border-blue-200',
+    emerald: 'bg-white hover:bg-blue-50 text-univ-blue border-blue-200',
+    blue: 'bg-white hover:bg-blue-50 text-univ-blue border-blue-200',
     rose: 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200',
     amber: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200',
   };
   return (
     <button type="button" onClick={onClick}
-      className={`px-2.5 py-1 text-[10px] font-bold border rounded-lg transition-all cursor-pointer ${cls[color] || cls.indigo}`}>
+      className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold transition-colors cursor-pointer ${cls[color] || cls.indigo}`}>
       {label}
     </button>
   );
@@ -626,7 +633,7 @@ function TrashTab() {
   return (
     <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Archived Students</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Archived students</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
           Restore deleted student records or remove them permanently.
         </p>
@@ -675,7 +682,9 @@ function TrashTab() {
                     <td className="px-5 py-4 text-slate-500 font-medium">{stud.programId?.toUpperCase() || '—'}</td>
                     <td className="px-5 py-4"><StatusBadge status={stud.status} /></td>
                     <td className="px-5 py-4">
-                      <Badge>{stud.paymentStatus || 'Unpaid'}</Badge>
+                      <Badge tone={['paid', 'partial'].includes(stud.paymentStatus) ? 'success' : 'neutral'}>
+                        {stud.paymentStatus === 'partial' ? 'Downpayment Confirmed' : stud.paymentStatus === 'paid' ? 'Fully Paid' : stud.paymentStatus || 'Unpaid'}
+                      </Badge>
                     </td>
                     <td className="px-5 py-4 text-center">
                       <button onClick={() => handleRestore(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-bold transition-all cursor-pointer">
@@ -768,7 +777,7 @@ function StaffTab() {
     <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Accounts</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Staff accounts</h1>
           <p className="text-sm font-medium text-slate-500 mt-1">Manage all system users and their department access levels.</p>
         </div>
         <button onClick={() => { setEditingUser(null); setForm({ username: '', email: '', firstName: '', lastName: '', role: 'admission', password: '' }); setShowForm(true); }}
@@ -939,7 +948,7 @@ function SettingsTab() {
   return (
     <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">System Configuration</h1>
+        <h1 className="text-xl font-semibold text-slate-900">System configuration</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">Configure global enrollment settings and system parameters.</p>
       </div>
 
@@ -1086,7 +1095,10 @@ export default function DashboardView() {
     const totalEnrolled = visibleStudents.filter(s => s.status === 'enrolled').length;
     const pendingValidation = visibleStudents.filter(s => s.status === 'validation_pending').length;
     const activeProcessing = visibleStudents.filter(s => s.status !== 'registration' && s.status !== 'enrolled').length;
-    const revenue = visibleStudents.filter(s => s.paymentStatus === 'paid').reduce((sum, s) => sum + (s.totalTuition || 0), 0);
+    const revenue = visibleStudents.filter(s => ['paid', 'partial'].includes(s.paymentStatus)).reduce(
+      (sum, s) => sum + (s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0)),
+      0
+    );
     const programData = PROGRAMS.map(prog => ({
       name: prog.id.toUpperCase(),
       count: visibleStudents.filter(s => s.programId === prog.id && s.status === 'enrolled').length,

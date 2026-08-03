@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ShieldCheck, CheckCircle, FileText, Calendar, Receipt, Download } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { SUBJECTS, PROGRAMS, REQUIRED_DOCUMENTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -11,9 +12,12 @@ function formatPeso(amount) {
 }
 
 export default function EnrollmentValidation({ studentId, onBack }) {
-  const { dispatch, getStudentById } = useEnrollment();
+  const { dispatch, getStudentById, refreshStudents } = useEnrollment();
   const { confirm } = useConfirm();
   const [flashMessage, setFlashMessage] = useState(null);
+  const [resolvedSchedule, setResolvedSchedule] = useState([]);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(true);
+  const [scheduleError, setScheduleError] = useState('');
 
   const student = getStudentById(studentId);
   const program = student ? PROGRAMS.find(p => p.id === student.programId) : null;
@@ -35,6 +39,35 @@ export default function EnrollmentValidation({ studentId, onBack }) {
       })
       .filter(Boolean);
   }, [student]);
+
+  const selectedSubjectsKey = JSON.stringify(student?.selectedSubjects || []);
+  const loadResolvedSchedule = useCallback(async () => {
+    if (!student?.id) return;
+    setIsScheduleLoading(true);
+    setScheduleError('');
+    try {
+      const response = await fetch(`/api/scheduler/${encodeURIComponent(student.id)}/enrolled`, {
+        cache: 'no-store',
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message || 'Unable to load the saved class schedule.');
+      }
+      setResolvedSchedule(Array.isArray(payload.data) ? payload.data : []);
+    } catch (error) {
+      console.error('Failed to resolve Registrar schedule:', error);
+      setResolvedSchedule([]);
+      setScheduleError(error.message || 'Unable to load the saved class schedule.');
+    } finally {
+      setIsScheduleLoading(false);
+    }
+  }, [student?.id]);
+
+  useEffect(() => {
+    loadResolvedSchedule();
+  }, [loadResolvedSchedule, selectedSubjectsKey]);
+
+  const scheduleRows = resolvedSchedule.length > 0 ? resolvedSchedule : selectedSubjectDetails;
 
   if (!student) return null;
 
@@ -110,6 +143,9 @@ export default function EnrollmentValidation({ studentId, onBack }) {
             </div>
           </div>
         </div>
+        <PortalRefreshButton
+          onRefresh={() => Promise.all([refreshStudents(), loadResolvedSchedule()])}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -158,10 +194,9 @@ export default function EnrollmentValidation({ studentId, onBack }) {
               </div>
               <button
                 onClick={handleValidateEnrollment}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white rounded-xl transition-all shadow-sm cursor-pointer bg-univ-blue hover:bg-blue-700"
+                className="rounded-lg bg-univ-blue px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"
               >
-                <CheckCircle className="h-4 w-4" />
-                Validate Enrollment
+                Validate enrollment
               </button>
             </div>
           )}
@@ -210,17 +245,26 @@ export default function EnrollmentValidation({ studentId, onBack }) {
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status</p>
                     <div className="mt-1.5">
                       <StatusBadge status={
-                        student.paymentStatus === 'paid'
-                          ? 'payment_confirmed'
+                        ['paid', 'partial'].includes(student.paymentStatus)
+                          ? student.paymentStatus
                           : 'payment_pending'
                       } />
                     </div>
                   </div>
-                  {student.paymentStatus === 'paid' && (
-                    <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+                  {['paid', 'partial'].includes(student.paymentStatus) && (
+                    <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-1">
                       <p className="text-xs font-semibold text-emerald-800">
-                        Fully settled via {student.paymentMethod || 'standard method'}.
+                        {student.paymentStatus === 'paid'
+                          ? `Fully settled via ${student.paymentMethod || 'standard method'}.`
+                          : `Downpayment confirmed via ${student.paymentMethod || 'standard method'}.`}
                       </p>
+                      <p className="text-[11px] font-medium text-emerald-700">
+                        Received: {formatPeso(student.amountPaid || 0)}
+                        {student.remainingBalance > 0 && ` · Remaining balance: ${formatPeso(student.remainingBalance)}`}
+                      </p>
+                      {student.paymentReference && (
+                        <p className="text-[10px] text-emerald-700">Reference: {student.paymentReference}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -253,9 +297,19 @@ export default function EnrollmentValidation({ studentId, onBack }) {
             {/* Right Column: Subjects & Assessment */}
             <div className="space-y-6 lg:col-span-2">
               {/* Selected Subjects */}
-              {selectedSubjectDetails.length > 0 && (
+              {(scheduleRows.length > 0 || student.selectedSubjects?.length > 0) && (
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
                   <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Final Schedule Selection</h3>
+                  {isScheduleLoading && (
+                    <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] font-semibold text-blue-700">
+                      Loading saved section schedules...
+                    </div>
+                  )}
+                  {scheduleError && (
+                    <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-700">
+                      {scheduleError}
+                    </div>
+                  )}
                   <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
                       <thead>
@@ -267,13 +321,23 @@ export default function EnrollmentValidation({ studentId, onBack }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
-                        {selectedSubjectDetails.map((subject) => (
-                          <tr key={subject.id} className="hover:bg-slate-50/30">
-                            <td className="px-4 py-3.5 font-mono text-xs font-bold text-univ-navy">{subject.code}</td>
-                            <td className="px-4 py-3.5 text-slate-700 font-semibold">{subject.name}</td>
+                        {scheduleRows.map((subject) => (
+                          <tr key={`${subject.subjectId || subject.id}-${subject.sectionId || ''}`} className="hover:bg-slate-50/30">
+                            <td className="px-4 py-3.5 font-mono text-xs font-bold text-univ-navy">
+                              <span className="block">{subject.subjectCode || subject.code}</span>
+                              {subject.sectionCode && (
+                                <span className="mt-0.5 block text-[10px] text-slate-400">{subject.sectionCode}</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-700 font-semibold">{subject.subjectName || subject.name}</td>
                             <td className="px-4 py-3.5 text-slate-500 font-bold">{subject.units}</td>
                             <td className="px-4 py-3.5 text-slate-500 font-medium">
-                              {subject.schedule.day} &bull; {subject.schedule.time}
+                              <span className="block">{subject.schedule.day} &bull; {subject.schedule.time}</span>
+                              {(subject.schedule.room || subject.instructor) && (
+                                <span className="mt-0.5 block text-[10px] text-slate-400">
+                                  Room {subject.schedule.room || 'TBA'} &bull; {subject.instructor || 'TBA'}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))}

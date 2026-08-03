@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, AlertTriangle, Receipt } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { PROGRAMS } from '../../data/mockData';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -66,6 +67,7 @@ export default function PaymentVerification({ studentId, onBack }) {
             </div>
           </div>
         </div>
+        <PortalRefreshButton />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -85,21 +87,21 @@ export default function PaymentVerification({ studentId, onBack }) {
         <div className="p-8 space-y-6">
           {/* Payment Status Alert */}
           {!isPending ? (
-            <div className="flex items-center gap-3.5 p-5 bg-emerald-50 border border-emerald-200/40 rounded-2xl shadow-sm">
-              <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0 stroke-[2]" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
               <div>
-                <p className="text-xs font-bold text-emerald-800">Payment Confirmed &amp; Cleared</p>
-                <p className="text-[10px] text-emerald-600 font-bold mt-1">
+                <p className="text-xs font-semibold text-emerald-700">Payment confirmed and cleared</p>
+                <p className="mt-1 text-xs text-slate-600">
                   {student.remainingBalance > 0 ? `Downpayment confirmed. Remaining balance: ${formatPeso(student.remainingBalance)}.` : 'This student has no pending financial holds.'}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3.5 p-5 bg-amber-50 border border-amber-200/40 rounded-2xl shadow-sm">
-              <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 stroke-[2]" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div>
-                <p className="text-xs font-bold text-amber-800">Pending Financial Clearance</p>
-                <p className="text-[10px] text-amber-600 font-bold mt-1">
+                <p className="text-xs font-semibold text-amber-700">Pending financial clearance</p>
+                <p className="mt-1 text-xs text-slate-600">
                   Review the assessment below and confirm receipt of payment.
                 </p>
               </div>
@@ -174,10 +176,9 @@ export default function PaymentVerification({ studentId, onBack }) {
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-3">Accounting Action</p>
                       <button
                         onClick={handleConfirmPayment}
-                        className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-sm cursor-pointer"
+                        className="w-full rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"
                       >
-                        <CheckCircle className="h-4 w-4" />
-                        Confirm Payment Receipt
+                        Confirm payment
                       </button>
                       <p className="text-[10px] text-slate-400 mt-3 text-center">
                         Confirming payment will automatically clear the student for final registration.

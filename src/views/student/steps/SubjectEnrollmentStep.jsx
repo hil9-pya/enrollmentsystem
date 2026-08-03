@@ -74,9 +74,9 @@ function getScheduleConflict(targetSubjectId, targetSection, selectedSubjects, s
 }
 
 function slotBadge(remaining, maxSlots) {
-  if (remaining <= 0) return { label: 'Full', tone: 'danger' };
-  if (remaining / maxSlots <= 0.2) return { label: `${remaining} slots left`, tone: 'warning' };
-  return { label: `${remaining} slots left`, tone: 'success' };
+  if (remaining <= 0) return { label: 'Full', tone: 'danger', emphasized: true };
+  if (remaining / maxSlots <= 0.2) return { label: `${remaining} slots left`, tone: 'warning', emphasized: true };
+  return { label: `${remaining} slots left`, emphasized: false };
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
               <Calendar className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-heading font-extrabold text-univ-navy">Review Your Schedule</h2>
+              <h2 className="text-xl font-semibold text-univ-navy">Review schedule</h2>
               <p className="text-sm text-slate-500 font-medium">Confirm the schedule below. This will be finalized upon submission.</p>
             </div>
           </div>
@@ -349,20 +349,16 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
           <div className="flex justify-between items-center pt-4 border-t border-slate-100">
             <button
               onClick={() => setView(VIEW_LIST)}
-              className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm"
+              className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-600 rounded-lg transition-colors cursor-pointer"
             >
-              ← Edit Schedule
+              Edit schedule
             </button>
             <button
               onClick={handleProceedToPayment}
               disabled={submitting}
-              className="flex items-center gap-2 px-8 py-3 text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer bg-univ-blue text-white hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="px-4 py-3 text-xs font-bold rounded-lg transition-colors cursor-pointer bg-univ-blue text-white hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
             >
-              {submitting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Finalizing...</>
-              ) : (
-                <><CheckCircle className="w-4 h-4" /> Confirm & Proceed to Payment</>
-              )}
+              {submitting ? 'Processing...' : 'Proceed to payment'}
             </button>
           </div>
         </div>
@@ -377,7 +373,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-heading font-extrabold text-univ-navy mb-1">Subject Enrollment</h2>
+            <h2 className="mb-1 text-xl font-semibold text-univ-navy">Subject enrollment</h2>
             <p className="text-sm text-slate-500 font-medium leading-relaxed">
               Select subjects and sections for your curriculum.
               {academicTermLabel && (
@@ -461,14 +457,14 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                     return (
                       <div
                         key={sub.id}
-                        className={`border rounded-2xl transition-all duration-200 ${
+                        className={`border rounded-lg transition-colors ${
                           isCompleted
                             ? 'border-slate-200 bg-slate-50/50 opacity-60'
                             : prereqBlocked
                             ? 'border-slate-200 bg-slate-50/30 opacity-75'
                             : isSelected
-                            ? 'border-indigo-200 bg-indigo-50/30 shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-slate-300 shadow-sm'
+                            ? 'border-blue-200 bg-blue-50/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
                         }`}
                       >
                         {/* Subject header — click to expand/collapse */}
@@ -480,13 +476,10 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                           }
                         >
                           <div className="min-w-0 pr-3">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="font-mono text-[10px] font-extrabold text-univ-navy bg-slate-100 px-2 py-0.5 rounded-md">
-                                {sub.code}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
-                                {sub.units} Units
-                              </span>
+                            <div className="mb-1 flex items-center gap-1.5 text-[11px] text-slate-500">
+                              <span className="font-mono font-semibold text-slate-700">{sub.code}</span>
+                              <span aria-hidden="true">&middot;</span>
+                              <span>{sub.units} units</span>
                             </div>
                             <h4 className="text-sm font-extrabold text-univ-navy leading-snug">{sub.name}</h4>
                           </div>
@@ -503,11 +496,6 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                                 title={`Missing: ${sub.missingPrereqNames?.join(', ')}`}
                               >
                                 <Lock className="w-3 h-3" /> Prerequisite required
-                              </Badge>
-                            )}
-                            {isSelected && !isCompleted && !prereqBlocked && (
-                              <Badge tone="info">
-                                <CheckCircle className="w-3 h-3" /> Enrolled
                               </Badge>
                             )}
                             {!isCompleted && !prereqBlocked && (
@@ -528,7 +516,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
 
                         {/* Sections list (expanded) */}
                         {isExpanded && !isCompleted && !prereqBlocked && (
-                          <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-2.5">
+                          <div className="divide-y divide-slate-100 border-t border-slate-100 px-4 pb-2">
                             {(sub.sections || []).map((sec) => {
                               const remaining = (sec.maxSlots ?? 40) - (sec.enrolledCount ?? 0);
                               const badge = slotBadge(remaining, sec.maxSlots ?? 40);
@@ -540,22 +528,22 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                               return (
                                 <div
                                   key={sec.id}
-                                  className={`flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3 rounded-xl border transition-all ${
+                                  className={`flex flex-col justify-between gap-3 px-2 py-3 transition-colors sm:flex-row sm:items-center ${
                                     isCurrent
-                                      ? 'border-emerald-400/40 bg-emerald-50/50'
+                                      ? 'bg-slate-50'
                                       : conflictMsg
-                                      ? 'border-rose-200 bg-rose-50/30'
-                                      : 'border-slate-100 bg-slate-50/40'
+                                      ? 'bg-rose-50/40'
+                                      : 'bg-white'
                                   }`}
                                 >
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-mono text-[10px] font-bold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
-                                        {sec.code}
-                                      </span>
-                                      <Badge tone={badge.tone}>
-                                        {badge.label}
-                                      </Badge>
+                                      <span className="font-mono text-[11px] font-semibold text-slate-700">{sec.code}</span>
+                                      {badge.emphasized ? (
+                                        <Badge tone={badge.tone}>{badge.label}</Badge>
+                                      ) : (
+                                        <span className="text-[11px] text-slate-500">{badge.label}</span>
+                                      )}
                                     </div>
                                     <p className="text-[11px] text-slate-500 font-mono font-medium">
                                       {(sec.schedule?.day || sec.days)} · {(sec.schedule?.time || sec.time)} · {(sec.schedule?.room || sec.room)}
@@ -571,37 +559,39 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                                     )}
                                   </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => !isCurrent && !isFull && !conflictMsg && handleSelectSection(sub.id, sec.id)}
-                                    disabled={isCurrent || isFull || isLoading || !!conflictMsg}
-                                    className={`self-end sm:self-auto px-4 py-2 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
-                                      isCurrent
-                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600 pointer-events-none'
-                                        : isFull
-                                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                        : conflictMsg
-                                        ? 'bg-rose-100 border-rose-200 text-rose-600 cursor-not-allowed'
-                                        : isSelected
-                                        ? 'bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600'
-                                        : 'bg-univ-blue border-univ-blue text-white hover:bg-blue-700 hover:shadow-md'
-                                    }`}
-                                    title={conflictMsg ? `Schedule conflict with ${conflictMsg}` : ''}
-                                  >
-                                    {isLoading ? (
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    ) : isCurrent ? (
-                                      'Selected'
-                                    ) : isFull ? (
-                                      'Full'
-                                    ) : conflictMsg ? (
-                                      'Conflict'
-                                    ) : isSelected ? (
-                                      'Switch'
-                                    ) : (
-                                      'Enroll'
-                                    )}
-                                  </button>
+                                  {isCurrent ? (
+                                    <span className="flex items-center gap-1 self-end text-xs font-medium text-univ-blue sm:self-auto">
+                                      <CheckCircle className="h-3.5 w-3.5" /> Selected
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => !isFull && !conflictMsg && handleSelectSection(sub.id, sec.id)}
+                                      disabled={isFull || isLoading || !!conflictMsg}
+                                      className={`min-w-20 self-end rounded-lg border px-3 py-2 text-xs font-semibold transition-colors sm:self-auto ${
+                                        isFull
+                                          ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+                                          : conflictMsg
+                                          ? 'cursor-not-allowed border-rose-200 bg-white text-rose-600'
+                                          : isSelected
+                                          ? 'cursor-pointer border-blue-200 bg-white text-univ-blue hover:bg-blue-50'
+                                          : 'cursor-pointer border-univ-blue bg-univ-blue text-white hover:bg-blue-700'
+                                      }`}
+                                      title={conflictMsg ? `Schedule conflict with ${conflictMsg}` : ''}
+                                    >
+                                      {isLoading ? (
+                                        <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" />
+                                      ) : isFull ? (
+                                        'Full'
+                                      ) : conflictMsg ? (
+                                        'Conflict'
+                                      ) : isSelected ? (
+                                        'Switch'
+                                      ) : (
+                                        'Enroll'
+                                      )}
+                                    </button>
+                                  )}
                                 </div>
                               );
                             })}
@@ -714,7 +704,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
       <div className="flex justify-between items-center mt-8 border-t border-slate-100 pt-6">
         <button
           onClick={onBack}
-          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm"
+          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-600 rounded-lg transition-colors cursor-pointer"
         >
           Back
         </button>
@@ -722,22 +712,21 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
         <div className="flex gap-3">
           <button
             onClick={() => setShowRequestModal(true)}
-            className="px-5 py-3 bg-white border border-slate-200 hover:border-amber-300 text-xs font-extrabold text-slate-600 hover:text-amber-700 rounded-xl transition-all cursor-pointer shadow-sm"
+            className="px-5 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-600 rounded-lg transition-colors cursor-pointer"
           >
-            Request Change
+            Request change
           </button>
 
           <button
             onClick={handleProceedToPayment}
             disabled={selectedSubjects.length === 0 || totalUnits > unitLimit}
-            className={`flex items-center gap-2 px-8 py-3 text-xs font-extrabold rounded-xl transition-all shadow-md cursor-pointer ${
+            className={`px-4 py-3 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
               selectedSubjects.length > 0 && totalUnits <= unitLimit
-                ? 'bg-univ-blue text-white hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
+                ? 'bg-univ-blue text-white hover:bg-blue-700'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
-            <Calendar className="w-4 h-4" />
-            Review Schedule ({selectedSubjects.length})
+            Review schedule
           </button>
         </div>
       </div>

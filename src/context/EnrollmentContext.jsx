@@ -65,6 +65,21 @@ export function EnrollmentProvider({ children }) {
     return data;
   }, [activeStudentId]);
 
+  const refreshStudents = useCallback(async () => {
+    if (!token || user?.role === 'student') return [];
+
+    const res = await authFetch('/api/admin/students', { cache: 'no-store' });
+    const data = await safeJson(res);
+    setStudents((prev) => {
+      const active = prev.find((student) => student.id === activeStudentId);
+      if (active && !data.some((student) => student.id === activeStudentId)) {
+        return [...data, active];
+      }
+      return data;
+    });
+    return data;
+  }, [activeStudentId, token, user?.role]);
+
   // 1. Fetch initial students array from backend SQLite on mount and poll periodically
   useEffect(() => {
     async function loadStudents() {
@@ -448,8 +463,9 @@ export function EnrollmentProvider({ children }) {
       getSubjectById,
       setActiveStudent,
       refreshActiveStudent,
+      refreshStudents,
     }),
-    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent]
+    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent, refreshStudents]
   );
 
   return (

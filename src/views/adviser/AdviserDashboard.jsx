@@ -2,10 +2,12 @@ import React, { useMemo } from 'react';
 import { Clock, CheckCircle, AlertTriangle, Activity, BookOpen } from 'lucide-react';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function AdviserDashboard({ students, onNavigate }) {
   const metrics = useMemo(() => {
-    const relevantStudents = students.filter(s => 
+    const relevantStudents = students.filter(s =>
+      (s.enrollmentType !== 'new' || !!s.subjectChangeRequest) &&
       ['advising_pending', 'advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status)
     );
 
@@ -32,9 +34,10 @@ export default function AdviserDashboard({ students, onNavigate }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Evaluation Overview</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Evaluation overview</h1>
           <p className="text-sm text-slate-500 mt-1">High-level view of curriculum evaluation progress.</p>
         </div>
+        <PortalRefreshButton />
       </div>
 
       {/* Mini Stats Row */}

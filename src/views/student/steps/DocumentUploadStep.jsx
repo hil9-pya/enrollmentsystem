@@ -111,11 +111,11 @@ export default function DocumentUploadStep({ onNext, onBack }) {
 
   async function handleSubmit() {
     const isConfirmed = await confirm({
-      title: 'Submit Application',
-      message: 'Are you sure you want to submit your application and documents for review? You may not be able to edit some details once submitted.',
-      confirmText: 'Yes, Submit Application',
+      title: 'Submit application',
+      message: 'Submit your application and documents for review? Some details cannot be edited afterward.',
+      confirmText: 'Submit',
       cancelText: 'Cancel',
-      type: 'success'
+      type: 'warning'
     });
 
     if (isConfirmed) {
@@ -196,7 +196,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-premium">
-      <h1 className="text-2xl font-heading font-extrabold text-univ-navy mb-2">Upload Documents</h1>
+      <h1 className="mb-2 text-xl font-semibold text-univ-navy">Upload documents</h1>
       <p className="text-sm text-slate-500 mb-2 leading-relaxed font-medium">
         Please upload the required files for your NCST admission evaluation.
       </p>
@@ -402,7 +402,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="px-6 py-3 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-xs font-extrabold text-slate-600 rounded-xl transition-all cursor-pointer shadow-sm"
+          className="w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
         >
           Back
         </button>
@@ -412,14 +412,13 @@ export default function DocumentUploadStep({ onNext, onBack }) {
               type="button"
               onClick={handleSubmit}
               disabled={!allRequiredUploaded}
-              className={`flex items-center gap-2 px-8 py-3 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer ${
+              className={`w-24 rounded-lg px-4 py-3 text-xs font-bold text-white transition-colors cursor-pointer ${
                 allRequiredUploaded
-                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 hover:shadow-lg hover:-translate-y-0.5'
+                  ? 'bg-univ-blue hover:bg-blue-700'
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
-              <ShieldCheck className="w-4 h-4" />
-              Submit Application
+              Submit
             </button>
           )}
           {isSubmitted && (
@@ -427,9 +426,9 @@ export default function DocumentUploadStep({ onNext, onBack }) {
               type="button"
               onClick={onNext}
               disabled={!allRequiredUploaded}
-              className={`px-8 py-3 rounded-xl text-xs font-extrabold text-white transition-all shadow-md cursor-pointer ${
+              className={`min-w-24 rounded-lg px-4 py-3 text-xs font-bold text-white transition-colors cursor-pointer ${
                 allRequiredUploaded
-                  ? 'bg-univ-blue hover:bg-blue-700 shadow-univ-blue/20 hover:shadow-lg hover:-translate-y-0.5'
+                  ? 'bg-univ-blue hover:bg-blue-700'
                   : 'bg-slate-300 opacity-55 cursor-not-allowed'
               }`}
             >

@@ -39,7 +39,7 @@ export default function ContinuingEnrollmentStep({ onNext }) {
         <div className="w-10 h-10 rounded-xl bg-univ-indigo/10 flex items-center justify-center text-univ-indigo">
           <GraduationCap className="h-5 w-5" />
         </div>
-        <h1 className="text-xl font-extrabold text-univ-navy">Continuing Enrollment</h1>
+        <h1 className="text-xl font-semibold text-univ-navy">Continuing enrollment</h1>
       </div>
       
       <p className="text-xs text-slate-500 mt-1 mb-8 leading-relaxed font-medium">
@@ -102,13 +102,13 @@ export default function ContinuingEnrollmentStep({ onNext }) {
           type="button"
           onClick={onNext}
           disabled={!isComplete}
-          className={`px-6 py-2.5 rounded-lg text-xs font-bold text-white transition-all shadow-sm cursor-pointer ${
+          className={`min-w-24 rounded-lg px-4 py-3 text-xs font-bold text-white transition-colors cursor-pointer ${
             isComplete
-              ? 'bg-univ-indigo hover:bg-univ-blue'
+              ? 'bg-univ-blue hover:bg-blue-700'
               : 'bg-slate-300 opacity-50 cursor-not-allowed'
           }`}
         >
-          Continue to Subject Evaluation
+          Continue
         </button>
       </div>
     </div>

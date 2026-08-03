@@ -4,6 +4,7 @@ import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -25,19 +26,24 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
     relevantStudents.forEach(s => {
       expectedRevenue += (s.totalTuition || 0);
-      const received = s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0);
-      const balance = s.remainingBalance ?? Math.max(0, (s.totalTuition || 0) - received);
+      const paymentConfirmed = ['paid', 'partial'].includes(s.paymentStatus);
+      const received = paymentConfirmed
+        ? (s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0))
+        : 0;
+      const balance = paymentConfirmed
+        ? (s.remainingBalance ?? Math.max(0, (s.totalTuition || 0) - received))
+        : (s.totalTuition || 0);
       if (received > 0) {
         collectedRevenue += received;
-        paidCount++;
       }
+      if (s.paymentStatus === 'paid') paidCount++;
       pendingRevenue += balance;
     });
 
     const ledgerData = [...relevantStudents]
       .filter(s => {
-        if (initialFilter === 'pending' && s.paymentStatus === 'paid') return false;
-        if (initialFilter === 'paid' && s.paymentStatus !== 'paid') return false;
+        if (initialFilter === 'pending' && ['paid', 'partial'].includes(s.paymentStatus)) return false;
+        if (initialFilter === 'paid' && !['paid', 'partial'].includes(s.paymentStatus)) return false;
 
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
@@ -56,7 +62,9 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
     let programRevenue = PROGRAMS.map(p => ({
       name: p.id,
-      value: students.filter(s => s.programId === p.id).reduce((acc, s) => acc + (s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0)), 0)
+      value: students
+        .filter(s => s.programId === p.id && ['paid', 'partial'].includes(s.paymentStatus))
+        .reduce((acc, s) => acc + (s.amountPaid || (s.paymentStatus === 'paid' ? s.totalTuition || 0 : 0)), 0)
     })).filter(d => d.value > 0);
     
     if (programRevenue.length === 0) {
@@ -74,10 +82,11 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
         <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
             <div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Financial Analytics</h1>
+              <h1 className="text-xl font-semibold text-slate-900">Financial analytics</h1>
               <p className="text-sm font-medium text-slate-500 mt-1">Overview of revenue streams, collection rates, and master ledger.</p>
             </div>
             <div className="flex gap-3">
+               <PortalRefreshButton />
                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
                  <Download className="w-4 h-4" /> Export Report
                </button>
@@ -158,7 +167,10 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
       {/* Master Ledger Grid */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-sm font-bold text-slate-900">Master Ledger Directory</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold text-slate-900">Master Ledger Directory</h2>
+            {!showOverview && <PortalRefreshButton />}
+          </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="flex items-center rounded-md border border-slate-200 overflow-hidden shadow-sm bg-white mr-2">
               {[
@@ -227,19 +239,24 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <span className={`font-bold ${student.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {formatPeso(student.totalTuition)}
+                      <span className={`font-bold ${['paid', 'partial'].includes(student.paymentStatus) ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {formatPeso(student.amountPaid || (student.paymentStatus === 'paid' ? student.totalTuition : 0))}
                       </span>
+                      {student.remainingBalance > 0 && (
+                        <span className="block text-[10px] font-medium text-slate-400 mt-0.5">
+                          Balance: {formatPeso(student.remainingBalance)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3 text-center">
-                      <StatusBadge status={student.paymentStatus === 'paid' ? 'enrolled' : 'payment_pending'} />
+                      <StatusBadge status={['paid', 'partial'].includes(student.paymentStatus) ? student.paymentStatus : 'payment_pending'} />
                     </td>
                     <td className="px-5 py-3 text-right">
                       <button
                         onClick={() => onViewDetails(student.id)} 
                         className="inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-univ-indigo rounded transition-colors cursor-pointer"
                       >
-                        {student.paymentStatus === 'paid' ? 'View Receipt' : 'Verify Payment'}
+                        {['paid', 'partial'].includes(student.paymentStatus) ? 'View Receipt' : 'Verify Payment'}
                       </button>
                     </td>
                   </tr>
