@@ -5,6 +5,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { REQUIRED_DOCUMENTS, PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function ApplicantDetails({ studentId, onBack }) {
   const { getStudentById, dispatch } = useEnrollment();
@@ -132,6 +133,9 @@ export default function ApplicantDetails({ studentId, onBack }) {
         <div>
           <h1 className="text-xl font-extrabold text-univ-navy">Applicant Details</h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">Review information and process applications.</p>
+        </div>
+        <div className="ml-auto">
+          <PortalRefreshButton label="Refresh applicant" />
         </div>
       </div>
 

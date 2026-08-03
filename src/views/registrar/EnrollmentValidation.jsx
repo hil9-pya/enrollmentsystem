@@ -4,6 +4,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { SUBJECTS, PROGRAMS, REQUIRED_DOCUMENTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -110,6 +111,7 @@ export default function EnrollmentValidation({ studentId, onBack }) {
             </div>
           </div>
         </div>
+        <PortalRefreshButton label="Refresh record" />
       </div>
 
       <div className="flex-1 overflow-y-auto">

@@ -12,7 +12,10 @@ export default function AdviserView() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Compute notification badges
-  const pendingCount = students.filter(s => s.status === 'advising_pending').length;
+  const pendingCount = students.filter(s =>
+    s.status === 'advising_pending' &&
+    (s.enrollmentType !== 'new' || !!s.subjectChangeRequest)
+  ).length;
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);

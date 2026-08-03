@@ -3,6 +3,7 @@ import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import SearchInput from '../../components/SearchInput';
 import { ExternalLink } from 'lucide-react';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function ApplicantManagement({ students, initialFilter, onViewDetails, onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,6 +44,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
           <h1 className="text-2xl font-extrabold text-univ-navy">Applicant Management</h1>
           <p className="text-xs text-slate-500 mt-1.5 font-medium">View and manage all student applications.</p>
         </div>
+        <PortalRefreshButton label="Refresh applicants" />
       </div>
 
       <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4 shrink-0">

@@ -692,10 +692,13 @@ const selectProgram = asyncHandler(async (req, res) => {
   student.tuitionBreakdown = tuitionBreakdown;
   student.totalTuition = totalTuition;
 
-  // Once the admission office has approved documents and the student has
-  // now picked a program, the application enters the adviser's queue.
+  // Regular freshmen follow the prescribed first-year curriculum and do not
+  // need individual adviser approval. Other enrollment types still require
+  // academic evaluation before section selection.
   if (student.status === 'documents_approved') {
-    student.status = 'advising_pending';
+    student.status = student.enrollmentType === 'new'
+      ? 'advising_approved'
+      : 'advising_pending';
   }
 
   await student.save();
@@ -844,7 +847,9 @@ const approveAdmission = asyncHandler(async (req, res) => {
   }
 
   if (student.programId) {
-    student.status = 'advising_pending';
+    student.status = student.enrollmentType === 'new'
+      ? 'advising_approved'
+      : 'advising_pending';
   } else {
     student.status = 'documents_approved';
   }
@@ -854,6 +859,14 @@ const approveAdmission = asyncHandler(async (req, res) => {
     user: req.user ? req.user.username : 'Admissions Officer',
     date: new Date()
   });
+
+  if (student.status === 'advising_approved' && student.enrollmentType === 'new') {
+    student.auditLogs.push({
+      action: 'Automatically Cleared Prescribed Freshman Curriculum',
+      user: 'Enrollment System',
+      date: new Date()
+    });
+  }
 
   await student.save();
   if (student.emailVerified && student.email) {

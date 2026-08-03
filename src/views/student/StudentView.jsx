@@ -11,6 +11,7 @@ import FulfillmentStep from './steps/FulfillmentStep';
 import ClearanceStep from './steps/ClearanceStep';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import PortalShell from '../../components/PortalShell';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export const STUDENT_STEPS = [
   { key: 'clearance', label: 'Holds & Clearances' },
@@ -393,6 +394,12 @@ export default function StudentView() {
       {/* Main Content */}
       <main className="h-full min-w-0 overflow-y-auto bg-slate-50/70">
         <div className="max-w-4xl mx-auto p-4 sm:p-5 lg:p-8">
+          <div className="mb-4 flex justify-end">
+            <PortalRefreshButton
+              label="Refresh profile"
+              onRefresh={() => refreshActiveStudent(user.studentId)}
+            />
+          </div>
           <ErrorBoundary>
             {renderStep()}
           </ErrorBoundary>

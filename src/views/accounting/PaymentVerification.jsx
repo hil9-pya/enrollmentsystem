@@ -3,6 +3,7 @@ import { ArrowLeft, CheckCircle, AlertTriangle, Receipt } from 'lucide-react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { PROGRAMS } from '../../data/mockData';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -66,6 +67,7 @@ export default function PaymentVerification({ studentId, onBack }) {
             </div>
           </div>
         </div>
+        <PortalRefreshButton label="Refresh payment" />
       </div>
 
       <div className="flex-1 overflow-y-auto">

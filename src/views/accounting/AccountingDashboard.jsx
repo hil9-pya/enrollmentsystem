@@ -4,6 +4,7 @@ import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -78,6 +79,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
               <p className="text-sm font-medium text-slate-500 mt-1">Overview of revenue streams, collection rates, and master ledger.</p>
             </div>
             <div className="flex gap-3">
+               <PortalRefreshButton label="Refresh payments" />
                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
                  <Download className="w-4 h-4" /> Export Report
                </button>
@@ -158,7 +160,10 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
       {/* Master Ledger Grid */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-sm font-bold text-slate-900">Master Ledger Directory</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold text-slate-900">Master Ledger Directory</h2>
+            {!showOverview && <PortalRefreshButton label="Refresh payments" />}
+          </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="flex items-center rounded-md border border-slate-200 overflow-hidden shadow-sm bg-white mr-2">
               {[

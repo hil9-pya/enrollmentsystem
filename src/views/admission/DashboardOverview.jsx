@@ -3,6 +3,7 @@ import { ArrowRight, Inbox, Activity, CheckCircle, Clock } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function DashboardOverview({ students, onNavigate }) {
   const metrics = useMemo(() => {
@@ -33,6 +34,7 @@ export default function DashboardOverview({ students, onNavigate }) {
           <h1 className="text-xl font-bold text-slate-900">Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Overview of applicant pipeline and recent activity.</p>
         </div>
+        <PortalRefreshButton label="Refresh applicants" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

@@ -17,6 +17,7 @@ import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
 import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_TONES = {
@@ -61,11 +62,14 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Administration Overview</h1>
-        <p className="text-sm font-medium text-slate-500 mt-1">
-          Monitor enrollment operations, student activity, and system performance.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Administration Overview</h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            Monitor enrollment operations, student activity, and system performance.
+          </p>
+        </div>
+        <PortalRefreshButton label="Refresh dashboard" />
       </div>
 
       {/* Metric Cards */}
@@ -428,9 +432,12 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
         />
       )}
 
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h1>
-        <p className="text-sm font-medium text-slate-500 mt-1">{description}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">{description}</p>
+        </div>
+        <PortalRefreshButton label="Refresh records" />
       </div>
 
       {/* Filters */}

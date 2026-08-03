@@ -5,6 +5,7 @@ import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { toast } from 'react-hot-toast';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const { dispatch } = useEnrollment();
@@ -18,8 +19,9 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const [adviserNotes, setAdviserNotes] = useState('');
 
   const relevantStudents = useMemo(() => {
-    return students.filter(s => 
-      ['advising_pending', 'advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status) || !!s.subjectChangeRequest
+    return students.filter(s =>
+      (s.enrollmentType !== 'new' || !!s.subjectChangeRequest) &&
+      (['advising_pending', 'advising_approved', 'advising_rejected', 'payment_pending', 'enrolled'].includes(s.status) || !!s.subjectChangeRequest)
     );
   }, [students]);
 
@@ -124,9 +126,12 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
       {/* Left Pane: Inbox Queue */}
       <div className="w-full sm:w-[350px] shrink-0 border-r border-slate-200 bg-white flex flex-col h-full z-10 shadow-sm relative">
         <div className="p-4 border-b border-slate-100 bg-white space-y-3">
-          <div>
-            <h2 className="text-sm font-extrabold text-slate-900 tracking-wide">Evaluation Queue</h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{filter} records</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-900 tracking-wide">Evaluation Queue</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{filter} records</p>
+            </div>
+            <PortalRefreshButton label="Refresh" className="px-2.5" />
           </div>
           
           <div className="relative">
