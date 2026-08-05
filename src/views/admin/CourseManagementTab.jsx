@@ -203,11 +203,11 @@ function daysOverlap(days1 = '', days2 = '') {
   return d1.some(d => d2.includes(d));
 }
 
-function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, initialData }) {
+function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, instructors, initialData }) {
   const [form, setForm] = useState({
     subjectId: '', sectionCode: '', days: 'MWF',
     startTime: '8:00 AM', endTime: '9:30 AM',
-    room: '', instructor: '', maxSlots: 40, ...initialData,
+    room: '', instructor: '', instructorUser: '', maxSlots: 40, ...initialData,
   });
   const [saving, setSaving] = useState(false);
 
@@ -221,7 +221,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
       }
       setForm({
         subjectId: '', sectionCode: '', days: 'MWF',
-        startTime, endTime, room: '', instructor: '', maxSlots: 40,
+        startTime, endTime, room: '', instructor: '', instructorUser: '', maxSlots: 40,
         ...initialData, time: undefined,
       });
     }
@@ -430,9 +430,30 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             {/* Instructor */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Instructor</label>
-              <input type="text" value={form.instructor} onChange={(e) => setForm({ ...form, instructor: e.target.value })}
-                placeholder="e.g. Prof. Juan dela Cruz"
-                className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 ${instructorConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`} />
+              <select
+                value={form.instructorUser || ''}
+                onChange={(e) => {
+                  const selected = instructors.find((user) => user._id === e.target.value);
+                  setForm({
+                    ...form,
+                    instructorUser: e.target.value,
+                    instructor: selected ? `${selected.firstName || ''} ${selected.lastName || ''}`.trim() : '',
+                  });
+                }}
+                className={`w-full px-3 py-2 text-xs border rounded-md bg-white focus:outline-none focus:ring-1 ${instructorConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`}
+              >
+                <option value="">No instructor assigned</option>
+                {instructors.map((user) => (
+                  <option key={user._id} value={user._id}>
+                    {[user.firstName, user.lastName].filter(Boolean).join(' ') || user.username} ({user.email})
+                  </option>
+                ))}
+              </select>
+              {!form.instructorUser && form.instructor && (
+                <p className="mt-1 text-[10px] text-amber-600">
+                  Legacy text assignment: {form.instructor}. Select an account to enable Instructor Portal access.
+                </p>
+              )}
               {instructorConflicts.length > 0 && (
                 <p className="text-[10px] text-rose-600 font-bold mt-1">⚠ This instructor is already teaching {instructorConflicts.length} section(s) at this exact time &amp; day — cannot double-book.</p>
               )}
@@ -532,6 +553,7 @@ export default function CourseManagementTab() {
   }, [ctxToken]);
   const [subjects, setSubjects] = useState([]);
   const [sections, setSections] = useState([]);
+  const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [programFilter, setProgramFilter] = useState('');
@@ -550,16 +572,19 @@ export default function CourseManagementTab() {
       ]);
       const subData = await subRes.json();
       const secData = await secRes.json();
-      if (subRes.status === 401 || secRes.status === 401) {
+      const userRes = await authFetch('/api/admin/users');
+      const userData = await userRes.json();
+      if (subRes.status === 401 || secRes.status === 401 || userRes.status === 401) {
         toast.error('Session expired. Please sign in again.');
         logout();
         return;
       }
-      if (!subRes.ok || !subData.success || !secRes.ok || !secData.success) {
-        throw new Error(subData.message || secData.message || 'Failed to load course data.');
+      if (!subRes.ok || !subData.success || !secRes.ok || !secData.success || !userRes.ok) {
+        throw new Error(subData.message || secData.message || userData.message || 'Failed to load course data.');
       }
       setSubjects(subData.data);
       setSections(secData.data);
+      setInstructors((userData || []).filter((user) => user.role === 'instructor'));
     } catch (error) {
       toast.error(error.message || 'Failed to load course data.');
     } finally {
@@ -661,6 +686,7 @@ export default function CourseManagementTab() {
       time: section.time,
       room: section.room,
       instructor: section.instructor,
+      instructorUser: section.instructorUser?._id || section.instructorUser || '',
       maxSlots: section.maxSlots,
     });
     setModalOpen(true);
@@ -879,6 +905,7 @@ export default function CourseManagementTab() {
         onSave={handleSaveSection}
         subjects={subjects}
         allSections={sections}
+        instructors={instructors}
         initialData={editingSection}
       />
       <SubjectFormModal

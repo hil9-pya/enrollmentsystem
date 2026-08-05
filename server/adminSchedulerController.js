@@ -90,8 +90,12 @@ export const createSection = asyncHandler(async (req, res) => {
     }
   }
 
+  const instructorName = assignedInstructor
+    ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
+    : String(instructor || '').trim();
+
   // Check for room/instructor conflicts
-  const { valid, error } = await validateSectionConflict({ subjectId, sectionCode: normalizedSectionCode, days, time, room, instructor });
+  const { valid, error } = await validateSectionConflict({ subjectId, sectionCode: normalizedSectionCode, days, time, room, instructor: instructorName });
   if (!valid) {
     return res.status(409).json({ success: false, message: error });
   }
@@ -111,7 +115,7 @@ export const createSection = asyncHandler(async (req, res) => {
     days,
     time,
     room: room || '',
-    instructor: instructor || (assignedInstructor ? `${assignedInstructor.firstName} ${assignedInstructor.lastName}` : ''),
+    instructor: instructorName,
     instructorUser: assignedInstructor?._id || null,
     maxSlots: maxSlots || 40,
     enrolledCount: 0,
@@ -142,6 +146,10 @@ export const updateSection = asyncHandler(async (req, res) => {
     }
   }
 
+  const instructorName = assignedInstructor
+    ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
+    : String(instructor ?? section.instructor ?? '').trim();
+
   // Validate room/instructor conflicts (exclude self)
   const sectionData = {
     subjectId: section.subjectId,
@@ -149,7 +157,7 @@ export const updateSection = asyncHandler(async (req, res) => {
     days: days ?? section.days,
     time: time ?? section.time,
     room: room ?? section.room,
-    instructor: instructor ?? section.instructor,
+    instructor: instructorName,
   };
 
   const { valid, error } = await validateSectionConflict(sectionData, req.params.id);
@@ -160,7 +168,7 @@ export const updateSection = asyncHandler(async (req, res) => {
   if (days !== undefined) section.days = days;
   if (time !== undefined) section.time = time;
   if (room !== undefined) section.room = room;
-  if (instructor !== undefined) section.instructor = instructor;
+  section.instructor = instructorName;
   if (instructorUser !== undefined) {
     section.instructorUser = assignedInstructor?._id || null;
     if (assignedInstructor && instructor === undefined) {
