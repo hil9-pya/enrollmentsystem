@@ -23,7 +23,7 @@ const toSafeUser = (user) => ({
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, email, password, firstName, lastName, role } = req.body;
+  const { username, email, password, firstName, lastName } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -38,7 +38,7 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
     firstName,
     lastName,
-    role,
+    role: 'student',
   });
 
   if (user) {

@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import Section from './models/Section.js';
 import Subject from './models/Subject.js';
+import User from './User.js';
 import { SUBJECTS_CATALOG, addSubjectToCache } from './subjectsCatalog.js';
 import { validateSectionConflict } from './services/schedulerService.js';
 
@@ -35,7 +36,10 @@ export const listSections = asyncHandler(async (req, res) => {
   const filter = {};
   if (req.query.subjectId) filter.subjectId = req.query.subjectId;
 
-  const sections = await Section.find(filter).sort({ subjectId: 1, sectionCode: 1 }).lean();
+  const sections = await Section.find(filter)
+    .populate('instructorUser', 'username firstName lastName email')
+    .sort({ subjectId: 1, sectionCode: 1 })
+    .lean();
 
   // Enrich with subject info from static catalog
   const enriched = sections.map((sec) => {
@@ -57,7 +61,7 @@ export const listSections = asyncHandler(async (req, res) => {
 // Create a new section with room/instructor conflict validation
 // ---------------------------------------------------------------------------
 export const createSection = asyncHandler(async (req, res) => {
-  const { subjectId, sectionCode, days, time, room, instructor, maxSlots } = req.body;
+  const { subjectId, sectionCode, days, time, room, instructor, instructorUser, maxSlots } = req.body;
 
   if (!subjectId || !sectionCode || !days || !time) {
     return res.status(400).json({
@@ -76,6 +80,14 @@ export const createSection = asyncHandler(async (req, res) => {
   const sectionCodeError = validateSectionCode(normalizedSectionCode, subject);
   if (sectionCodeError) {
     return res.status(400).json({ success: false, message: sectionCodeError });
+  }
+
+  let assignedInstructor = null;
+  if (instructorUser) {
+    assignedInstructor = await User.findOne({ _id: instructorUser, role: 'instructor' });
+    if (!assignedInstructor) {
+      return res.status(400).json({ success: false, message: 'Assigned user must be an instructor account.' });
+    }
   }
 
   // Check for room/instructor conflicts
@@ -99,7 +111,8 @@ export const createSection = asyncHandler(async (req, res) => {
     days,
     time,
     room: room || '',
-    instructor: instructor || '',
+    instructor: instructor || (assignedInstructor ? `${assignedInstructor.firstName} ${assignedInstructor.lastName}` : ''),
+    instructorUser: assignedInstructor?._id || null,
     maxSlots: maxSlots || 40,
     enrolledCount: 0,
   });
@@ -117,7 +130,17 @@ export const updateSection = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Section not found.' });
   }
 
-  const { days, time, room, instructor, maxSlots, isActive } = req.body;
+  const { days, time, room, instructor, instructorUser, maxSlots, isActive } = req.body;
+
+  let assignedInstructor;
+  if (instructorUser !== undefined) {
+    assignedInstructor = instructorUser
+      ? await User.findOne({ _id: instructorUser, role: 'instructor' })
+      : null;
+    if (instructorUser && !assignedInstructor) {
+      return res.status(400).json({ success: false, message: 'Assigned user must be an instructor account.' });
+    }
+  }
 
   // Validate room/instructor conflicts (exclude self)
   const sectionData = {
@@ -138,6 +161,12 @@ export const updateSection = asyncHandler(async (req, res) => {
   if (time !== undefined) section.time = time;
   if (room !== undefined) section.room = room;
   if (instructor !== undefined) section.instructor = instructor;
+  if (instructorUser !== undefined) {
+    section.instructorUser = assignedInstructor?._id || null;
+    if (assignedInstructor && instructor === undefined) {
+      section.instructor = `${assignedInstructor.firstName} ${assignedInstructor.lastName}`;
+    }
+  }
   if (maxSlots !== undefined) section.maxSlots = maxSlots;
   if (isActive !== undefined) section.isActive = isActive;
 

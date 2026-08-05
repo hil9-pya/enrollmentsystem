@@ -120,6 +120,10 @@ export const addSchedulerSection = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
 
+  if (student.scheduleStatus === 'finalized' || student.scheduleGenerated) {
+    return res.status(409).json({ success: false, message: 'Finalized schedules are locked. Contact your adviser for changes.' });
+  }
+
   const { subjectId, sectionId } = req.body;
   if (!subjectId || !sectionId) {
     return res.status(400).json({ success: false, message: 'subjectId and sectionId are required.' });
@@ -181,6 +185,10 @@ export const removeSchedulerSection = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
 
+  if (student.scheduleStatus === 'finalized' || student.scheduleGenerated) {
+    return res.status(409).json({ success: false, message: 'Finalized schedules are locked. Contact your adviser for changes.' });
+  }
+
   const { subjectId } = req.body;
   if (!subjectId) {
     return res.status(400).json({ success: false, message: 'subjectId is required.' });
@@ -215,6 +223,18 @@ export const removeSchedulerSection = asyncHandler(async (req, res) => {
 export const submitSchedule = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
+
+  if (student.scheduleStatus === 'finalized' || student.scheduleGenerated) {
+    if (student.scheduleStatus !== 'finalized') {
+      student.scheduleStatus = 'finalized';
+      await student.save();
+    }
+    return res.json({
+      success: true,
+      message: 'Schedule was already finalized.',
+      data: { selectedSubjects: student.selectedSubjects },
+    });
+  }
 
   const selected = student.selectedSubjects || [];
   if (selected.length === 0) {

@@ -117,6 +117,7 @@ const StudentSchema = new mongoose.Schema(
     documents: { type: [DocumentSchema], default: [] },
     approvedSubjectIds: { type: [String], default: [] },
     selectedSubjects: { type: [SelectedSubjectSchema], default: [] },
+    scheduleStatus: { type: String, enum: ['draft', 'finalized'], default: 'draft' },
     tuitionBreakdown: { type: [TuitionLineSchema], default: [] },
     totalTuition: { type: Number, default: 0 },
 

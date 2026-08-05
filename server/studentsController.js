@@ -10,6 +10,8 @@ import Settings from './Settings.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 import { ensureReceiptNumber, markPaymentReceived } from './paymentReceipt.js';
+import { syncOfficialEnrollment } from './services/academicFoundationService.js';
+import { getResolvedEnrolledSchedule } from './services/schedulerService.js';
 import {
   sendAdmissionApprovedEmail,
   sendAdmissionRejectedEmail,
@@ -764,6 +766,7 @@ const setSubjects = asyncHandler(async (req, res) => {
         && selection.sectionId !== `${selection.subjectId}-a`
     );
   }
+  student.scheduleStatus = 'draft';
 
   const selectedSubjectIds = student.selectedSubjects.map((selection) => selection.subjectId);
   const { tuitionBreakdown, totalTuition } = computeTuition(selectedSubjectIds);
@@ -989,9 +992,19 @@ const validateEnrollment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: Student must be payment_confirmed or already enrolled.');
   }
 
+  if (!student.selectedSubjects || student.selectedSubjects.length === 0) {
+    res.status(400);
+    throw new Error('Invalid action: Student has no finalized class schedule.');
+  }
+  const resolvedSchedule = await getResolvedEnrolledSchedule(student.selectedSubjects);
+  if (resolvedSchedule.length !== student.selectedSubjects.length) {
+    res.status(409);
+    throw new Error('Invalid action: One or more selected sections no longer exist. Resolve the schedule first.');
+  }
+
   // Fetch settings to know what the active term is
   let settings = await Settings.findOne();
-  if (!settings) settings = { activeTerm: '1st Semester' };
+  if (!settings) settings = { activeTerm: '1st Semester 2026-2027' };
 
   student.status = 'enrolled';
   student.enrolledAt = student.enrolledAt || new Date();
@@ -1016,6 +1029,7 @@ const validateEnrollment = asyncHandler(async (req, res) => {
   }
 
   await student.save();
+  await syncOfficialEnrollment(student, settings.activeTerm, { actor: req.user });
   res.json(student);
 });
 
@@ -1105,6 +1119,7 @@ const rolloverStudent = asyncHandler(async (req, res) => {
 
   // Reset enrollment state
   student.selectedSubjects = [];
+  student.scheduleStatus = 'draft';
   student.tuitionBreakdown = [];
   student.totalTuition = 0;
   student.academicTerm = ''; // Force them to pick next term

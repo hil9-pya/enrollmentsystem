@@ -13,6 +13,7 @@ import AdviserView from './views/adviser/AdviserView';
 import AccountingView from './views/accounting/AccountingView';
 import RegistrarView from './views/registrar/RegistrarView';
 import DashboardView from './views/admin/DashboardView';
+import InstructorView from './views/instructor/InstructorView';
 import PaymongoCheckoutView from './views/public/PaymongoCheckoutView';
 import PaymentSuccessView from './views/public/PaymentSuccessView';
 
@@ -62,6 +63,7 @@ function AppContent() {
     adviser: AdviserView,
     accounting: AccountingView,
     registrar: RegistrarView,
+    instructor: InstructorView,
     admin: DashboardView
   };
 

@@ -22,6 +22,7 @@ import PortalRefreshButton from '../../components/PortalRefreshButton';
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_TONES = {
   admin: 'neutral',
+  instructor: 'info',
   admission: 'info',
   adviser: 'info',
   accounting: 'success',
@@ -771,7 +772,7 @@ function StaffTab() {
     } catch (err) { toast.error(err.message || 'Failed to delete'); }
   };
 
-  const roleIcons = { admin: Building2, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
+  const roleIcons = { admin: Building2, instructor: GraduationCap, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
@@ -812,6 +813,7 @@ function StaffTab() {
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="admin">Admin (Superuser)</option>
+                <option value="instructor">Instructor</option>
                 <option value="admission">Admission Office</option>
                 <option value="adviser">Academic Adviser</option>
                 <option value="accounting">Accounting Office</option>
@@ -966,11 +968,13 @@ function SettingsTab() {
         </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Active Academic Term</label>
-          <select value={settings.activeTerm} onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
-            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
-            <option value="1st Semester">1st Semester</option>
-            <option value="2nd Semester">2nd Semester</option>
-          </select>
+          <input
+            value={settings.activeTerm}
+            onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
+            placeholder="1st Semester 2026-2027"
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+          />
+          <p className="text-[10px] text-slate-500 mt-2">Use format: 1st Semester 2026-2027. Saving activates matching academic-term record.</p>
           <div className="mt-4 pt-4 border-t border-slate-100">
             <button
               onClick={handleAdvanceSemester}

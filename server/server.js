@@ -19,9 +19,12 @@ import userRoutes from './userRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
 import schedulerRoutes from './schedulerRoutes.js';
 import paymongoRoutes from './paymongoRoutes.js';
+import academicRoutes from './academicRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
 import { startCleanupTask } from './cron.js';
 import { initCatalog } from './subjectsCatalog.js';
+import Settings from './Settings.js';
+import { backfillOfficialEnrollments, ensureAcademicTerm } from './services/academicFoundationService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -87,6 +90,12 @@ const startServer = async () => {
     await seedUsers();
     await seedStudents();
     await initCatalog();
+    const currentSettings = await Settings.findOne();
+    await ensureAcademicTerm(currentSettings?.activeTerm || '1st Semester 2026-2027', { activate: true });
+    const academicBackfill = await backfillOfficialEnrollments();
+    if (academicBackfill.failed.length > 0) {
+      console.warn('Academic membership backfill skipped invalid records:', academicBackfill.failed);
+    }
 
     // Start background tasks
     startCleanupTask();
@@ -168,6 +177,7 @@ const startServer = async () => {
     app.use('/api/settings', settingsRoutes);
     app.use('/api/scheduler', schedulerRoutes);
     app.use('/api/paymongo', paymongoRoutes);
+    app.use('/api/academic', academicRoutes);
 
     // Error Handling Middleware
     app.use(notFound);

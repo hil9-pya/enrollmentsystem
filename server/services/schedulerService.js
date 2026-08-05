@@ -264,6 +264,7 @@ export async function getResolvedEnrolledSchedule(selectedSubjects = []) {
         subjectName: subject.name,
         units: subject.units,
         sectionId,
+        sectionDatabaseId: liveSection?._id || null,
         sectionCode,
         schedule: {
           day: schedule?.day || 'TBA',
@@ -271,6 +272,8 @@ export async function getResolvedEnrolledSchedule(selectedSubjects = []) {
           room: schedule?.room || liveSection?.room || staticSection?.room || 'TBA',
         },
         instructor: liveSection?.instructor || staticSection?.instructor || 'TBA',
+        instructorUserId: liveSection?.instructorUser || null,
+        maxSlots: liveSection?.maxSlots || staticSection?.maxSlots || 40,
       };
     })
   );

@@ -1,6 +1,21 @@
 import asyncHandler from 'express-async-handler';
 import Settings from './Settings.js';
 import mongoose from 'mongoose';
+import { ensureAcademicTerm } from './services/academicFoundationService.js';
+
+function nextAcademicTermLabel(currentLabel) {
+  const value = String(currentLabel || '').trim();
+  const match = value.match(/^(1st|2nd) Semester(?:\s+(20\d{2})-(20\d{2}))?$/i);
+  if (!match) return value === '1st Semester' ? '2nd Semester' : '1st Semester';
+
+  const [, semester, startYear, endYear] = match;
+  if (semester.toLowerCase() === '1st') {
+    return startYear ? `2nd Semester ${startYear}-${endYear}` : '2nd Semester';
+  }
+  return startYear
+    ? `1st Semester ${Number(startYear) + 1}-${Number(endYear) + 1}`
+    : '1st Semester';
+}
 
 // @desc    Get settings
 // @route   GET /api/settings
@@ -20,12 +35,14 @@ const updateSettings = asyncHandler(async (req, res) => {
     settings = new Settings();
   }
   
+  const activeTermChanged = req.body.activeTerm !== undefined && req.body.activeTerm !== settings.activeTerm;
   settings.activeTerm = req.body.activeTerm !== undefined ? req.body.activeTerm : settings.activeTerm;
   settings.enrollmentOpen = req.body.enrollmentOpen !== undefined ? req.body.enrollmentOpen : settings.enrollmentOpen;
   settings.systemMaintenance = req.body.systemMaintenance !== undefined ? req.body.systemMaintenance : settings.systemMaintenance;
   settings.announcement = req.body.announcement !== undefined ? req.body.announcement : settings.announcement;
 
   const updatedSettings = await settings.save();
+  if (activeTermChanged) await ensureAcademicTerm(updatedSettings.activeTerm, { activate: true });
   res.json(updatedSettings);
 });
 
@@ -35,11 +52,12 @@ const advanceSemester = asyncHandler(async (req, res) => {
   let settings = await Settings.findOne();
   if (!settings) settings = new Settings();
 
-  const oldTerm = settings.activeTerm || '1st Semester';
-  const newTerm = oldTerm === '1st Semester' ? '2nd Semester' : '1st Semester';
+  const oldTerm = settings.activeTerm || '1st Semester 2026-2027';
+  const newTerm = nextAcademicTermLabel(oldTerm);
   
   settings.activeTerm = newTerm;
   await settings.save();
+  await ensureAcademicTerm(newTerm, { activate: true });
 
   // Process all students
   const Student = mongoose.model('Student');

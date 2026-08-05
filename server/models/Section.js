@@ -10,6 +10,7 @@ const SectionSchema = new mongoose.Schema(
     time: { type: String, required: true },                   // e.g. "8:00 AM - 9:30 AM"
     room: { type: String, default: '' },
     instructor: { type: String, default: '' },
+    instructorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     maxSlots: { type: Number, required: true, default: 40 },
     enrolledCount: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },

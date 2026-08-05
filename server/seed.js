@@ -191,7 +191,7 @@ const INITIAL_STUDENTS = [
   }
 ];
 
-const DEFAULT_STAFF_ROLES = ['student', 'admission', 'adviser', 'accounting', 'registrar', 'admin'];
+const DEFAULT_STAFF_ROLES = ['student', 'instructor', 'admission', 'adviser', 'accounting', 'registrar', 'admin'];
 
 export async function seedStudents() {
   console.log('Verifying initial applicant records...');
