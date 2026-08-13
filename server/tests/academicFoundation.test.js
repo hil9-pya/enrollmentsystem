@@ -154,6 +154,24 @@ test('official enrollment creates one roster membership and grade publication up
       body: { grade: 1.75 },
       user: instructor,
     });
+    const returnedGrade = await invoke(reviewFinalGrade, {
+      params: { id: membership._id },
+      body: { action: 'return', notes: 'Verify the encoded class record.' },
+      user: registrar,
+    });
+    assert.equal(returnedGrade.status, 200);
+    assert.equal(returnedGrade.payload.data.gradeStatus, 'returned');
+    assert.equal(returnedGrade.payload.data.gradeReviewNotes, 'Verify the encoded class record.');
+
+    const resubmittedGrade = await invoke(submitFinalGrade, {
+      params: { id: membership._id },
+      body: { grade: 1.75 },
+      user: instructor,
+    });
+    assert.equal(resubmittedGrade.status, 200);
+    assert.equal(resubmittedGrade.payload.data.gradeStatus, 'submitted');
+    assert.equal(resubmittedGrade.payload.data.gradeReviewNotes, '');
+
     await invoke(reviewFinalGrade, {
       params: { id: membership._id },
       body: { action: 'approve' },

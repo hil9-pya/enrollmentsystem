@@ -3,6 +3,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
 import EnrollmentValidation from './EnrollmentValidation';
+import GradeReviewQueue from './GradeReviewQueue';
 import PortalShell from '../../components/PortalShell';
 
 export default function RegistrarView() {
@@ -49,6 +50,9 @@ export default function RegistrarView() {
       
       case 'enrolled':
         return <RegistrarDashboard students={students} initialFilter="enrolled" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="enrolled" />;
+
+      case 'grades':
+        return <GradeReviewQueue />;
       
       case 'export':
         return (
