@@ -18,6 +18,7 @@ import CourseManagementTab from './CourseManagementTab';
 import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import PortalPageHeader from '../../components/PortalPageHeader';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_TONES = {
@@ -63,15 +64,11 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Administration overview</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Monitor enrollment operations, student activity, and system performance.
-          </p>
-        </div>
-        <PortalRefreshButton />
-      </div>
+      <PortalPageHeader
+        title="Administration overview"
+        description="Monitor enrollment operations, student activity, and system status."
+        actions={<PortalRefreshButton />}
+      />
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -442,8 +439,8 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(20rem,2fr)_minmax(30rem,1fr)] lg:items-start">
-        <div className="relative">
+      <div className="flex flex-col items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
+        <div className="relative w-full self-start md:flex-[2]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text" placeholder="Search by name, email or student ID…"
@@ -451,20 +448,20 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
             className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
           />
         </div>
-        <div className={`grid grid-cols-1 gap-2 sm:grid-cols-3 ${(statusFilter || programFilter || paymentFilter || searchQuery) ? 'lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]' : ''}`}>
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:min-w-0 md:flex-1">
           {[
             { value: statusFilter, onChange: setStatusFilter, options: [['', 'All Statuses'], ['processing_all', 'All Processing'], ['registration', 'Registration'], ['documents_submitted', 'Docs Submitted'], ['documents_approved', 'Docs Approved'], ['advising_pending', 'Advising Pending'], ['advising_approved', 'Advising Approved'], ['payment_pending', 'Payment Pending'], ['payment_confirmed', 'Payment Confirmed'], ['validation_pending', 'Validation Pending'], ['enrolled', 'Enrolled']] },
             { value: paymentFilter, onChange: setPaymentFilter, options: [['', 'All Payments'], ['unpaid', 'Unpaid'], ['processing', 'Processing'], ['paid', 'Paid']] },
             { value: programFilter, onChange: setProgramFilter, options: [['', 'All Programs'], ...PROGRAMS.map(p => [p.id, p.id.toUpperCase()])] },
           ].map((sel, i) => (
             <select key={i} value={sel.value} onChange={e => sel.onChange(e.target.value)}
-              className="w-full min-w-0 border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all">
+              className="w-full min-w-0 border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all sm:flex-1">
               {sel.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </select>
           ))}
           {(statusFilter || programFilter || paymentFilter || searchQuery) && (
             <button onClick={() => { setStatusFilter(''); setProgramFilter(''); setPaymentFilter(''); setSearchQuery(''); }}
-              className="flex items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 transition-all hover:bg-slate-200 cursor-pointer sm:col-span-3 lg:col-span-1">
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 transition-all hover:bg-slate-200 cursor-pointer">
               <X className="w-3 h-3" /> Clear
             </button>
           )}
@@ -904,6 +901,7 @@ function StaffTab() {
 
 // ─── Settings Tab ───────────────────────────────────────────────────────────────
 function SettingsTab() {
+  const { confirm } = useConfirm();
   const [settings, setSettings] = useState({ activeTerm: '', enrollmentOpen: true, systemMaintenance: false, announcement: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -931,7 +929,14 @@ function SettingsTab() {
   };
 
   const handleAdvanceSemester = async () => {
-    if (!window.confirm('Are you sure you want to advance to the next semester? This will update the system term and automatically archive inactive students.')) return;
+    const isConfirmed = await confirm({
+      title: 'Advance academic term?',
+      message: 'This changes the active term and archives students who have not enrolled for two consecutive semesters. Review the active term before continuing.',
+      confirmText: 'Advance Term',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     
     setSaving(true);
     try {
@@ -949,10 +954,10 @@ function SettingsTab() {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">System configuration</h1>
-        <p className="text-sm font-medium text-slate-500 mt-1">Configure global enrollment settings and system parameters.</p>
-      </div>
+      <PortalPageHeader
+        title="System configuration"
+        description="Configure the active term, enrollment access, maintenance state, and applicant announcements."
+      />
 
       <div className="max-w-3xl space-y-5">
       {/* Term Settings */}
@@ -975,17 +980,21 @@ function SettingsTab() {
             className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
           />
           <p className="text-[10px] text-slate-500 mt-2">Use format: 1st Semester 2026-2027. Saving activates matching academic-term record.</p>
-          <div className="mt-4 pt-4 border-t border-slate-100">
+          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+              <div>
+                <p className="text-xs font-semibold text-amber-900">Term advancement changes student records</p>
+                <p className="mt-1 text-xs leading-5 text-amber-800">Inactive students may be archived. This action requires confirmation.</p>
+              </div>
+            </div>
             <button
               onClick={handleAdvanceSemester}
               disabled={saving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+              className="mt-3 rounded-md border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 shadow-sm transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Advance Academic Term & Archive Inactive Students
             </button>
-            <p className="text-[10px] text-slate-500 mt-2">
-              Warning: This will change the active term and automatically archive students who have not enrolled for 2 consecutive semesters.
-            </p>
           </div>
         </div>
       </div>
@@ -1002,15 +1011,15 @@ function SettingsTab() {
           </div>
         </div>
         {[
-          { key: 'enrollmentOpen', label: 'Enrollment Open', desc: 'Allow new applicants to begin the enrollment process', color: 'indigo', icon: Unlock },
-          { key: 'systemMaintenance', label: 'Maintenance Mode', desc: 'Show a maintenance message to all users', color: 'amber', icon: AlertTriangle },
+          { key: 'enrollmentOpen', label: 'Enrollment Open', desc: 'Allow new applicants to begin the enrollment process', iconClass: 'bg-indigo-50 text-indigo-600', icon: Unlock },
+          { key: 'systemMaintenance', label: 'Maintenance Mode', desc: 'Show a maintenance message to all users', iconClass: 'bg-amber-50 text-amber-600', icon: AlertTriangle },
         ].map(toggle => {
           const Icon = toggle.icon;
           return (
             <div key={toggle.key} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-${toggle.color}-50`}>
-                  <Icon className={`w-3.5 h-3.5 text-${toggle.color}-600`} />
+                <div className={`flex h-7 w-7 items-center justify-center rounded-md ${toggle.iconClass}`}>
+                  <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-900">{toggle.label}</p>
@@ -1018,7 +1027,11 @@ function SettingsTab() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSettings(p => ({ ...p, [toggle.key]: !p[toggle.key] }))}
+                role="switch"
+                aria-checked={settings[toggle.key]}
+                aria-label={toggle.label}
                 className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer flex-shrink-0 ${settings[toggle.key] ? 'bg-indigo-600' : 'bg-slate-200'}`}>
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${settings[toggle.key] ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>

@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { DollarSign, Clock, CheckCircle, TrendingUp, Search, Download } from 'lucide-react';
+import { DollarSign, Clock, CheckCircle, TrendingUp, Search } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import PortalPageHeader from '../../components/PortalPageHeader';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -80,18 +81,11 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       {showOverview && (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-            <div>
-              <h1 className="text-xl font-semibold text-slate-900">Financial analytics</h1>
-              <p className="text-sm font-medium text-slate-500 mt-1">Overview of revenue streams, collection rates, and master ledger.</p>
-            </div>
-            <div className="flex gap-3">
-               <PortalRefreshButton />
-               <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
-                 <Download className="w-4 h-4" /> Export Report
-               </button>
-            </div>
-          </div>
+          <PortalPageHeader
+            title="Financial overview"
+            description="Monitor tuition collection, outstanding balances, and payment records."
+            actions={<PortalRefreshButton />}
+          />
 
           {/* Top Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">

@@ -4,6 +4,7 @@ import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import PortalPageHeader from '../../components/PortalPageHeader';
 
 export default function DashboardOverview({ students, onNavigate }) {
   const metrics = useMemo(() => {
@@ -28,14 +29,11 @@ export default function DashboardOverview({ students, onNavigate }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Overview of applicant pipeline and recent activity.</p>
-        </div>
-        <PortalRefreshButton />
-      </div>
+      <PortalPageHeader
+        title="Admission overview"
+        description="Review applicant workload, decisions, and recent submissions."
+        actions={<PortalRefreshButton />}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         

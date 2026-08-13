@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Users, Clock, CheckCircle, Search, Download, Filter, CheckSquare } from 'lucide-react';
+import { Users, Clock, CheckCircle, Search } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import PortalPageHeader from '../../components/PortalPageHeader';
 
 export default function RegistrarDashboard({ students, onNavigate, initialFilter, onViewDetails, showOverview = true }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRows, setSelectedRows] = useState(new Set());
 
   const metrics = useMemo(() => {
     const relevantStudents = students.filter(s => 
@@ -32,46 +32,18 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
     return { totalStudents, pending, enrolled, tableData };
   }, [students, searchQuery, initialFilter]);
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedRows(new Set(metrics.tableData.map(s => s.id)));
-    } else {
-      setSelectedRows(new Set());
-    }
-  };
-
-  const handleSelectRow = (id) => {
-    const newSet = new Set(selectedRows);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setSelectedRows(newSet);
-  };
-
   return (
     <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
       
       {/* Header Area */}
       {showOverview && (
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Registrar workspace</h1>
-            <p className="text-sm font-medium text-slate-500 mt-1">Manage enrollment validations and official student records.</p>
-          </div>
-          <div className="flex items-center gap-3">
-             <PortalRefreshButton />
-             <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm">
-               <Download className="w-4 h-4" /> Export CSV
-             </button>
-             {selectedRows.size > 0 && (
-               <button className="flex items-center gap-2 px-4 py-2 bg-univ-blue text-white rounded-md text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm animate-in zoom-in-95 duration-200">
-                 <CheckSquare className="w-4 h-4" /> Officially Enroll ({selectedRows.size})
-               </button>
-             )}
-          </div>
+        <div className="mb-5">
+          <PortalPageHeader
+            title="Registrar overview"
+            description="Validate enrollments and maintain official student records."
+            actions={<PortalRefreshButton />}
+          />
         </div>
 
         {/* Compact Metrics */}
@@ -148,37 +120,26 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
                 className="w-full bg-white border border-slate-200 rounded-md py-2 pl-9 pr-3 text-sm font-medium focus:outline-none focus:border-univ-blue focus:ring-1 focus:ring-univ-blue shadow-sm transition-all"
               />
             </div>
-            <button className="px-3 py-2 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-bold shadow-sm">
-              <Filter className="w-4 h-4" /> Filter
-            </button>
           </div>
         </div>
 
         {/* Table Container */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+          <table className="min-w-[52rem] w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50 sticky top-0 z-10 shadow-[0_1px_0_0_#e2e8f0]">
               <tr className="text-slate-500 font-semibold text-xs uppercase tracking-wider">
-                <th className="px-6 py-4 w-12 text-center">
-                  <input 
-                    type="checkbox" 
-                    className="w-4 h-4 rounded border-slate-300 text-univ-blue focus:ring-univ-blue cursor-pointer"
-                    checked={metrics.tableData.length > 0 && selectedRows.size === metrics.tableData.length}
-                    onChange={handleSelectAll}
-                  />
-                </th>
                 <th className="px-6 py-4">Student ID</th>
                 <th className="px-6 py-4">Student Name</th>
                 <th className="px-6 py-4">Program</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="sticky right-0 bg-slate-50 px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {metrics.tableData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-slate-500 font-medium">
+                  <td colSpan={6} className="px-6 py-16 text-center text-slate-500 font-medium">
                     <div className="flex flex-col items-center justify-center">
                       <Search className="w-8 h-8 text-slate-300 mb-3" />
                       <p>No records found matching your criteria.</p>
@@ -189,16 +150,8 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
                 metrics.tableData.map(student => (
                   <tr 
                     key={student.id} 
-                    className={`transition-colors group ${selectedRows.has(student.id) ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                    className="group transition-colors hover:bg-slate-50"
                   >
-                    <td className="px-6 py-4 text-center">
-                      <input 
-                        type="checkbox" 
-                        className="w-4 h-4 rounded border-slate-300 text-univ-blue focus:ring-univ-blue cursor-pointer"
-                        checked={selectedRows.has(student.id)}
-                        onChange={() => handleSelectRow(student.id)}
-                      />
-                    </td>
                     <td className="px-6 py-4">
                       <span className="font-mono text-slate-500 font-medium">{student.studentId || student.id}</span>
                     </td>
@@ -216,7 +169,7 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
                     <td className="px-6 py-4 text-center">
                       <StatusBadge status={student.status} />
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="sticky right-0 bg-white px-6 py-4 text-right group-hover:bg-slate-50">
                       <button
                         onClick={() => onViewDetails(student.id)} 
                         className={`inline-flex items-center justify-center px-4 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer ${
@@ -241,8 +194,8 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
             Showing <span className="font-bold text-slate-900">{metrics.tableData.length}</span> records
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-slate-400 cursor-not-allowed">Previous</button>
-            <button className="px-3 py-1.5 bg-white border border-slate-200 rounded text-slate-400 cursor-not-allowed">Next</button>
+            <button type="button" disabled className="cursor-not-allowed rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-400">Previous</button>
+            <button type="button" disabled className="cursor-not-allowed rounded border border-slate-200 bg-white px-3 py-1.5 text-slate-400">Next</button>
           </div>
         </div>
 

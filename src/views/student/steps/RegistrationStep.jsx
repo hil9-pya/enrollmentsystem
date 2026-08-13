@@ -4,6 +4,8 @@ import FloatingInput from '../../../components/FloatingInput';
 import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, RefreshCw, Loader2 } from 'lucide-react';
 import { authFetch } from '../../../utils/authFetch.js';
 
+const MIN_OTP_VERIFY_LOADING_MS = 700;
+
 // Strips characters commonly used in injection attacks before sending to backend.
 // Since we use MongoDB (not SQL), this guards against NoSQL operator injection.
 const sanitizeInput = (value, maxLen = 300) => {
@@ -349,6 +351,13 @@ export default function RegistrationStep({ onNext, onBack }) {
     setIsEmailAction(true);
     setIsVerifyingOtp(true);
     setOtpError('');
+    const verificationStartedAt = Date.now();
+    const waitForLoadingPaint = async () => {
+      const remaining = MIN_OTP_VERIFY_LOADING_MS - (Date.now() - verificationStartedAt);
+      if (remaining > 0) {
+        await new Promise(resolve => setTimeout(resolve, remaining));
+      }
+    };
     try {
       const response = await authFetch(`/api/students/${student.id}/email-verification/verify`, {
         method: 'POST',
@@ -357,8 +366,10 @@ export default function RegistrationStep({ onNext, onBack }) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || data.message || 'Could not verify email.');
+      await waitForLoadingPaint();
       onNext();
     } catch (error) {
+      await waitForLoadingPaint();
       setOtpError(error.message);
     } finally {
       setIsEmailAction(false);

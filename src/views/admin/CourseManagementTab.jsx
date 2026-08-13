@@ -4,9 +4,11 @@ import { useConfirm } from '../../context/ConfirmationContext';
 import { useAuth } from '../../context/AuthContext';
 import {
   Plus, Search, Pencil, Trash2, X, Save, Loader2,
-  BookOpen, Users, ChevronDown, ChevronUp, RefreshCw,
+  BookOpen, Users, ChevronDown, ChevronUp,
   Calendar, Building2, GraduationCap,
 } from 'lucide-react';
+import PortalPageHeader from '../../components/PortalPageHeader';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
 
 const PROGRAMS = [
   { id: 'bscs', label: 'BS Computer Science' },
@@ -704,22 +706,11 @@ export default function CourseManagementTab() {
   return (
     <>
       <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Course and section management</h1>
-            <p className="text-sm font-medium text-slate-500 mt-1">
-              Manage section offerings. Room and instructor conflicts are validated on save.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              className="p-2 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+        <PortalPageHeader
+          title="Course and section management"
+          description="Manage section offerings. Room and instructor conflicts are validated on save."
+          actions={<>
+            <PortalRefreshButton onRefresh={fetchData} />
             <button
               onClick={() => setSubjectModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-md transition-colors shadow-sm cursor-pointer"
@@ -732,8 +723,8 @@ export default function CourseManagementTab() {
             >
               <Plus className="w-4 h-4" /> Add Section
             </button>
-          </div>
-        </div>
+          </>}
+        />
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-4">
@@ -871,14 +862,16 @@ export default function CourseManagementTab() {
                                       <button
                                         onClick={() => openEdit(sec)}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                                        title="Edit"
+                                        title="Edit section"
+                                        aria-label={`Edit ${sec.sectionCode}`}
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         onClick={() => handleDeleteSection(sec)}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                        title="Delete"
+                                        title="Delete section"
+                                        aria-label={`Delete ${sec.sectionCode}`}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
