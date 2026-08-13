@@ -214,10 +214,6 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
     [scheduleSubjects]
   );
 
-  const resolveSubject = (subjectId) => {
-    return scheduleSubjectIndex.get(subjectId) || getSubjectById(subjectId);
-  };
-
   const localScheduleRows = useMemo(
     () => (student?.selectedSubjects || []).map((selection) => {
       const subject = scheduleSubjectIndex.get(selection.subjectId)
@@ -331,6 +327,56 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
     return { tuition, misc };
   };
 
+  const drawScheduleStudentInfo = (doc, scheduleRows = []) => {
+    const officialTerm = scheduleRows.find((row) => row.academicTerm)?.academicTerm
+      || student.lastEnrolledTerm
+      || student.academicTerm;
+    drawCard(doc, 'Student Information', 15, 60, 180, 28);
+    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 72, 42);
+    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 42);
+    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 20, 84, 42);
+    drawLabelValue(doc, 'Term:', getAcademicTermLabel(officialTerm), 105, 72, 130);
+    drawLabelValue(doc, 'Status:', 'ENROLLED (OFFICIAL)', 105, 78, 130);
+    drawLabelValue(doc, 'Date Enrolled:', getEnrollmentDate(student), 105, 84, 130);
+  };
+
+  const drawScheduleTable = (doc, scheduleRows, schedY) => {
+    const rowHeight = 10;
+    drawCard(doc, 'Enrolled Subjects & Schedule', 15, schedY, 180, 15 + (scheduleRows.length * rowHeight));
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, schedY + 8, 180, 7, 'F');
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('CODE', 18, schedY + 12.5);
+    doc.text('DESCRIPTION', 40, schedY + 12.5);
+    doc.text('SECTION', 92, schedY + 12.5);
+    doc.text('SCHEDULE', 113, schedY + 12.5);
+    doc.text('ROOM', 158, schedY + 12.5);
+    doc.text('INSTRUCTOR', 174, schedY + 12.5);
+
+    let rowY = schedY + 20;
+    scheduleRows.forEach((row, index) => {
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(15, rowY - 5, 180, rowHeight, 'F');
+      }
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.text(truncatePdfText(row.subjectCode, 12), 18, rowY);
+      doc.text(truncatePdfText(row.subjectName, 34), 40, rowY);
+      doc.text(truncatePdfText(row.sectionCode || 'TBA', 14), 92, rowY);
+      doc.text(truncatePdfText(`${row.schedule?.day || 'TBA'} ${row.schedule?.time || 'TBA'}`, 28), 113, rowY);
+      doc.text(truncatePdfText(row.schedule?.room || 'TBA', 10), 158, rowY);
+      doc.text(truncatePdfText(row.instructor || 'TBA', 18), 174, rowY);
+      rowY += rowHeight;
+    });
+
+    return rowY;
+  };
+
   const handleDownloadSchedule = async () => {
     if (!student?.studentId) return;
     const scheduleRows = await getDownloadSchedule();
@@ -338,49 +384,8 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
     drawHeader(doc, logoImg, 'Official Class Schedule');
     drawFooter(doc, 1);
 
-    // Student Info Card
-    drawCard(doc, 'Student Information', 15, 60, 180, 22);
-    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
-    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 40);
-    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 125);
-    drawLabelValue(doc, 'Status:', student.status.toUpperCase(), 105, 78, 125);
-
-    // Schedule Card
-    const schedY = 88;
-    drawCard(doc, 'Enrolled Subjects & Schedule', 15, schedY, 180, 10 + (scheduleRows.length * 8) + 5);
-    
-    // Table Header
-    doc.setFillColor(241, 245, 249);
-    doc.rect(15, schedY + 8, 180, 7, 'F');
-    doc.setTextColor(71, 85, 105);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('CODE', 20, schedY + 12.5);
-    doc.text('DESCRIPTION', 45, schedY + 12.5);
-    doc.text('UNITS', 120, schedY + 12.5, { align: 'center' });
-    doc.text('DAY', 135, schedY + 12.5);
-    doc.text('TIME', 155, schedY + 12.5);
-    doc.text('ROOM', 185, schedY + 12.5);
-
-    let rowY = schedY + 20;
-    scheduleRows.forEach((row, idx) => {
-      if (idx % 2 === 0) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(15, rowY - 5, 180, 7, 'F');
-      }
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(7.5);
-      
-      const desc = doc.splitTextToSize(row.subjectName || '', 65);
-      doc.text(row.subjectCode || '', 20, rowY);
-      doc.text(desc[0], 45, rowY);
-      doc.text(String(row.units), 120, rowY, { align: 'center' });
-      doc.text(row.schedule?.day || 'TBA', 135, rowY);
-      doc.text(row.schedule?.time || 'TBA', 155, rowY);
-      doc.text(row.schedule?.room || 'TBA', 185, rowY);
-      rowY += 8;
-    });
+    drawScheduleStudentInfo(doc, scheduleRows);
+    const rowY = drawScheduleTable(doc, scheduleRows, 94);
 
     drawSeal(doc, 15, rowY + 5, 'SCHEDULE VERIFIED', `DATE: ${new Date().toLocaleDateString()}`);
     doc.save(`Class_Schedule_${student.studentId}.pdf`);
@@ -388,20 +393,24 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
 
   const handleDownloadRegForm = async () => {
     if (!student?.studentId) return;
+    const selectedSubjects = await getDownloadSchedule();
+    const officialTerm = selectedSubjects.find((row) => row.academicTerm)?.academicTerm
+      || student.lastEnrolledTerm
+      || student.academicTerm;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     drawHeader(doc, logoImg, 'Certificate of Registration');
     drawFooter(doc, 1);
 
     // Profile Card
-    drawCard(doc, 'Student Profile', 15, 60, 180, 27);
+    drawCard(doc, 'Student Profile', 15, 60, 180, 31);
     drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
     drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 79, 40);
     drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 130);
-    drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 105, 79, 130);
+    drawLabelValue(doc, 'Term:', getAcademicTermLabel(officialTerm), 105, 79, 130);
+    drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 20, 85, 40);
 
     // Subjects Card
-    const selectedSubjects = await getDownloadSchedule();
-    const subjY = 92;
+    const subjY = 96;
     drawCard(doc, 'Registered Subjects', 15, subjY, 180, 10 + (selectedSubjects.length * 8) + 12);
     
     doc.setFillColor(241, 245, 249);
@@ -628,14 +637,18 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
     drawFooter(doc, pageNum++);
     
     // Copy COR generation code exactly
-    drawCard(doc, 'Student Profile', 15, 60, 180, 27);
+    const officialTerm = scheduleRows.find((row) => row.academicTerm)?.academicTerm
+      || student.lastEnrolledTerm
+      || student.academicTerm;
+    drawCard(doc, 'Student Profile', 15, 60, 180, 31);
     drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
     drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 79, 40);
     drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 130);
-    drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 105, 79, 130);
+    drawLabelValue(doc, 'Term:', getAcademicTermLabel(officialTerm), 105, 79, 130);
+    drawLabelValue(doc, 'Date Issued:', new Date().toLocaleDateString(), 20, 85, 40);
 
-    const selectedSubjects = await getDownloadSchedule();
-    let subjY = 92;
+    const selectedSubjects = scheduleRows;
+    let subjY = 96;
     drawCard(doc, 'Registered Subjects', 15, subjY, 180, 10 + (selectedSubjects.length * 8) + 12);
     
     doc.setFillColor(241, 245, 249);
@@ -832,46 +845,8 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
     drawHeader(doc, logoImg, 'Official Class Schedule');
     drawFooter(doc, pageNum++);
 
-    drawCard(doc, 'Student Information', 15, 60, 180, 22);
-    drawLabelValue(doc, 'Student ID:', student.studentId, 20, 73, 40);
-    drawLabelValue(doc, 'Name:', `${student.lastName}, ${student.firstName}`, 20, 78, 40);
-    drawLabelValue(doc, 'Program:', getProgramLabel(student.programId), 105, 73, 125);
-    drawLabelValue(doc, 'Status:', student.status.toUpperCase(), 105, 78, 125);
-
-    const schedY = 88;
-    drawCard(doc, 'Enrolled Subjects & Schedule', 15, schedY, 180, 10 + (scheduleRows.length * 8) + 5);
-    
-    doc.setFillColor(241, 245, 249);
-    doc.rect(15, schedY + 8, 180, 7, 'F');
-    doc.setTextColor(71, 85, 105);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('CODE', 20, schedY + 12.5);
-    doc.text('DESCRIPTION', 45, schedY + 12.5);
-    doc.text('UNITS', 120, schedY + 12.5, { align: 'center' });
-    doc.text('DAY', 135, schedY + 12.5);
-    doc.text('TIME', 155, schedY + 12.5);
-    doc.text('ROOM', 185, schedY + 12.5);
-
-    let sRowY = schedY + 20;
-    scheduleRows.forEach((row, idx) => {
-      if (idx % 2 === 0) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(15, sRowY - 5, 180, 7, 'F');
-      }
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(7.5);
-      
-      const desc = doc.splitTextToSize(row.subjectName || '', 65);
-      doc.text(row.subjectCode || '', 20, sRowY);
-      doc.text(desc[0], 45, sRowY);
-      doc.text(String(row.units), 120, sRowY, { align: 'center' });
-      doc.text(row.schedule?.day || 'TBA', 135, sRowY);
-      doc.text(row.schedule?.time || 'TBA', 155, sRowY);
-      doc.text(row.schedule?.room || 'TBA', 185, sRowY);
-      sRowY += 8;
-    });
+    drawScheduleStudentInfo(doc, scheduleRows);
+    const sRowY = drawScheduleTable(doc, scheduleRows, 94);
 
     drawSeal(doc, 15, sRowY + 5, 'SCHEDULE VERIFIED', `DATE: ${new Date().toLocaleDateString()}`);
 
@@ -958,7 +933,7 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
                   onClick={handleDownloadRegForm}
                   className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
                 >
-                  <Printer className="h-3.5 w-3.5" /> Download COA Form
+                  <Printer className="h-3.5 w-3.5" /> Download COR
                 </button>
               </div>
  

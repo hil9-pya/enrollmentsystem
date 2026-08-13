@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId } from 'react';
 import { AlertCircle } from 'lucide-react';
 
 export default function FloatingInput({ 
@@ -12,64 +12,54 @@ export default function FloatingInput({
   disabled = false,
   error = null,
   placeholder = " ",
+  autoComplete,
   ...props 
 }) {
-  const [isFocused, setIsFocused] = useState(false);
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const errorId = `${inputId}-error`;
+  const visiblePlaceholder = placeholder === ' ' ? undefined : placeholder;
 
   return (
-    <div className="relative mb-6 w-full">
+    <div className="mb-5 w-full">
+      <label htmlFor={inputId} className="mb-1.5 block text-xs font-semibold text-slate-700">
+        {label}
+        {required && <span className="ml-0.5 text-rose-600" aria-hidden="true">*</span>}
+      </label>
       <div className="relative">
         {Icon && (
-          <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors duration-300 ${
-            error ? 'text-rose-400' : isFocused ? 'text-univ-blue' : 'text-slate-400'
-          }`}>
-            <Icon className="h-5 w-5" />
-          </div>
+          <Icon
+            className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-400'}`}
+            aria-hidden="true"
+          />
         )}
         <input
           type={type}
-          id={id}
+          id={inputId}
           value={value}
           onChange={onChange}
           required={required}
           disabled={disabled}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={placeholder}
-          autoComplete={type === 'password' ? 'new-password' : 'off'}
-          className={`peer w-full px-4 pt-5 pb-2 rounded-xl text-sm font-medium transition-all duration-300 outline-none placeholder-slate-400/70
-            ${Icon ? 'pl-11' : ''}
+          placeholder={visiblePlaceholder}
+          autoComplete={autoComplete}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          className={`w-full rounded-lg border px-3 py-2.5 text-sm font-medium outline-none transition-colors duration-150 placeholder:text-slate-400
+            ${Icon ? 'pl-9' : ''}
             ${disabled
-              ? 'bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed'
+              ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
               : error
-              ? 'bg-rose-50/50 border border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' 
-              : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10 hover:border-slate-300'
+              ? 'border-rose-400 bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
+              : 'border-slate-200 bg-white hover:border-slate-300 focus:border-univ-blue focus:ring-2 focus:ring-univ-blue/15'
             }
           `}
           {...props}
         />
-        <label
-          htmlFor={id}
-          className={`absolute transition-all duration-300 transform top-4 z-10 origin-[0]
-            ${Icon ? 'left-11' : 'left-4'}
-            ${
-              (placeholder !== " " || type === "date" || type === "time")
-                ? "text-xs font-extrabold uppercase tracking-widest -translate-y-3 scale-75"
-                : "text-xs font-extrabold uppercase tracking-widest -translate-y-3 scale-75 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-placeholder-shown:font-medium peer-placeholder-shown:normal-case peer-placeholder-shown:tracking-normal peer-focus:scale-75 peer-focus:-translate-y-3 peer-focus:font-extrabold peer-focus:uppercase peer-focus:tracking-widest"
-            }
-            ${error 
-              ? 'text-rose-500' 
-              : 'text-slate-500 peer-focus:text-univ-blue'
-            }
-          `}
-        >
-          {label} {required && <span className="text-rose-500 ml-0.5">*</span>}
-        </label>
       </div>
       {error && (
-        <div className="flex items-center gap-1 mt-1.5 animate-in slide-in-from-top-1">
-          <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-          <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</span>
+        <div id={errorId} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-rose-600">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
     </div>

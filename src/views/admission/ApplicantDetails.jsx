@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { REQUIRED_DOCUMENTS, PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import Modal from '../../components/Modal';
 import { authFetch } from '../../utils/authFetch.js';
 
 export default function ApplicantDetails({ studentId, onBack }) {
@@ -334,35 +335,20 @@ export default function ApplicantDetails({ studentId, onBack }) {
       </div>
 
       {previewDoc && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 md:p-10">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <h3 className="text-sm font-bold text-univ-navy">{previewDoc.name}</h3>
-                <p className="text-[10px] text-slate-400 font-mono mt-0.5">Document Preview</p>
-              </div>
-              <div className="flex items-center gap-3">
+        <Modal isOpen onClose={closePreview} title={previewDoc.name} maxWidth="max-w-5xl">
+              <div className="mb-3 flex justify-end">
                 <a
                   href={previewDoc.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Open in New Tab
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  Open in new tab
                 </a>
-                <button
-                  type="button"
-                  onClick={closePreview}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 transition-all cursor-pointer bg-white"
-                  title="Close preview"
-                >
-                  <X className="h-4.5 w-4.5" />
-                </button>
               </div>
-            </div>
             
-            <div className="flex-1 bg-slate-100 p-4 flex items-center justify-center overflow-auto">
+            <div className="h-[65vh] bg-slate-100 p-4 flex items-center justify-center overflow-auto rounded-md">
               {previewDoc.isPdf ? (
                 <iframe
                   src={previewDoc.url}
@@ -377,8 +363,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
                 />
               )}
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

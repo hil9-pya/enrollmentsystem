@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { DollarSign, Clock, CheckCircle, TrendingUp, Search } from 'lucide-react';
+import { DollarSign, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
 import PortalPageHeader from '../../components/PortalPageHeader';
+import SearchInput from '../../components/SearchInput';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -185,16 +186,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
                 </button>
               ))}
             </div>
-            <div className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
-                type="text" 
-                placeholder="Search ledger..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-9 pr-3 text-xs font-medium focus:outline-none focus:border-univ-indigo focus:ring-1 focus:ring-univ-indigo transition-all"
-              />
-            </div>
+            <div className="flex-1 sm:w-64"><SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search ledger…" /></div>
           </div>
         </div>
         

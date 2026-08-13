@@ -77,23 +77,28 @@ function buildPersistPayload(draft, isTransferee) {
 }
 
 function SelectField({ label, id, icon: Icon, value, onChange, options, error, required }) {
+  const errorId = `${id}-error`;
   return (
-    <div className="relative mb-6 w-full">
+    <div className="mb-5 w-full">
+      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-700">
+        {label}
+        {required && <span className="ml-0.5 text-rose-600" aria-hidden="true">*</span>}
+      </label>
       <div className="relative">
         {Icon && (
-          <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors duration-300 ${error ? 'text-rose-400' : 'text-slate-400'}`}>
-            <Icon className="h-5 w-5" />
-          </div>
+          <Icon className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-400'}`} aria-hidden="true" />
         )}
         <select
           id={id}
           value={value}
           onChange={onChange}
           required={required}
-          className={`w-full pl-11 pr-8 pt-5 pb-2 rounded-xl text-sm font-medium transition-all duration-300 outline-none appearance-none cursor-pointer
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          className={`w-full appearance-none rounded-lg border py-2.5 pr-8 text-sm font-medium outline-none transition-colors duration-150 cursor-pointer ${Icon ? 'pl-9' : 'pl-3'}
             ${error
-              ? 'bg-rose-50/50 border border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
-              : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10 hover:border-slate-300'
+              ? 'border-rose-400 bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
+              : 'border-slate-200 bg-white hover:border-slate-300 focus:border-univ-blue focus:ring-2 focus:ring-univ-blue/15'
             }
           `}
         >
@@ -101,18 +106,12 @@ function SelectField({ label, id, icon: Icon, value, onChange, options, error, r
             <option key={opt.value} value={opt.value} disabled={opt.value === ''}>{opt.label}</option>
           ))}
         </select>
-        <label
-          htmlFor={id}
-          className={`absolute text-xs font-extrabold uppercase tracking-widest -translate-y-3 scale-75 transition-all duration-300 top-4 left-11 origin-[0] z-10 ${error ? 'text-rose-500' : 'text-slate-500'}`}
-        >
-          {label} {required && <span className="text-rose-500 ml-0.5">*</span>}
-        </label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
       </div>
       {error && (
-        <div className="flex items-center gap-1 mt-1.5 animate-in slide-in-from-top-1">
-          <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-          <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</span>
+        <div id={errorId} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-rose-600">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
     </div>
@@ -572,6 +571,7 @@ export default function RegistrationStep({ onNext, onBack }) {
               type="password"
               icon={Lock}
               value={password}
+              autoComplete="new-password"
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
@@ -586,6 +586,7 @@ export default function RegistrationStep({ onNext, onBack }) {
               type="password"
               icon={Lock}
               value={confirmPassword}
+              autoComplete="new-password"
               onChange={(e) => {
                 setConfirmPassword(e.target.value);
                 if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));

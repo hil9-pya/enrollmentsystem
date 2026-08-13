@@ -866,7 +866,8 @@ const approveAdmission = asyncHandler(async (req, res) => {
       password: 'NCST2026!', // Default password for demo
       firstName: student.firstName,
       lastName: student.lastName,
-      role: 'student'
+      role: 'student',
+      studentProfile: student._id,
     });
   }
 
@@ -1031,7 +1032,10 @@ const validateEnrollment = asyncHandler(async (req, res) => {
     const activeTerm = settings?.activeTerm || '1st Semester 2026-2027';
     const account = await User.findOne({
       role: 'student',
-      username: { $in: [current.studentId, current._id].filter(Boolean) },
+      $or: [
+        { studentProfile: current._id },
+        { username: { $in: [current.studentId, current._id].filter(Boolean) } },
+      ],
     }).session(session);
 
     if (!current.studentId) current.studentId = await generateNextId('STU-', session);
@@ -1051,8 +1055,9 @@ const validateEnrollment = asyncHandler(async (req, res) => {
     });
     if (account && account.username !== current.studentId) {
       account.username = current.studentId;
-      await account.save({ session });
     }
+    if (account && account.studentProfile !== current._id) account.studentProfile = current._id;
+    if (account?.isModified()) await account.save({ session });
     current.status = 'enrolled';
     await current.save({ session });
     return current;

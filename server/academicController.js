@@ -1,4 +1,5 @@
 import asyncHandler from 'express-async-handler';
+import { resolveStudentProfileForUser } from './services/studentIdentityService.js';
 import AcademicTerm from './models/AcademicTerm.js';
 import CourseOffering from './models/CourseOffering.js';
 import CourseMembership from './models/CourseMembership.js';
@@ -119,10 +120,7 @@ export const listCourseOfferings = asyncHandler(async (req, res) => {
 
 export const getMyClasses = asyncHandler(async (req, res) => {
   if (req.user.role === 'student') {
-    const student = await Student.findOne({
-      $or: [{ studentId: req.user.username }, { _id: req.user.username }],
-      isDeleted: { $ne: true },
-    }).select('_id studentId firstName lastName');
+    const student = await resolveStudentProfileForUser(req.user);
     if (!student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
 
     const memberships = await CourseMembership.find({ student: student._id, status: 'enrolled' })
@@ -143,6 +141,10 @@ export const getMyClasses = asyncHandler(async (req, res) => {
   }
 
   const filter = req.user.role === 'instructor' ? { instructor: req.user._id } : {};
+  if (req.user.role === 'instructor') {
+    const activeTermIds = await AcademicTerm.find({ isActive: true }).distinct('_id');
+    filter.term = { $in: activeTermIds };
+  }
   const offerings = await CourseOffering.find(filter)
     .populate('term', 'code name schoolYear semester status isActive')
     .populate('instructor', 'username firstName lastName email')
@@ -157,7 +159,10 @@ export const getOfferingRoster = asyncHandler(async (req, res) => {
     return res.status(403).json({ success: false, message: 'You are not assigned to this class.' });
   }
 
-  const memberships = await CourseMembership.find({ offering: offering._id, status: 'enrolled' })
+  const memberships = await CourseMembership.find({
+    offering: offering._id,
+    status: { $in: ['enrolled', 'completed'] },
+  })
     .populate('student', 'studentId firstName lastName email programId yearLevel')
     .sort({ createdAt: 1 });
   res.json({ success: true, data: memberships });

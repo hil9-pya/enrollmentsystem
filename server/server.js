@@ -20,7 +20,11 @@ import { seedStudents, seedUsers } from './seed.js';
 import { startCleanupTask } from './cron.js';
 import { initCatalog } from './subjectsCatalog.js';
 import Settings from './Settings.js';
-import { backfillOfficialEnrollments, ensureAcademicTerm } from './services/academicFoundationService.js';
+import {
+  backfillOfficialEnrollments,
+  ensureAcademicTerm,
+  repairLegacyEnrolledStudentTerms,
+} from './services/academicFoundationService.js';
 import { startBackgroundJobWorker } from './services/backgroundJobService.js';
 import { repairStoredAcademicTermLabel } from './academicTermUtils.js';
 
@@ -92,6 +96,10 @@ const startServer = async () => {
     if (currentSettings && activeTerm !== storedTerm) {
       await Settings.updateOne({ _id: currentSettings._id }, { $set: { activeTerm } });
       console.warn(`Repaired legacy academic term "${storedTerm}" to "${activeTerm}".`);
+    }
+    const repairedStudentTerms = await repairLegacyEnrolledStudentTerms(activeTerm);
+    if (repairedStudentTerms > 0) {
+      console.warn(`Repaired ${repairedStudentTerms} legacy enrolled-student term field(s).`);
     }
     await ensureAcademicTerm(activeTerm, { activate: true });
     const academicBackfill = await backfillOfficialEnrollments();

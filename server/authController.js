@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import User from './User.js';
 import jwt from 'jsonwebtoken';
+import { getStudentProfileIdentifier, resolveStudentProfileForUser } from './services/studentIdentityService.js';
 
 const generateToken = (id, role) => {
   return jwt.sign({ user: { id, role } }, process.env.JWT_SECRET, {
@@ -8,15 +9,22 @@ const generateToken = (id, role) => {
   });
 };
 
-const toSafeUser = (user) => ({
-  _id: user._id,
-  username: user.username,
-  email: user.email,
-  firstName: user.firstName,
-  lastName: user.lastName,
-  role: user.role,
-  studentId: user.role === 'student' ? user.username : null,
-});
+const toSafeUser = async (user) => {
+  const studentProfile = await resolveStudentProfileForUser(user, { includeDeleted: true });
+  return {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    studentId: user.role === 'student'
+      ? getStudentProfileIdentifier(studentProfile) || user.username
+      : null,
+    studentProfileId: studentProfile?._id || null,
+    studentArchived: Boolean(studentProfile?.isDeleted),
+  };
+};
 
 
 // @desc    Register a new staff/user account
@@ -44,7 +52,7 @@ const registerUser = asyncHandler(async (req, res) => {
   if (user) {
     res.status(201).json({
       token: generateToken(user._id, user.role),
-      user: toSafeUser(user),
+      user: await toSafeUser(user),
     });
   } else {
     res.status(400);
@@ -81,7 +89,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (user && (await user.comparePassword(rawPassword))) {
     res.json({
       token: generateToken(user._id, user.role),
-      user: toSafeUser(user),
+      user: await toSafeUser(user),
     });
   } else {
     res.status(401);
@@ -96,7 +104,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('-password');
 
   if (user) {
-    res.json(toSafeUser(user));
+    res.json(await toSafeUser(user));
   } else {
     res.status(404);
     throw new Error('User not found');

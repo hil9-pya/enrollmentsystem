@@ -51,27 +51,6 @@ body {
   }
 }
 
-/* Premium Form Input Base Styles */
-@layer base {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="date"],
-  select,
-  textarea {
-    @apply block w-full bg-slate-100 border-0 border-b-2 border-transparent focus:ring-0 focus:border-univ-blue rounded-t-xl transition-all duration-300 text-sm px-4 py-3 hover:bg-slate-200/50 focus:bg-slate-50;
-  }
-}
-
-/* Retain utility class just in case */
-@layer components {
-  .input-premium {
-    @apply block w-full bg-slate-100 border-0 border-b-2 border-transparent focus:ring-0 focus:border-univ-blue rounded-t-xl transition-all duration-300 text-sm px-4 py-3 hover:bg-slate-200/50 focus:bg-slate-50;
-  }
-}
-
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

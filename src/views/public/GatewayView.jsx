@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Briefcase, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import LoginView from '../auth/LoginView';
 import ApplicantPortalAccess from '../applicant/ApplicantPortalAccess';
 
@@ -40,7 +40,7 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
       </div>
       
       {/* Right side: Access Panel */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-8 sm:p-12 xl:p-24 relative bg-white overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-10 xl:p-16 relative bg-white overflow-y-auto">
         {/* Top bar for mobile only */}
         <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
            <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-univ-navy rounded-lg transition-colors">
@@ -50,13 +50,13 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
            <span className="font-heading font-bold text-univ-navy uppercase text-xs tracking-wider">NCST Gateway</span>
         </div>
         
-        <div className="w-full max-w-md mt-20 sm:mt-16 lg:mt-0">
+        <div className="w-full max-w-md mt-20 sm:mt-16 lg:mt-6">
            <div className="mb-6 text-center lg:text-left">
              <h2 className="font-heading text-3xl sm:text-4xl font-extrabold text-univ-navy tracking-tight mb-3">Sign in to NCST</h2>
              <p className="text-slate-500 font-medium text-sm">Choose your portal to continue.</p>
            </div>
            
-           <div className="flex bg-slate-100 p-1.5 rounded-xl shadow-sm border border-slate-200/60 mb-6">
+           <div className="flex border-b border-slate-200 mb-6" role="tablist" aria-label="Portal type">
               {[
                 { id: 'applicant', label: 'Applicant' },
                 { id: 'student', label: 'Student' },
@@ -64,32 +64,27 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
               ].map((tab) => (
                 <button 
                   key={tab.id}
+                  type="button"
                   onClick={() => setViewMode(tab.id)}
-                className={`flex-1 min-h-11 px-2 py-3 text-xs font-bold rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'bg-white text-univ-blue shadow-sm border border-slate-200/50' : 'text-slate-500 hover:bg-slate-200/50 hover:text-univ-navy'}`}
-                aria-pressed={viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin')}
+                  role="tab"
+                  className={`flex-1 min-h-11 border-b-2 px-2 py-3 text-sm font-semibold transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo ${viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin') ? 'border-univ-blue text-univ-blue' : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-univ-navy'}`}
+                  aria-selected={viewMode === tab.id || (tab.id === 'staff' && viewMode === 'admin')}
                 >
                   {tab.label}
                 </button>
               ))}
            </div>
            
-           <div className="bg-white rounded-lg shadow-premium border border-slate-200 p-2 min-h-[420px] flex flex-col relative">
+           <div className="bg-white rounded-lg border border-slate-200 flex flex-col relative">
              {(viewMode === 'admin' || viewMode === 'staff' || viewMode === 'student') ? (
-               <div className="flex-1 flex flex-col p-6 sm:p-8 animate-in fade-in duration-300">
+               <div className="flex-1 flex flex-col p-6 sm:p-8">
                   <LoginView portalType={viewMode} onLogin={onLogin} />
                </div>
              ) : viewMode === 'applicant' ? (
-               <div className="flex-1 flex flex-col p-6 sm:p-8 animate-in fade-in duration-300">
+               <div className="flex-1 flex flex-col p-6 sm:p-8">
                   <ApplicantPortalAccess onVerified={onVerified} />
                </div>
-             ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-100 rounded-xl m-2 bg-slate-50/50">
-                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                    <Briefcase className="w-5 h-5 text-slate-400" />
-                  </div>
-                  <p className="text-sm text-slate-500 font-medium">Select a portal above.</p>
-                </div>
-             )}
+             ) : null}
            </div>
            
            <div className="mt-8 text-center">

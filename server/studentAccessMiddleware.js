@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import Student from './Student.js';
 import User from './User.js';
+import { resolveStudentProfileForUser } from './services/studentIdentityService.js';
 
 const STAFF_ROLES = new Set(['admin', 'admission', 'adviser', 'accounting', 'registrar']);
 
@@ -39,14 +39,18 @@ export async function protectStudentRecord(req, res, next) {
       return res.status(403).json({ error: 'Your role cannot access student records.' });
     }
 
-    const ownsRecord = await Student.exists({
-      $and: [
-        { $or: [{ _id: requestedId }, { studentId: requestedId }] },
-        { $or: [{ _id: user.username }, { studentId: user.username }] },
-      ],
-      isDeleted: { $ne: true },
-    });
+    const studentProfile = await resolveStudentProfileForUser(user, { includeDeleted: true });
+    if (!studentProfile) {
+      return res.status(403).json({ error: 'Student account is not linked to a student profile.' });
+    }
+    if (studentProfile.isDeleted) {
+      return res.status(403).json({ error: 'Student profile is archived. Contact the Registrar for reactivation.' });
+    }
+    const ownsRecord = [studentProfile._id, studentProfile.studentId]
+      .filter(Boolean)
+      .some((identifier) => String(identifier) === requestedId);
     if (!ownsRecord) return res.status(403).json({ error: 'You cannot access another student record.' });
+    req.studentProfile = studentProfile;
     return next();
   } catch {
     return res.status(401).json({ error: 'Authentication token is invalid or expired.' });

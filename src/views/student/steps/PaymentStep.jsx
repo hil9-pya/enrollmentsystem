@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
-import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
+import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
+import Modal from '../../../components/Modal';
 import { authFetch } from '../../../utils/authFetch.js';
 
 export default function PaymentStep({ onNext, onBack }) {
@@ -619,32 +620,24 @@ export default function PaymentStep({ onNext, onBack }) {
       </div>
 
       {/* Secure Payment Validation Modal */}
-      {showValidationModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-premium-lg max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="relative flex items-center justify-center border-b border-slate-100 bg-slate-50 p-6">
-              <h3 className="text-center text-sm font-extrabold text-univ-navy">Enter Payment Details</h3>
-              <button 
-                type="button"
-                onClick={() => {
-                  setShowValidationModal(false);
-                  setErrors({});
-                }} 
-                className="absolute right-6 text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-all cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
+      <Modal
+        isOpen={showValidationModal}
+        onClose={() => {
+          setShowValidationModal(false);
+          setErrors({});
+        }}
+        title="Enter payment details"
+        maxWidth="max-w-md"
+      >
             <form onSubmit={handleValidationSubmit}>
-              <div className="p-6 overflow-y-auto max-h-[450px]">
+              <div>
                 <p className="text-[11px] text-slate-500 mb-6 leading-relaxed font-medium">
                   Please enter your payment authorization details below. All fields are checked according to secure transaction standards.
                 </p>
                 {renderValidationFields()}
               </div>
               
-              <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3.5 border-t border-slate-100">
+              <div className="flex justify-end gap-3.5 border-t border-slate-200 pt-4 mt-5">
                 <button
                   type="button"
                   onClick={() => {
@@ -663,9 +656,7 @@ export default function PaymentStep({ onNext, onBack }) {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

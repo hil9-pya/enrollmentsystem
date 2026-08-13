@@ -8,6 +8,7 @@ import {
   getResolvedEnrolledSchedule,
   validateAddSection,
 } from './services/schedulerService.js';
+import { getOfficialEnrollmentSchedule } from './services/officialScheduleService.js';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -89,7 +90,13 @@ export const getEnrolledSchedule = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
 
-  const schedule = await getResolvedEnrolledSchedule(student.selectedSubjects || []);
+  let schedule = [];
+  if (student.status === 'enrolled') {
+    schedule = await getOfficialEnrollmentSchedule(student);
+  }
+  if (schedule.length === 0) {
+    schedule = await getResolvedEnrolledSchedule(student.selectedSubjects || []);
+  }
   res.json({ success: true, data: schedule });
 });
 

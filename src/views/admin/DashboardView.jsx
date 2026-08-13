@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import {
-  Users, FileCheck, DollarSign, Search, Trash2,
+  Users, FileCheck, DollarSign, Trash2,
   CheckCircle, Sliders, RotateCcw, BarChart2,
   Edit3, X, Save, Download, AlertTriangle,
   BookOpen, CreditCard, GraduationCap, TrendingUp, Activity,
@@ -19,6 +19,8 @@ import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
 import PortalPageHeader from '../../components/PortalPageHeader';
+import Modal from '../../components/Modal';
+import SearchInput from '../../components/SearchInput';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_TONES = {
@@ -252,21 +254,8 @@ function StudentEditModal({ student, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-100 rounded-md flex items-center justify-center">
-              <Edit3 className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Edit Student Record</h3>
-              <p className="text-[10px] text-slate-400 font-mono">{student.id}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+    <Modal isOpen onClose={onClose} title={`Edit student record — ${student.id}`} maxWidth="max-w-2xl">
+        <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">First Name</label>
@@ -359,15 +348,14 @@ function StudentEditModal({ student, onClose, onSave }) {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <button onClick={onClose} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
+        <div className="flex items-center justify-end gap-3 pt-4 mt-5 border-t border-slate-200">
+          <button type="button" onClick={onClose} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Save Changes
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -439,29 +427,24 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
-        <div className="relative w-full self-start md:flex-[2]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text" placeholder="Search by name, email or student ID…"
-            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
-          />
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:grid-cols-[minmax(18rem,2fr)_minmax(30rem,3fr)]">
+        <div className="w-full">
+          <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search by name, email or student ID…" />
         </div>
-        <div className="flex w-full flex-col gap-2 sm:flex-row md:min-w-0 md:flex-1">
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
           {[
             { value: statusFilter, onChange: setStatusFilter, options: [['', 'All Statuses'], ['processing_all', 'All Processing'], ['registration', 'Registration'], ['documents_submitted', 'Docs Submitted'], ['documents_approved', 'Docs Approved'], ['advising_pending', 'Advising Pending'], ['advising_approved', 'Advising Approved'], ['payment_pending', 'Payment Pending'], ['payment_confirmed', 'Payment Confirmed'], ['validation_pending', 'Validation Pending'], ['enrolled', 'Enrolled']] },
             { value: paymentFilter, onChange: setPaymentFilter, options: [['', 'All Payments'], ['unpaid', 'Unpaid'], ['processing', 'Processing'], ['paid', 'Paid']] },
             { value: programFilter, onChange: setProgramFilter, options: [['', 'All Programs'], ...PROGRAMS.map(p => [p.id, p.id.toUpperCase()])] },
           ].map((sel, i) => (
             <select key={i} value={sel.value} onChange={e => sel.onChange(e.target.value)}
-              className="w-full min-w-0 border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all sm:flex-1">
+              className="w-full min-w-0 border border-slate-200 text-xs font-semibold rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-colors">
               {sel.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </select>
           ))}
           {(statusFilter || programFilter || paymentFilter || searchQuery) && (
             <button onClick={() => { setStatusFilter(''); setProgramFilter(''); setPaymentFilter(''); setSearchQuery(''); }}
-              className="flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 transition-all hover:bg-slate-200 cursor-pointer">
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 cursor-pointer sm:col-span-3">
               <X className="w-3 h-3" /> Clear
             </button>
           )}
@@ -551,12 +534,12 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                     </div>
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button onClick={() => setEditingStudent(stud)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit student record">
+                    <button type="button" onClick={() => setEditingStudent(stud)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit student record" aria-label={`Edit ${stud.firstName} ${stud.lastName}`}>
                       <Edit3 className="w-4 h-4" />
                     </button>
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button onClick={() => onTrash(stud.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Move to trash">
+                    <button type="button" onClick={() => onTrash(stud.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Move to trash" aria-label={`Move ${stud.firstName} ${stud.lastName} to trash`}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -880,10 +863,10 @@ function StaffTab() {
                     <td className="px-5 py-4 text-slate-500">{user.email}</td>
                     <td className="px-5 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit account">
+                        <button type="button" onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit account" aria-label={`Edit ${user.username} account`}>
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Delete account">
+                        <button type="button" onClick={() => handleDelete(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Delete account" aria-label={`Delete ${user.username} account`}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

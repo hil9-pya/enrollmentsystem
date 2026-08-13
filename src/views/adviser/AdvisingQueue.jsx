@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, FileWarning, FileText, GraduationCap } from 'lucide-react';
+import { FileWarning, FileText, GraduationCap } from 'lucide-react';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { toast } from 'react-hot-toast';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import SearchInput from '../../components/SearchInput';
 
 export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const { dispatch } = useEnrollment();
@@ -128,22 +129,13 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
         <div className="p-4 border-b border-slate-100 bg-white space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-extrabold text-slate-900 tracking-wide">Evaluation Queue</h2>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{filter} records</p>
+              <h2 className="text-sm font-semibold text-slate-900">Evaluation queue</h2>
+              <p className="mt-0.5 text-xs text-slate-500 capitalize">{filter} records</p>
             </div>
             <PortalRefreshButton className="px-2.5" />
           </div>
           
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text" 
-              placeholder="Search student..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-9 pr-3 text-xs font-medium focus:outline-none focus:border-univ-indigo focus:ring-1 focus:ring-univ-indigo transition-all"
-            />
-          </div>
+          <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search students…" />
 
           <div className="flex border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm mt-2">
             {[

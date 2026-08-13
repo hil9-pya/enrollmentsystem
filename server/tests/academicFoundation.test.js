@@ -1,15 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import Student from '../Student.js';
 import User from '../User.js';
 import Section from '../models/Section.js';
 import CourseMembership from '../models/CourseMembership.js';
-import { submitSchedule } from '../schedulerController.js';
-import { publishFinalGrade, reviewFinalGrade, submitFinalGrade } from '../academicController.js';
+import AcademicTerm from '../models/AcademicTerm.js';
+import { getEnrolledSchedule, submitSchedule } from '../schedulerController.js';
+import {
+  getOfferingRoster,
+  getMyClasses,
+  publishFinalGrade,
+  reviewFinalGrade,
+  submitFinalGrade,
+} from '../academicController.js';
 import { parseAcademicTermLabel, repairStoredAcademicTermLabel } from '../academicTermUtils.js';
-import { validateEnrollment } from '../studentsController.js';
+import { confirmPayment, validateEnrollment } from '../studentsController.js';
 import { generateApplicantToken, protectStudentRecord } from '../studentAccessMiddleware.js';
 
 function invoke(handler, req) {
@@ -76,6 +84,8 @@ test('official enrollment creates one roster membership and grade publication up
       lastName: 'Student',
       status: 'advising_approved',
       academicTerm: '1st Semester 2026-2027',
+      totalTuition: 9000,
+      paymentPlan: 'downpayment',
       selectedSubjects: [{ subjectId: 'cs101', sectionId: String(section._id) }],
     });
 
@@ -84,8 +94,20 @@ test('official enrollment creates one roster membership and grade publication up
     assert.equal((await Section.findById(section._id)).enrolledCount, 1);
 
     student = await Student.findById(student._id);
-    student.status = 'payment_confirmed';
+    student.status = 'payment_pending';
     await student.save();
+    const payment = await invoke(confirmPayment, {
+      params: { id: student._id },
+      body: {},
+      user: { username: 'accounting-test' },
+    });
+    assert.equal(payment.status, 200);
+    assert.equal(payment.payload.status, 'payment_confirmed');
+    assert.equal(payment.payload.paymentStatus, 'partial');
+    assert.equal(payment.payload.amountPaid, 3000);
+    assert.equal(payment.payload.remainingBalance, 6000);
+    assert.ok(payment.payload.receiptNumber);
+
     const validation = await invoke(validateEnrollment, {
       params: { id: student._id },
       body: {},
@@ -97,6 +119,35 @@ test('official enrollment creates one roster membership and grade publication up
     let membership = await CourseMembership.findOne({ student: student._id }).populate('offering');
     assert.ok(membership);
     assert.equal(String(membership.offering.instructor), String(instructor._id));
+
+    const legacyTerm = await AcademicTerm.create({
+      code: 'LEGACY-FIRST-SEMESTER',
+      name: '1st Semester',
+      semester: '1',
+      status: 'closed',
+    });
+    membership.offering.term = legacyTerm._id;
+    await membership.offering.save();
+
+    const activeOnlyClasses = await invoke(getMyClasses, { user: instructor });
+    assert.equal(activeOnlyClasses.status, 200);
+    assert.equal(activeOnlyClasses.payload.data.length, 0);
+
+    await Section.findByIdAndDelete(section._id);
+    const officialSchedule = await invoke(getEnrolledSchedule, {
+      params: { studentId: student._id },
+      body: {},
+    });
+    assert.equal(officialSchedule.status, 200);
+    assert.equal(officialSchedule.payload.data.length, 1);
+    assert.equal(officialSchedule.payload.data[0].sectionCode, 'CS 101-A');
+    assert.deepEqual(officialSchedule.payload.data[0].schedule, {
+      day: 'MWF',
+      time: '8:00 AM - 9:30 AM',
+      room: '301',
+    });
+    assert.equal(officialSchedule.payload.data[0].instructor, 'Renato Villanueva');
+    assert.equal(officialSchedule.payload.data[0].academicTerm, '1st Semester 2026-2027');
 
     await invoke(submitFinalGrade, {
       params: { id: membership._id },
@@ -119,6 +170,14 @@ test('official enrollment creates one roster membership and grade publication up
     assert.equal(membership.gradeStatus, 'published');
     assert.equal(student.academicRecord.length, 1);
     assert.equal(student.academicRecord[0].grade, 1.75);
+
+    const publishedRoster = await invoke(getOfferingRoster, {
+      params: { id: membership.offering },
+      user: instructor,
+    });
+    assert.equal(publishedRoster.status, 200);
+    assert.equal(publishedRoster.payload.data.length, 1);
+    assert.equal(publishedRoster.payload.data[0].gradeStatus, 'published');
   } finally {
     await mongoose.disconnect();
     await mongo.stop();
@@ -212,6 +271,91 @@ test('applicant token permits only its own student record', async () => {
     const token = generateApplicantToken('APP-2026-9201');
     assert.equal((await invokeAccess('APP-2026-9201', token)).status, 200);
     assert.equal((await invokeAccess('APP-2026-9202', token)).status, 403);
+  } finally {
+    if (originalSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalSecret;
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('student account follows explicit profile link and cannot access another record', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+  const originalSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = 'test-only-student-access-secret';
+
+  const invokeAccess = (studentId, token) => new Promise((resolve, reject) => {
+    const req = { headers: { authorization: `Bearer ${token}` }, params: { id: studentId }, body: {} };
+    const res = {
+      statusCode: 200,
+      status(code) { this.statusCode = code; return this; },
+      json(payload) { resolve({ status: this.statusCode, payload }); },
+    };
+    protectStudentRecord(req, res, (error) => error ? reject(error) : resolve({ status: 200, req }));
+  });
+
+  try {
+    await Student.create([
+      { _id: 'APP-2026-9301', studentId: 'STU-2026-9301', schoolEmail: 'linked@ncst.edu', status: 'enrolled' },
+      { _id: 'APP-2026-9302', studentId: 'STU-2026-9302', schoolEmail: 'other@ncst.edu', status: 'enrolled' },
+    ]);
+    const user = await User.create({
+      username: 'LEGACY-ACCOUNT-ID',
+      email: 'linked@ncst.edu',
+      password: 'password123',
+      firstName: 'Linked',
+      lastName: 'Student',
+      role: 'student',
+      studentProfile: 'APP-2026-9301',
+    });
+    const token = jwt.sign({ user: { id: user._id, role: 'student' } }, process.env.JWT_SECRET);
+
+    assert.equal((await invokeAccess('APP-2026-9301', token)).status, 200);
+    assert.equal((await invokeAccess('STU-2026-9301', token)).status, 200);
+    assert.equal((await invokeAccess('STU-2026-9302', token)).status, 403);
+  } finally {
+    if (originalSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalSecret;
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('legacy student account repairs one unique email profile link', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+  const originalSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = 'test-only-student-access-secret';
+
+  try {
+    await Student.create({
+      _id: 'APP-2026-9401',
+      studentId: 'STU-2026-9401',
+      schoolEmail: 'legacy@ncst.edu',
+      status: 'enrolled',
+    });
+    const user = await User.create({
+      username: 'STALE-STUDENT-ID',
+      email: 'legacy@ncst.edu',
+      password: 'password123',
+      firstName: 'Legacy',
+      lastName: 'Student',
+      role: 'student',
+    });
+    const token = jwt.sign({ user: { id: user._id, role: 'student' } }, process.env.JWT_SECRET);
+    const result = await new Promise((resolve, reject) => {
+      const req = { headers: { authorization: `Bearer ${token}` }, params: { id: 'STU-2026-9401' }, body: {} };
+      const res = {
+        statusCode: 200,
+        status(code) { this.statusCode = code; return this; },
+        json(payload) { resolve({ status: this.statusCode, payload }); },
+      };
+      protectStudentRecord(req, res, (error) => error ? reject(error) : resolve({ status: 200 }));
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal((await User.findById(user._id)).studentProfile, 'APP-2026-9401');
   } finally {
     if (originalSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = originalSecret;

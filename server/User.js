@@ -32,6 +32,11 @@ const UserSchema = new mongoose.Schema({
     enum: ['student', 'instructor', 'admission', 'adviser', 'accounting', 'registrar', 'admin'],
     default: 'student',
   },
+  studentProfile: {
+    type: String,
+    ref: 'Student',
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

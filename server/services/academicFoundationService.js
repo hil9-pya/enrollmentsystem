@@ -70,6 +70,28 @@ export async function ensureAcademicTerm(label, { activate = false, session = nu
   return term;
 }
 
+export async function repairLegacyEnrolledStudentTerms(activeTermLabel) {
+  const activeTerm = parseAcademicTermLabel(activeTermLabel);
+  const { default: Student } = await import('../Student.js');
+  let modifiedCount = 0;
+
+  for (const semester of ['1st', '2nd']) {
+    const legacyLabel = `${semester} Semester`;
+    const repairedLabel = `${legacyLabel} ${activeTerm.schoolYear}`;
+    const academicTermResult = await Student.updateMany(
+      { status: 'enrolled', academicTerm: legacyLabel },
+      { $set: { academicTerm: repairedLabel } }
+    );
+    const lastEnrolledTermResult = await Student.updateMany(
+      { status: 'enrolled', lastEnrolledTerm: legacyLabel },
+      { $set: { lastEnrolledTerm: repairedLabel } }
+    );
+    modifiedCount += academicTermResult.modifiedCount + lastEnrolledTermResult.modifiedCount;
+  }
+
+  return modifiedCount;
+}
+
 async function findInstructorUser(instructorName, instructorId, session = null) {
   if (instructorId) {
     const assigned = await User.findOne({ _id: instructorId, role: 'instructor' }).select('_id').session(session);

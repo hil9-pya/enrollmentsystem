@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
-import { Mail, Lock, AlertCircle, ArrowRight, Play } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import FloatingInput from '../../components/FloatingInput';
 import { storeApplicantAccess } from '../../utils/authFetch.js';
 
@@ -64,8 +64,8 @@ export default function ApplicantPortalAccess({ onVerified }) {
   return (
     <div className="w-full flex-1 flex flex-col justify-start pt-2 outline-none focus:outline-none">
         
-        <div className="text-center mb-6 flex flex-col items-center">
-          <h3 className="text-2xl font-heading font-extrabold text-univ-navy tracking-tight">Admissions Portal</h3>
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-heading font-bold text-univ-navy">Admissions portal</h3>
           <p className="text-sm text-slate-500 mt-1.5 font-medium max-w-sm leading-relaxed">
             For New and Transfer applicants. Resume an existing application or start a new one.
           </p>
@@ -73,7 +73,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
 
         {/* System Announcement */}
         {enrollmentSettings?.announcement && (
-          <div className="mb-6 p-4 bg-amber-50 rounded-xl flex items-start gap-3 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2">
+          <div className="mb-5 p-3 bg-amber-50 rounded-lg flex items-start gap-3 border border-amber-200" role="status">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 stroke-[2]" />
             <p className="text-sm text-amber-900 font-bold leading-relaxed whitespace-pre-wrap">
               {enrollmentSettings.announcement}
@@ -82,20 +82,20 @@ export default function ApplicantPortalAccess({ onVerified }) {
         )}
 
         {useEnrollment().settings?.systemMaintenance ? (
-          <div className="mb-6 p-6 bg-slate-100 rounded-2xl flex flex-col items-center gap-3 border border-slate-200 shadow-sm text-center">
-            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="mb-5 p-4 bg-slate-50 rounded-lg flex items-start gap-3 border border-slate-200">
+            <div className="w-9 h-9 bg-amber-100 text-amber-700 rounded-md flex shrink-0 items-center justify-center">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h4 className="text-base font-bold text-slate-800">System Maintenance</h4>
-            <p className="text-sm text-slate-500 font-medium">The Admissions Portal is currently undergoing scheduled maintenance. Please check back later.</p>
+            <div><h4 className="text-sm font-semibold text-slate-800">System maintenance</h4>
+            <p className="mt-1 text-sm text-slate-600">The admissions portal is temporarily unavailable. Please check back later.</p></div>
           </div>
         ) : (
           <>
             {error && (
-              <div className="mb-6 p-4 bg-rose-50 rounded-xl flex items-start gap-3 border border-rose-200/50 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="mb-5 p-3 bg-rose-50 rounded-lg flex items-start gap-3 border border-rose-200" role="alert">
                 <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5 stroke-[2]" />
                 <p className="text-sm text-rose-800 font-bold leading-relaxed">{error}</p>
               </div>
@@ -109,6 +109,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
                 icon={Mail}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
                 required
               />
 
@@ -119,27 +120,22 @@ export default function ApplicantPortalAccess({ onVerified }) {
                 icon={Lock}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
               />
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-4 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl shadow-md shadow-univ-blue/20 hover:shadow-lg hover:shadow-univ-blue/30 text-sm font-extrabold text-white bg-univ-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-univ-blue disabled:opacity-70 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 group"
+                className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-semibold text-white bg-univ-blue hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-univ-blue disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Checking Credentials...
+                    <Loader2 className="animate-spin h-4 w-4" aria-hidden="true" />
+                    Signing in...
                   </span>
                 ) : (
-                  <>
-                    Resume Application
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </>
+                  'Resume application'
                 )}
               </button>
             </form>
@@ -149,23 +145,22 @@ export default function ApplicantPortalAccess({ onVerified }) {
                 <div className="w-full border-t border-slate-200/60"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white text-slate-400 font-extrabold text-[10px] uppercase tracking-widest">Or</span>
+                <span className="px-3 bg-white text-xs text-slate-500">or</span>
               </div>
             </div>
 
             <div className="text-center">
               {enrollmentSettings?.enrollmentOpen === false ? (
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                   <p className="text-sm text-slate-600 font-bold">Enrollment is currently closed.</p>
                   <p className="text-xs text-slate-400 mt-1">We are not accepting new applications at this time.</p>
                 </div>
               ) : (
                 <button
                   onClick={handleStartNew}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 px-4 border border-slate-200 hover:border-univ-blue/30 shadow-sm rounded-xl text-sm font-extrabold text-slate-600 bg-white hover:bg-blue-50 hover:text-univ-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-univ-blue transition-all cursor-pointer group"
+                  className="w-full flex items-center justify-center py-3 px-4 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-univ-blue transition-colors cursor-pointer"
                 >
-                  <Play className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  Start New Application
+                  Start new application
                 </button>
               )}
             </div>

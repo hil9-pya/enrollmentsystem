@@ -233,15 +233,19 @@ export async function seedUsers() {
         firstName: idx === 0 ? 'Demo' : (idx === 1 ? 'Maria' : (idx === 2 ? 'Carlos' : (idx === 3 ? 'Ana' : 'Miguel'))),
         lastName: idx === 0 ? 'Student' : (idx === 1 ? 'Santos' : (idx === 2 ? 'Reyes' : (idx === 3 ? 'Torres' : 'Gomez'))),
         role: 'student',
+        studentProfile: sid,
       };
     })
   ];
 
   for (const userData of usersToSeed) {
-    const exists = await User.exists({ $or: [{ username: userData.username }, { email: userData.email }] });
-    if (!exists) {
+    const existing = await User.findOne({ $or: [{ username: userData.username }, { email: userData.email }] });
+    if (!existing) {
       await User.collection.insertOne(userData);
       console.log(`Seeded user account: ${userData.username}`);
+    } else if (userData.studentProfile && !existing.studentProfile) {
+      existing.studentProfile = userData.studentProfile;
+      await existing.save();
     }
   }
 }

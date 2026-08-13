@@ -3,12 +3,13 @@ import { toast } from 'react-hot-toast';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Plus, Search, Pencil, Trash2, X, Save, Loader2,
+  Plus, Search, Pencil, Trash2, Save, Loader2,
   BookOpen, Users, ChevronDown, ChevronUp,
   Calendar, Building2, GraduationCap,
 } from 'lucide-react';
 import PortalPageHeader from '../../components/PortalPageHeader';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import Modal from '../../components/Modal';
 
 const PROGRAMS = [
   { id: 'bscs', label: 'BS Computer Science' },
@@ -83,15 +84,8 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h3 className="text-base font-extrabold text-slate-900">Add New Subject</h3>
-          <button onClick={onClose} className="p-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-7 space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add new subject" maxWidth="max-w-lg">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">ID (Unique) *</label>
@@ -157,8 +151,7 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -305,17 +298,12 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h3 className="text-base font-extrabold text-slate-900">
-            {initialData?.id ? 'Edit Section' : 'Add New Section'}
-          </h3>
-          <button onClick={onClose} className="p-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialData?.id ? 'Edit section' : 'Add new section'}
+      maxWidth="max-w-2xl"
+    >
         <div className="flex gap-0 divide-x divide-slate-100">
           {/* ── Left: Form ── */}
           <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-4 min-w-0">
@@ -535,8 +523,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -860,18 +847,20 @@ export default function CourseManagementTab() {
                                   <td className="p-3">
                                     <div className="flex items-center justify-end gap-1">
                                       <button
+                                        type="button"
                                         onClick={() => openEdit(sec)}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                                         title="Edit section"
-                                        aria-label={`Edit ${sec.sectionCode}`}
+                                        aria-label={`Edit section ${sec.sectionCode}`}
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
+                                        type="button"
                                         onClick={() => handleDeleteSection(sec)}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                         title="Delete section"
-                                        aria-label={`Delete ${sec.sectionCode}`}
+                                        aria-label={`Delete section ${sec.sectionCode}`}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>

@@ -128,6 +128,7 @@ export default function StudentView() {
   const { user, logout } = useAuth();
   const student = getActiveStudent();
   const [isProfileReady, setIsProfileReady] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
   const hasActiveHolds = student?.holds?.some(h => h.status === 'active');
   const [currentStep, setCurrentStep] = useState(() => {
@@ -159,11 +160,19 @@ export default function StudentView() {
     let cancelled = false;
     setIsVerified(true);
     setIsProfileReady(false);
+    setProfileError('');
     setActiveStudent(user.studentId);
+
+    if (user.studentArchived) {
+      setProfileError('Your student profile is archived. Contact the Registrar for reactivation.');
+      setIsProfileReady(true);
+      return undefined;
+    }
 
     refreshActiveStudent(user.studentId)
       .catch((error) => {
         console.error('Failed to refresh student profile:', error.message || error);
+        if (!cancelled) setProfileError(error.message || 'Unable to load student profile.');
       })
       .finally(() => {
         if (!cancelled) setIsProfileReady(true);
@@ -172,7 +181,7 @@ export default function StudentView() {
     return () => {
       cancelled = true;
     };
-  }, [user?.role, user?.studentId, setActiveStudent, refreshActiveStudent]);
+  }, [user?.role, user?.studentId, user?.studentArchived, setActiveStudent, refreshActiveStudent]);
 
   // Initialize resume state on student switch, then let users navigate manually.
   useEffect(() => {
@@ -323,6 +332,28 @@ export default function StudentView() {
 
   if (!isVerified) {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
+  }
+
+  if (isProfileReady && profileError) {
+    return (
+      <div className="flex h-full min-h-[28rem] items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md rounded-lg border border-amber-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-base font-semibold text-slate-900">Student profile unavailable</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{profileError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              logout?.();
+              setActiveStudent(null);
+              window.location.href = '/?portal=gateway&tab=student';
+            }}
+            className="mt-5 rounded-md bg-univ-blue px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            Return to sign in
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const isAuthenticatedProfile = Boolean(
