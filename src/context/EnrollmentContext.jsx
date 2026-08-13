@@ -2,17 +2,9 @@ import React, { createContext, useState, useEffect, useContext, useCallback, use
 import { toast } from 'react-hot-toast';
 import { SUBJECTS } from '../data/mockData.js';
 import { useAuth } from './AuthContext';
+import { authFetch } from '../utils/authFetch.js';
 
 const EnrollmentContext = createContext(null);
-const authFetch = (url, options = {}) => {
-  const token = localStorage.getItem('token');
-  const headers = { ...options.headers };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return fetch(url, { ...options, headers });
-};
-
 const safeJson = async (res) => {
   if (!res.ok) {
     let errorMsg = `Server error (Status ${res.status})`;
@@ -37,7 +29,7 @@ export function EnrollmentProvider({ children }) {
   const [currentStudentId, setCurrentStudentId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeStudentId, setActiveStudentId] = useState(() => {
-    return localStorage.getItem('student_active_id') || 'STU-2026-0006';
+    return localStorage.getItem('student_active_id') || null;
   });
 
   const setActiveStudent = useCallback((id) => {
@@ -52,7 +44,7 @@ export function EnrollmentProvider({ children }) {
   const refreshActiveStudent = useCallback(async (studentId = activeStudentId) => {
     if (!studentId) return null;
 
-    const res = await fetch(`/api/students/${studentId}`, { cache: 'no-store' });
+    const res = await authFetch(`/api/students/${studentId}`, { cache: 'no-store' });
     const data = await safeJson(res);
     if (data?.id) {
       setStudents((prev) => {

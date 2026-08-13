@@ -1,5 +1,4 @@
 import asyncHandler from 'express-async-handler';
-import mongoose from 'mongoose';
 import Student from './Student.js';
 import Section from './models/Section.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
@@ -154,25 +153,37 @@ export const addSchedulerSection = asyncHandler(async (req, res) => {
   }
 
   // Remove existing entry for the same subject (switch-section logic)
-  student.selectedSubjects = (student.selectedSubjects || []).filter(
+  const selectedSubjects = (student.selectedSubjects || []).filter(
     (s) => s.subjectId !== subjectId
   );
-  student.selectedSubjects.push({ subjectId, sectionId, addedAt: new Date() });
+  selectedSubjects.push({ subjectId, sectionId, addedAt: new Date() });
 
-  const subjectIds = student.selectedSubjects.map((entry) => entry.subjectId);
+  const subjectIds = selectedSubjects.map((entry) => entry.subjectId);
   const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
-  student.tuitionBreakdown = tuitionBreakdown;
-  student.totalTuition = totalTuition;
-
-  await student.save();
+  const updated = await Student.findOneAndUpdate(
+    {
+      _id: student._id,
+      scheduleStatus: 'draft',
+      scheduleGenerated: { $ne: true },
+      __v: student.__v,
+    },
+    {
+      $set: { selectedSubjects, tuitionBreakdown, totalTuition },
+      $inc: { __v: 1 },
+    },
+    { new: true }
+  );
+  if (!updated) {
+    return res.status(409).json({ success: false, message: 'Schedule changed. Refresh and try again.' });
+  }
 
   res.json({
     success: true,
     message: 'Section added successfully.',
     data: {
-      selectedSubjects: student.selectedSubjects,
-      tuitionBreakdown: student.tuitionBreakdown,
-      totalTuition: student.totalTuition,
+      selectedSubjects: updated.selectedSubjects,
+      tuitionBreakdown: updated.tuitionBreakdown,
+      totalTuition: updated.totalTuition,
     },
   });
 });
@@ -194,24 +205,36 @@ export const removeSchedulerSection = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'subjectId is required.' });
   }
 
-  student.selectedSubjects = (student.selectedSubjects || []).filter(
+  const selectedSubjects = (student.selectedSubjects || []).filter(
     (s) => s.subjectId !== subjectId
   );
 
-  const subjectIds = student.selectedSubjects.map((entry) => entry.subjectId);
+  const subjectIds = selectedSubjects.map((entry) => entry.subjectId);
   const { tuitionBreakdown, totalTuition } = computeTuition(subjectIds);
-  student.tuitionBreakdown = tuitionBreakdown;
-  student.totalTuition = totalTuition;
-
-  await student.save();
+  const updated = await Student.findOneAndUpdate(
+    {
+      _id: student._id,
+      scheduleStatus: 'draft',
+      scheduleGenerated: { $ne: true },
+      __v: student.__v,
+    },
+    {
+      $set: { selectedSubjects, tuitionBreakdown, totalTuition },
+      $inc: { __v: 1 },
+    },
+    { new: true }
+  );
+  if (!updated) {
+    return res.status(409).json({ success: false, message: 'Schedule changed. Refresh and try again.' });
+  }
 
   res.json({
     success: true,
     message: 'Section removed.',
     data: {
-      selectedSubjects: student.selectedSubjects,
-      tuitionBreakdown: student.tuitionBreakdown,
-      totalTuition: student.totalTuition,
+      selectedSubjects: updated.selectedSubjects,
+      tuitionBreakdown: updated.tuitionBreakdown,
+      totalTuition: updated.totalTuition,
     },
   });
 });
@@ -236,8 +259,29 @@ export const submitSchedule = asyncHandler(async (req, res) => {
     });
   }
 
-  const selected = student.selectedSubjects || [];
+  if (student.scheduleStatus === 'finalizing') {
+    return res.status(409).json({ success: false, message: 'Schedule finalization is already in progress.' });
+  }
+
+  const lockedStudent = await Student.findOneAndUpdate(
+    {
+      _id: student._id,
+      scheduleStatus: 'draft',
+      scheduleGenerated: { $ne: true },
+    },
+    { $set: { scheduleStatus: 'finalizing' }, $inc: { __v: 1 } },
+    { new: true }
+  );
+  if (!lockedStudent) {
+    return res.status(409).json({ success: false, message: 'Schedule state changed. Refresh and try again.' });
+  }
+
+  const selected = lockedStudent.selectedSubjects || [];
   if (selected.length === 0) {
+    await Student.updateOne(
+      { _id: lockedStudent._id, scheduleStatus: 'finalizing' },
+      { $set: { scheduleStatus: 'draft' }, $inc: { __v: 1 } }
+    );
     return res.status(400).json({ success: false, message: 'No subjects selected. Please add at least one subject.' });
   }
 
@@ -251,10 +295,14 @@ export const submitSchedule = asyncHandler(async (req, res) => {
       entry.subjectId,
       entry.sectionId,
       runningUnits,
-      student.overloadPermit || false
+      lockedStudent.overloadPermit || false
     );
 
     if (!valid) {
+      await Student.updateOne(
+        { _id: lockedStudent._id, scheduleStatus: 'finalizing' },
+        { $set: { scheduleStatus: 'draft' }, $inc: { __v: 1 } }
+      );
       return res.status(409).json({
         success: false,
         message: `Schedule validation failed: ${error}`,
@@ -266,34 +314,63 @@ export const submitSchedule = asyncHandler(async (req, res) => {
     validatedSections.push({ subjectId: entry.subjectId, sectionId: entry.sectionId });
   }
 
-  // Atomically increment enrolledCount on each section in the DB
-  for (const entry of validatedSections) {
-    const subject = SUBJECTS_CATALOG.find((s) => s.id === entry.subjectId);
-    const staticSec = (subject?.sections || []).find((s) => s.id === entry.sectionId || s.code === entry.sectionId);
+  const scheduleRows = await getResolvedEnrolledSchedule(validatedSections);
+  const newlyReservedSectionIds = [];
+  try {
+    for (const row of scheduleRows) {
+      if (!row.sectionDatabaseId) {
+        throw new Error(`Section ${row.sectionCode} is not backed by an active database schedule.`);
+      }
 
-    if (staticSec) {
-      await Section.findOneAndUpdate(
-        { subjectId: entry.subjectId, sectionCode: staticSec.code },
-        { $inc: { enrolledCount: 1 } },
-        { upsert: false }
+      const alreadyReserved = await Section.exists({
+        _id: row.sectionDatabaseId,
+        enrolledStudentIds: String(lockedStudent._id),
+      });
+      if (alreadyReserved) continue;
+
+      const reserved = await Section.findOneAndUpdate(
+        {
+          _id: row.sectionDatabaseId,
+          isActive: { $ne: false },
+          enrolledStudentIds: { $ne: String(lockedStudent._id) },
+          $expr: { $lt: ['$enrolledCount', '$maxSlots'] },
+        },
+        {
+          $addToSet: { enrolledStudentIds: String(lockedStudent._id) },
+          $inc: { enrolledCount: 1 },
+        },
+        { new: true }
       );
-    } else if (mongoose.isValidObjectId(entry.sectionId)) {
-      await Section.findByIdAndUpdate(
-        entry.sectionId,
-        { $inc: { enrolledCount: 1 } },
-        { upsert: false }
+      if (!reserved) throw new Error(`Section ${row.sectionCode} became full or unavailable.`);
+      newlyReservedSectionIds.push(row.sectionDatabaseId);
+    }
+
+    const finalized = await Student.findOneAndUpdate(
+      { _id: lockedStudent._id, scheduleStatus: 'finalizing' },
+      { $set: { scheduleGenerated: true, scheduleStatus: 'finalized' }, $inc: { __v: 1 } },
+      { new: true }
+    );
+    if (!finalized) throw new Error('Schedule state changed before finalization completed.');
+  } catch (error) {
+    if (newlyReservedSectionIds.length > 0) {
+      await Section.updateMany(
+        { _id: { $in: newlyReservedSectionIds }, enrolledStudentIds: String(lockedStudent._id) },
+        {
+          $pull: { enrolledStudentIds: String(lockedStudent._id) },
+          $inc: { enrolledCount: -1 },
+        }
       );
     }
+    await Student.updateOne(
+      { _id: lockedStudent._id, scheduleStatus: 'finalizing' },
+      { $set: { scheduleStatus: 'draft', scheduleGenerated: false }, $inc: { __v: 1 } }
+    );
+    return res.status(409).json({ success: false, message: error.message });
   }
-
-  // Mark schedule as finalized on the student record
-  student.scheduleGenerated = true;
-  student.scheduleStatus = 'finalized';
-  await student.save();
 
   res.json({
     success: true,
     message: 'Schedule finalized successfully.',
-    data: { selectedSubjects: student.selectedSubjects, totalUnits: runningUnits },
+    data: { selectedSubjects: lockedStudent.selectedSubjects, totalUnits: runningUnits },
   });
 });

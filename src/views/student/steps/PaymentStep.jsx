@@ -4,6 +4,7 @@ import { useEnrollment } from '../../../context/EnrollmentContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
 import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, X, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
+import { authFetch } from '../../../utils/authFetch.js';
 
 export default function PaymentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
@@ -46,7 +47,7 @@ export default function PaymentStep({ onNext, onBack }) {
   const handleOnlinePayment = async () => {
     setIsProcessing(true);
     try {
-      const response = await fetch(`/api/students/${student.id}/paymongo-checkout`, {
+      const response = await authFetch(`/api/students/${student.id}/paymongo-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentPlan }),

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
-import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, RefreshCw } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, RefreshCw, Loader2 } from 'lucide-react';
+import { authFetch } from '../../../utils/authFetch.js';
 
 // Strips characters commonly used in injection attacks before sending to backend.
 // Since we use MongoDB (not SQL), this guards against NoSQL operator injection.
@@ -132,6 +133,7 @@ export default function RegistrationStep({ onNext, onBack }) {
   const [otpSent, setOtpSent] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [isEmailAction, setIsEmailAction] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const saveTimerRef = useRef(null);
   const dirtyRef = useRef(false);
   const studentRef = useRef(student);
@@ -147,6 +149,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     setOtp('');
     setOtpSent(false);
     setOtpError('');
+    setIsVerifyingOtp(false);
     dirtyRef.current = false;
   }, [student?.id]);
 
@@ -310,7 +313,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     setIsEmailAction(true);
     setOtpError('');
     try {
-      const response = await fetch(`/api/students/${student.id}/email-verification/send`, {
+      const response = await authFetch(`/api/students/${student.id}/email-verification/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: draft.email.trim() }),
@@ -344,9 +347,10 @@ export default function RegistrationStep({ onNext, onBack }) {
       return;
     }
     setIsEmailAction(true);
+    setIsVerifyingOtp(true);
     setOtpError('');
     try {
-      const response = await fetch(`/api/students/${student.id}/email-verification/verify`, {
+      const response = await authFetch(`/api/students/${student.id}/email-verification/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ otp }),
@@ -358,6 +362,7 @@ export default function RegistrationStep({ onNext, onBack }) {
       setOtpError(error.message);
     } finally {
       setIsEmailAction(false);
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -600,12 +605,13 @@ export default function RegistrationStep({ onNext, onBack }) {
             autoComplete="one-time-code"
             maxLength={6}
             value={otp}
+            disabled={isVerifyingOtp}
             onChange={(event) => {
               setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
               setOtpError('');
             }}
             placeholder="000000"
-            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-[0.4em] outline-none focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10"
+            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-[0.4em] outline-none focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500"
           />
           {otpError && <p className="mt-2 text-xs font-bold text-rose-600">{otpError}</p>}
           <button
@@ -614,7 +620,8 @@ export default function RegistrationStep({ onNext, onBack }) {
             disabled={isEmailAction}
             className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-univ-blue disabled:text-slate-400"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Resend code
+            <RefreshCw className={`w-3.5 h-3.5 ${isEmailAction && !isVerifyingOtp ? 'animate-spin' : ''}`} />
+            {isEmailAction && !isVerifyingOtp ? 'Sending code…' : 'Resend code'}
           </button>
         </div>
       )}
@@ -630,7 +637,8 @@ export default function RegistrationStep({ onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+          disabled={isEmailAction}
+          className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
         >
           Back
         </button>
@@ -638,9 +646,14 @@ export default function RegistrationStep({ onNext, onBack }) {
           type="button"
           onClick={otpSent ? handleVerifyOtp : handleNext}
           disabled={isEmailAction}
-          className="rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:bg-slate-400 cursor-pointer"
+          className="inline-flex min-w-40 items-center justify-center gap-2 rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-400 cursor-pointer"
         >
-          {isEmailAction ? 'Please wait...' : otpSent ? 'Verify and continue' : 'Send verification code'}
+          {isEmailAction ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isVerifyingOtp ? 'Verifying code…' : 'Sending code…'}
+            </>
+          ) : otpSent ? 'Verify and continue' : 'Send verification code'}
         </button>
       </div>
     </div>

@@ -12,12 +12,14 @@ import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 import { ensureReceiptNumber, markPaymentReceived } from './paymentReceipt.js';
 import { syncOfficialEnrollment } from './services/academicFoundationService.js';
 import { getResolvedEnrolledSchedule } from './services/schedulerService.js';
+import { generateApplicantToken } from './studentAccessMiddleware.js';
+import { runWithOptionalTransaction } from './services/transactionService.js';
+import AcademicTerm from './models/AcademicTerm.js';
+import CourseMembership from './models/CourseMembership.js';
 import {
-  sendAdmissionApprovedEmail,
-  sendAdmissionRejectedEmail,
-  sendApplicationSubmittedEmail,
   sendVerificationOtpEmail,
 } from './services/emailService.js';
+import { enqueueBackgroundJob } from './services/backgroundJobService.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,10 +35,6 @@ function hashEmailOtp(studentId, otp) {
   return crypto.createHmac('sha256', secret).update(`${studentId}:${otp}`).digest('hex');
 }
 
-function logEmailFailure(kind, student, error) {
-  console.error(`${kind} email failed for ${student._id}:`, error.message);
-}
-
 function getPaymentAmounts(student, paymentPlan) {
   const total = Math.max(0, Number(student.totalTuition) || 0);
   const plan = paymentPlan === 'downpayment' && total > DOWNPAYMENT_AMOUNT
@@ -47,7 +45,7 @@ function getPaymentAmounts(student, paymentPlan) {
 }
 
 // Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
-export async function generateNextId(prefixBase) {
+export async function generateNextId(prefixBase, session = null) {
   const year = new Date().getFullYear();
   const prefix = `${prefixBase}${year}-`;
 
@@ -56,7 +54,7 @@ export async function generateNextId(prefixBase) {
       { _id: { $regex: `^${prefix}` } },
       { studentId: { $regex: `^${prefix}` } }
     ]
-  }).select('_id studentId').lean();
+  }).select('_id studentId').session(session).lean();
 
   let maxSeq = 0;
   for (const doc of existing) {
@@ -69,7 +67,7 @@ export async function generateNextId(prefixBase) {
 
   const existingUsers = await User.find({
     username: { $regex: `^${prefix}` }
-  }).select('username').lean();
+  }).select('username').session(session).lean();
 
   for (const doc of existingUsers) {
     if (doc.username && doc.username.startsWith(prefix)) {
@@ -180,7 +178,7 @@ const createDraft = asyncHandler(async (req, res) => {
     _id: id,
     status: 'registration',
   });
-  res.status(201).json(student);
+  res.status(201).json({ ...student.toJSON(), accessToken: generateApplicantToken(student._id) });
 });
 
 // @desc    Applicant Gateway login
@@ -206,7 +204,7 @@ const applicantLogin = asyncHandler(async (req, res) => {
     throw new Error('Invalid email or password');
   }
 
-  res.json(student);
+  res.json({ ...student.toJSON(), accessToken: generateApplicantToken(student._id) });
 });
 
 // @desc    Check whether an applicant email can be used
@@ -276,7 +274,7 @@ const registerStudent = asyncHandler(async (req, res) => {
     await student.save();
   }
 
-  res.status(201).json(student);
+  res.status(201).json({ ...student.toJSON(), accessToken: generateApplicantToken(student._id) });
 });
 
 // @desc    Send email ownership verification OTP
@@ -397,8 +395,6 @@ const updateStudent = asyncHandler(async (req, res) => {
     'subjectChangeRequest',
     'applicantPassword',
     'paymentMethod',
-    'status',
-    'paymentStatus',
     // Transferee-specific fields
     'previousSchool',
     'previousProgram',
@@ -406,6 +402,7 @@ const updateStudent = asyncHandler(async (req, res) => {
     'reasonForTransfer',
     'unitsEarned',
   ];
+  if (req.user?.role === 'admin') allowedFields.push('status', 'paymentStatus');
 
   // Helper: strip characters used in NoSQL injection attacks ($ and leading dots)
   const sanitizeString = (val, maxLen = 300) => {
@@ -568,11 +565,9 @@ const submitDocuments = asyncHandler(async (req, res) => {
   student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
   if (student.emailVerified && student.email) {
-    try {
-      await sendApplicationSubmittedEmail(student);
-    } catch (error) {
-      logEmailFailure('Application confirmation', student, error);
-    }
+    await enqueueBackgroundJob('application_submitted_email', student.toJSON(), {
+      deduplicationKey: `application-submitted:${student._id}:${student.updatedAt.toISOString()}`,
+    });
   }
   res.json(student);
 });
@@ -631,6 +626,31 @@ const removeDocument = asyncHandler(async (req, res) => {
   student.documents = student.documents.filter((d) => d.typeId !== typeId);
   await student.save();
   res.json(student);
+});
+
+const getDocumentFile = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  const document = student.documents.find((item) => item.typeId === req.params.typeId);
+  if (!document) {
+    res.status(404);
+    throw new Error('Document not found.');
+  }
+
+  const safeFileName = path.basename(document.fileName);
+  if (safeFileName !== document.fileName) {
+    res.status(400);
+    throw new Error('Invalid document path.');
+  }
+  const filePath = path.join(UPLOADS_DIR, safeFileName);
+  if (!fs.existsSync(filePath)) {
+    res.status(404);
+    throw new Error('Uploaded file is missing.');
+  }
+
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.originalName || safeFileName)}"`);
+  res.sendFile(filePath);
 });
 
 // @desc    Select degree program & academic term
@@ -874,11 +894,9 @@ const approveAdmission = asyncHandler(async (req, res) => {
 
   await student.save();
   if (student.emailVerified && student.email) {
-    try {
-      await sendAdmissionApprovedEmail(student);
-    } catch (error) {
-      logEmailFailure('Admission approval', student, error);
-    }
+    await enqueueBackgroundJob('admission_approved_email', student.toJSON(), {
+      deduplicationKey: `admission-approved:${student._id}`,
+    });
   }
   res.json(student);
 });
@@ -906,11 +924,9 @@ const rejectAdmission = asyncHandler(async (req, res) => {
 
   await student.save();
   if (student.emailVerified && student.email) {
-    try {
-      await sendAdmissionRejectedEmail(student);
-    } catch (error) {
-      logEmailFailure('Admission action-required', student, error);
-    }
+    await enqueueBackgroundJob('admission_rejected_email', student.toJSON(), {
+      deduplicationKey: `admission-rejected:${student._id}:${student.updatedAt.toISOString()}`,
+    });
   }
   res.json(student);
 });
@@ -1002,35 +1018,47 @@ const validateEnrollment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: One or more selected sections no longer exist. Resolve the schedule first.');
   }
 
-  // Fetch settings to know what the active term is
-  let settings = await Settings.findOne();
-  if (!settings) settings = { activeTerm: '1st Semester 2026-2027' };
+  const enrolledStudent = await runWithOptionalTransaction(async (session) => {
+    const current = await Student.findById(student._id).session(session);
+    if (!current) throw new Error('Student not found.');
+    if (!['payment_confirmed', 'enrolled'].includes(current.status)) {
+      const error = new Error('Student status changed before validation. Refresh and try again.');
+      error.statusCode = 409;
+      throw error;
+    }
 
-  student.status = 'enrolled';
-  student.enrolledAt = student.enrolledAt || new Date();
-  student.scheduleGenerated = true;
-  student.registrationFormGenerated = true;
-  student.receiptGenerated = true;
-  ensureReceiptNumber(student);
-  
-  // Track term for auto-archiving logic
-  student.missedSemesters = 0;
-  student.lastEnrolledTerm = settings.activeTerm;
+    const settings = await Settings.findOne().session(session);
+    const activeTerm = settings?.activeTerm || '1st Semester 2026-2027';
+    const account = await User.findOne({
+      role: 'student',
+      username: { $in: [current.studentId, current._id].filter(Boolean) },
+    }).session(session);
 
-  // Generate STU- ID now that they are officially enrolled
-  if (!student.studentId) {
-    student.studentId = await generateNextId('STU-');
-    
-    // Update the existing User account's username from APP- to STU-
-    await User.updateOne(
-      { username: student._id }, // Find by the APP- ID
-      { $set: { username: student.studentId } } // Update to STU- ID
-    );
-  }
+    if (!current.studentId) current.studentId = await generateNextId('STU-', session);
+    current.enrolledAt = current.enrolledAt || new Date();
+    current.scheduleGenerated = true;
+    current.scheduleStatus = 'finalized';
+    current.registrationFormGenerated = true;
+    current.receiptGenerated = true;
+    current.missedSemesters = 0;
+    current.lastEnrolledTerm = activeTerm;
+    ensureReceiptNumber(current);
 
-  await student.save();
-  await syncOfficialEnrollment(student, settings.activeTerm, { actor: req.user });
-  res.json(student);
+    await syncOfficialEnrollment(current, activeTerm, {
+      actor: req.user,
+      session,
+      studentUserId: account?._id || null,
+    });
+    if (account && account.username !== current.studentId) {
+      account.username = current.studentId;
+      await account.save({ session });
+    }
+    current.status = 'enrolled';
+    await current.save({ session });
+    return current;
+  });
+
+  res.json(enrolledStudent);
 });
 
 // @desc    Admin: Resolve a student's hold
@@ -1107,14 +1135,23 @@ const rolloverStudent = asyncHandler(async (req, res) => {
     throw new Error('Only fully enrolled students can be rolled over to the next semester.');
   }
 
-  // Archive current subjects to academic record
-  if (student.selectedSubjects && student.selectedSubjects.length > 0) {
-    const newRecords = student.selectedSubjects.map(s => ({
-      subjectId: s.subjectId,
-      grade: 2.0, // Default passing grade
-      term: student.academicTerm || 'previous_term'
-    }));
-    student.academicRecord = [...(student.academicRecord || []), ...newRecords];
+  const settings = await Settings.findOne();
+  if (!settings?.activeTerm || settings.activeTerm === student.academicTerm) {
+    res.status(409);
+    throw new Error('A new academic term must be activated before re-enrollment.');
+  }
+
+  const previousTerm = await AcademicTerm.findOne({ name: student.academicTerm });
+  if (previousTerm) {
+    const unfinishedMembership = await CourseMembership.exists({
+      student: student._id,
+      term: previousTerm._id,
+      status: 'enrolled',
+    });
+    if (unfinishedMembership) {
+      res.status(409);
+      throw new Error('Previous-term classes must have published final grades or recorded drop/withdrawal statuses before re-enrollment.');
+    }
   }
 
   // Reset enrollment state
@@ -1122,7 +1159,10 @@ const rolloverStudent = asyncHandler(async (req, res) => {
   student.scheduleStatus = 'draft';
   student.tuitionBreakdown = [];
   student.totalTuition = 0;
-  student.academicTerm = ''; // Force them to pick next term
+  student.academicTerm = settings.activeTerm;
+  student.scheduleGenerated = false;
+  student.registrationFormGenerated = false;
+  student.receiptGenerated = false;
   
   // Transition status
   student.status = 'advising_pending';
@@ -1185,6 +1225,8 @@ const createPaymongoCheckoutSession = asyncHandler(async (req, res) => {
           cancel_url: `http://localhost:5173/?portal=student`
         }
       }
+    }, {
+      headers: { Authorization: req.headers.authorization },
     });
 
     res.status(200).json(response.data.data.attributes);
@@ -1247,6 +1289,7 @@ export {
   submitDocuments,
   uploadDocument,
   removeDocument,
+  getDocumentFile,
   selectProgram,
   setSubjects,
   processPayment,

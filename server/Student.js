@@ -117,7 +117,7 @@ const StudentSchema = new mongoose.Schema(
     documents: { type: [DocumentSchema], default: [] },
     approvedSubjectIds: { type: [String], default: [] },
     selectedSubjects: { type: [SelectedSubjectSchema], default: [] },
-    scheduleStatus: { type: String, enum: ['draft', 'finalized'], default: 'draft' },
+    scheduleStatus: { type: String, enum: ['draft', 'finalizing', 'finalized'], default: 'draft' },
     tuitionBreakdown: { type: [TuitionLineSchema], default: [] },
     totalTuition: { type: Number, default: 0 },
 
@@ -173,6 +173,11 @@ const StudentSchema = new mongoose.Schema(
       },
     },
   }
+);
+
+StudentSchema.index(
+  { studentId: 1 },
+  { unique: true, partialFilterExpression: { studentId: { $type: 'string' } } }
 );
 
 import bcrypt from 'bcryptjs';

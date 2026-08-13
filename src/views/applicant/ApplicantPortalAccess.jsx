@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { Mail, Lock, AlertCircle, ArrowRight, Play } from 'lucide-react';
 import FloatingInput from '../../components/FloatingInput';
+import { storeApplicantAccess } from '../../utils/authFetch.js';
 
 export default function ApplicantPortalAccess({ onVerified }) {
   const { setActiveStudent, state } = useEnrollment();
@@ -33,6 +34,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
       }
       
       const data = await res.json();
+      storeApplicantAccess(data);
       setActiveStudent(data.id);
       onVerified();
     } catch (err) {
@@ -48,6 +50,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
       const res = await fetch(`/api/students/draft`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
+        storeApplicantAccess(data);
         localStorage.removeItem(`applicant_completed_steps_${data._id}`);
         localStorage.removeItem(`applicant_current_step_${data._id}`);
         setActiveStudent(data._id);

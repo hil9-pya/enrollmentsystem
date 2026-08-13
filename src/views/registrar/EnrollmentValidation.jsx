@@ -5,6 +5,7 @@ import { useConfirm } from '../../context/ConfirmationContext';
 import { SUBJECTS, PROGRAMS, REQUIRED_DOCUMENTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import { authFetch } from '../../utils/authFetch.js';
 
 function formatPeso(amount) {
   if (amount == null) return '₱0';
@@ -46,7 +47,7 @@ export default function EnrollmentValidation({ studentId, onBack }) {
     setIsScheduleLoading(true);
     setScheduleError('');
     try {
-      const response = await fetch(`/api/scheduler/${encodeURIComponent(student.id)}/enrolled`, {
+      const response = await authFetch(`/api/scheduler/${encodeURIComponent(student.id)}/enrolled`, {
         cache: 'no-store',
       });
       const payload = await response.json();

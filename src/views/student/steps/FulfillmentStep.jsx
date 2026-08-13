@@ -4,6 +4,7 @@ import { CheckCircle, FileDown, Clock, Printer } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ACADEMIC_TERMS, PROGRAMS } from '../../../data/mockData';
 import PortalRefreshButton from '../../../components/PortalRefreshButton';
+import { authFetch } from '../../../utils/authFetch.js';
 
 // Helper to preload the university logo image
 const loadLogo = () => {
@@ -181,8 +182,8 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
     const loadScheduleSubjects = async () => {
       try {
         const [subjectsRes, enrolledRes] = await Promise.all([
-          fetch(`/api/scheduler/${student.id}/subjects`),
-          fetch(`/api/scheduler/${student.id}/enrolled`),
+          authFetch(`/api/scheduler/${student.id}/subjects`),
+          authFetch(`/api/scheduler/${student.id}/enrolled`),
         ]);
         const [subjectsData, enrolledData] = await Promise.all([
           subjectsRes.json(),
@@ -240,7 +241,7 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
 
   const getDownloadSchedule = async () => {
     try {
-      const res = await fetch(`/api/scheduler/${student.id}/enrolled`, { cache: 'no-store' });
+      const res = await authFetch(`/api/scheduler/${student.id}/enrolled`, { cache: 'no-store' });
       const data = await res.json();
       if (res.ok && data?.success && Array.isArray(data.data)) {
         setEnrolledSchedule(data.data);

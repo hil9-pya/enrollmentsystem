@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { CheckCircle, Loader2 } from 'lucide-react';
+import { authFetch } from '../../utils/authFetch.js';
 
 export default function PaymentSuccessView() {
   const { dispatch, setActiveStudent } = useEnrollment();
@@ -37,7 +38,7 @@ export default function PaymentSuccessView() {
         setActiveStudent(studentRef);
 
         // 2. Call the verify-paymongo-payment endpoint on the backend
-        const verifyRes = await fetch(`/api/students/${studentRef}/verify-paymongo-payment?session_id=${sessionId}`);
+        const verifyRes = await authFetch(`/api/students/${studentRef}/verify-paymongo-payment?session_id=${sessionId}`);
         if (!verifyRes.ok) {
           let errDetail = 'Failed to verify online payment with registrar database';
           try {

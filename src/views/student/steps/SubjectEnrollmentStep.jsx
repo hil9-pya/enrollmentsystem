@@ -11,6 +11,7 @@ import Modal from '../../../components/Modal';
 import ScheduleGrid from '../../../components/ScheduleGrid';
 import { ACADEMIC_TERMS } from '../../../data/mockData';
 import Badge from '../../../components/Badge';
+import { authFetch } from '../../../utils/authFetch.js';
 
 // ─── View Modes ──────────────────────────────────────────────────────────────
 const VIEW_LIST = 'list';
@@ -106,7 +107,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
   const fetchSubjects = useCallback(async () => {
     if (!studentId) return;
     try {
-      const res = await fetch(`/api/scheduler/${studentId}/subjects`);
+      const res = await authFetch(`/api/scheduler/${studentId}/subjects`);
       const data = await res.json();
       if (data.success) setSubjects(data.data || []);
     } catch {
@@ -175,7 +176,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     if (!studentId) return;
     setAddingId(sectionId);
     try {
-      const res = await fetch(`/api/scheduler/${studentId}/add`, {
+      const res = await authFetch(`/api/scheduler/${studentId}/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectId, sectionId }),
@@ -201,7 +202,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     if (!studentId) return;
     setRemovingId(subjectId);
     try {
-      const res = await fetch(`/api/scheduler/${studentId}/remove`, {
+      const res = await authFetch(`/api/scheduler/${studentId}/remove`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectId }),
@@ -230,7 +231,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
     // Final submission
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/scheduler/${studentId}/submit`, {
+      const res = await authFetch(`/api/scheduler/${studentId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

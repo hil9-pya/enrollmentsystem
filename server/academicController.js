@@ -6,7 +6,9 @@ import Student from './Student.js';
 import User from './User.js';
 import Settings from './Settings.js';
 import AcademicAuditLog from './models/AcademicAuditLog.js';
+import Section from './models/Section.js';
 import { ensureAcademicTerm } from './services/academicFoundationService.js';
+import { parseAcademicTermLabel } from './academicTermUtils.js';
 
 const TERM_DATE_FIELDS = [
   'enrollmentStartsAt',
@@ -38,12 +40,18 @@ export const createAcademicTerm = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Term name is required.' });
   }
 
-  const term = await ensureAcademicTerm(req.body.name, { activate: false });
+  let metadata;
+  try {
+    metadata = parseAcademicTermLabel(req.body.name);
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+  const term = await ensureAcademicTerm(metadata.name, { activate: false });
   for (const field of TERM_DATE_FIELDS) {
     if (req.body[field] !== undefined) term[field] = req.body[field] || null;
   }
-  if (req.body.schoolYear !== undefined) term.schoolYear = req.body.schoolYear;
-  if (req.body.semester !== undefined) term.semester = req.body.semester;
+  term.schoolYear = metadata.schoolYear;
+  term.semester = metadata.semester;
   await term.save();
   res.status(201).json({ success: true, data: term });
 });
@@ -55,7 +63,19 @@ export const updateAcademicTerm = asyncHandler(async (req, res) => {
   if (req.body.status === 'active') {
     return res.status(400).json({ success: false, message: 'Use the activate-term action to make a term active.' });
   }
-  for (const field of [...TERM_DATE_FIELDS, 'name', 'schoolYear', 'semester', 'status']) {
+  if (req.body.name !== undefined) {
+    let metadata;
+    try {
+      metadata = parseAcademicTermLabel(req.body.name);
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    term.name = metadata.name;
+    term.code = metadata.name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+    term.schoolYear = metadata.schoolYear;
+    term.semester = metadata.semester;
+  }
+  for (const field of [...TERM_DATE_FIELDS, 'status']) {
     if (req.body[field] !== undefined) term[field] = req.body[field];
   }
   if (['closed', 'archived'].includes(req.body.status)) term.isActive = false;
@@ -264,10 +284,71 @@ export const publishFinalGrade = asyncHandler(async (req, res) => {
 
   membership.gradeStatus = 'published';
   membership.gradePublishedAt = new Date();
+  membership.status = 'completed';
+  membership.endedAt = new Date();
   await membership.save();
   await recordAcademicAction(req, 'published_final_grade', 'course_membership', membership._id, {
     grade: membership.finalGrade,
     studentId: student.studentId,
+  });
+  res.json({ success: true, data: membership });
+});
+
+export const updateMembershipStatus = asyncHandler(async (req, res) => {
+  const nextStatus = String(req.body.status || '').trim().toLowerCase();
+  if (!['enrolled', 'dropped', 'withdrawn'].includes(nextStatus)) {
+    return res.status(400).json({ success: false, message: 'Status must be enrolled, dropped, or withdrawn.' });
+  }
+
+  const membership = await CourseMembership.findById(req.params.id)
+    .populate('offering')
+    .populate('term');
+  if (!membership) return res.status(404).json({ success: false, message: 'Course membership not found.' });
+  if (membership.status === 'completed') {
+    return res.status(409).json({ success: false, message: 'Completed memberships cannot be reopened.' });
+  }
+  if (membership.status === nextStatus) return res.json({ success: true, data: membership });
+  const previousStatus = membership.status;
+
+  const studentMarker = String(membership.student);
+  const sectionId = membership.offering?.section;
+  if (nextStatus === 'enrolled') {
+    if (membership.term?.status !== 'active' || membership.offering?.status !== 'active') {
+      return res.status(409).json({ success: false, message: 'Only active-term class memberships can be reinstated.' });
+    }
+    if (sectionId) {
+      const alreadyReserved = await Section.exists({ _id: sectionId, enrolledStudentIds: studentMarker });
+      if (!alreadyReserved) {
+        const reserved = await Section.findOneAndUpdate(
+          {
+            _id: sectionId,
+            isActive: { $ne: false },
+            enrolledStudentIds: { $ne: studentMarker },
+            $expr: { $lt: ['$enrolledCount', '$maxSlots'] },
+          },
+          { $addToSet: { enrolledStudentIds: studentMarker }, $inc: { enrolledCount: 1 } },
+          { new: true }
+        );
+        if (!reserved) return res.status(409).json({ success: false, message: 'Class section is full or unavailable.' });
+      }
+    }
+    membership.status = 'enrolled';
+    membership.endedAt = null;
+  } else {
+    if (sectionId) {
+      await Section.updateOne(
+        { _id: sectionId, enrolledStudentIds: studentMarker },
+        { $pull: { enrolledStudentIds: studentMarker }, $inc: { enrolledCount: -1 } }
+      );
+    }
+    membership.status = nextStatus;
+    membership.endedAt = new Date();
+  }
+
+  await membership.save();
+  await recordAcademicAction(req, `membership_${nextStatus}`, 'course_membership', membership._id, {
+    previousStatus,
+    notes: String(req.body.notes || '').trim(),
   });
   res.json({ success: true, data: membership });
 });

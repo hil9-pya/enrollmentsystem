@@ -15,14 +15,15 @@ import {
   submitDocuments,
   uploadDocument,
   removeDocument,
+  getDocumentFile,
   selectProgram,
-  setSubjects,
   processPayment,
   proceedToPayment,
   rolloverStudent,
   createPaymongoCheckoutSession,
   verifyPaymongoPayment,
 } from './studentsController.js';
+import { protectStudentRecord } from './studentAccessMiddleware.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -54,33 +55,27 @@ const upload = multer({
 
 const router = express.Router();
 
-// NOTE: These routes intentionally have no auth requirement, matching how
-// the Student Portal has always worked in this app — applicants use it
-// without logging in (see StudentPortalAccess.jsx "Demo Profiles / bypass
-// verification"). Staff (admission/adviser/accounting/registrar/admin)
-// reach the same endpoints from the logged-in Admin Portal.
-
 router.post('/draft', createDraft);
 router.post('/applicant-login', applicantLogin);
 router.post('/register', registerStudent);
 router.get('/email-availability', checkEmailAvailability);
-router.post('/:id/email-verification/send', sendEmailVerificationOtp);
-router.post('/:id/email-verification/verify', verifyEmailOtp);
-router.get('/:id', getStudentById);
-router.put('/:id', updateStudent);
+router.post('/:id/email-verification/send', protectStudentRecord, sendEmailVerificationOtp);
+router.post('/:id/email-verification/verify', protectStudentRecord, verifyEmailOtp);
+router.get('/:id', protectStudentRecord, getStudentById);
+router.put('/:id', protectStudentRecord, updateStudent);
 
-router.post('/:id/submit-documents', submitDocuments);
-router.post('/:id/documents', upload.single('file'), uploadDocument);
-router.delete('/:id/documents/:typeId', removeDocument);
+router.post('/:id/submit-documents', protectStudentRecord, submitDocuments);
+router.post('/:id/documents', protectStudentRecord, upload.single('file'), uploadDocument);
+router.get('/:id/documents/:typeId/file', protectStudentRecord, getDocumentFile);
+router.delete('/:id/documents/:typeId', protectStudentRecord, removeDocument);
 
-router.post('/:id/select-program', selectProgram);
-router.post('/:id/subjects', setSubjects);
+router.post('/:id/select-program', protectStudentRecord, selectProgram);
 
-router.post('/:id/proceed-to-payment', proceedToPayment);
-router.post('/:id/payment', processPayment);
-router.post('/:id/paymongo-checkout', createPaymongoCheckoutSession);
-router.get('/:id/verify-paymongo-payment', verifyPaymongoPayment);
-router.post('/:id/rollover', rolloverStudent);
+router.post('/:id/proceed-to-payment', protectStudentRecord, proceedToPayment);
+router.post('/:id/payment', protectStudentRecord, processPayment);
+router.post('/:id/paymongo-checkout', protectStudentRecord, createPaymongoCheckoutSession);
+router.get('/:id/verify-paymongo-payment', protectStudentRecord, verifyPaymongoPayment);
+router.post('/:id/rollover', protectStudentRecord, rolloverStudent);
 
 // Surface multer errors (bad file type / too large) as normal JSON errors
 // instead of letting them bubble up as an unhandled exception.

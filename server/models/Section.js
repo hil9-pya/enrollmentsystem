@@ -13,6 +13,7 @@ const SectionSchema = new mongoose.Schema(
     instructorUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     maxSlots: { type: Number, required: true, default: 40 },
     enrolledCount: { type: Number, default: 0, min: 0 },
+    enrolledStudentIds: { type: [String], default: [], select: false },
     isActive: { type: Boolean, default: true },
   },
   {

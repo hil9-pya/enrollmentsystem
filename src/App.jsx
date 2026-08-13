@@ -19,6 +19,7 @@ import PaymentSuccessView from './views/public/PaymentSuccessView';
 
 import { LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
+import { clearApplicantAccess } from './utils/authFetch.js';
 
 function AppContent() {
   const { user, logout, isLoading } = useAuth();
@@ -94,6 +95,7 @@ function AppContent() {
               window.history.pushState({}, '', '/');
               setViewMode('gateway');
               setIsApplicantVerified(false);
+              clearApplicantAccess();
             }} 
             className="text-xs font-bold text-slate-500 hover:text-univ-navy hover:bg-slate-50 px-3.5 py-2 rounded-lg transition-all cursor-pointer"
           >

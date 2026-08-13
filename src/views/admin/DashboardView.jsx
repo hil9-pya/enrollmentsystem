@@ -442,8 +442,8 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch gap-3">
-        <div className="relative flex-1">
+      <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(20rem,2fr)_minmax(30rem,1fr)] lg:items-start">
+        <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text" placeholder="Search by name, email or student ID…"
@@ -451,20 +451,20 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
             className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className={`grid grid-cols-1 gap-2 sm:grid-cols-3 ${(statusFilter || programFilter || paymentFilter || searchQuery) ? 'lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]' : ''}`}>
           {[
             { value: statusFilter, onChange: setStatusFilter, options: [['', 'All Statuses'], ['processing_all', 'All Processing'], ['registration', 'Registration'], ['documents_submitted', 'Docs Submitted'], ['documents_approved', 'Docs Approved'], ['advising_pending', 'Advising Pending'], ['advising_approved', 'Advising Approved'], ['payment_pending', 'Payment Pending'], ['payment_confirmed', 'Payment Confirmed'], ['validation_pending', 'Validation Pending'], ['enrolled', 'Enrolled']] },
             { value: paymentFilter, onChange: setPaymentFilter, options: [['', 'All Payments'], ['unpaid', 'Unpaid'], ['processing', 'Processing'], ['paid', 'Paid']] },
             { value: programFilter, onChange: setProgramFilter, options: [['', 'All Programs'], ...PROGRAMS.map(p => [p.id, p.id.toUpperCase()])] },
           ].map((sel, i) => (
             <select key={i} value={sel.value} onChange={e => sel.onChange(e.target.value)}
-              className="border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all">
+              className="w-full min-w-0 border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all">
               {sel.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </select>
           ))}
           {(statusFilter || programFilter || paymentFilter || searchQuery) && (
             <button onClick={() => { setStatusFilter(''); setProgramFilter(''); setPaymentFilter(''); setSearchQuery(''); }}
-              className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-all cursor-pointer flex items-center gap-1.5">
+              className="flex items-center justify-center gap-1.5 rounded-md bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 transition-all hover:bg-slate-200 cursor-pointer sm:col-span-3 lg:col-span-1">
               <X className="w-3 h-3" /> Clear
             </button>
           )}

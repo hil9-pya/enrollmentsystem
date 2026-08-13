@@ -4,6 +4,7 @@ import CourseMembership from '../models/CourseMembership.js';
 import User from '../User.js';
 import AcademicAuditLog from '../models/AcademicAuditLog.js';
 import { getResolvedEnrolledSchedule } from './schedulerService.js';
+import { parseAcademicTermLabel } from '../academicTermUtils.js';
 
 function normalizeTermCode(label) {
   const normalized = String(label || 'Current Term')
@@ -14,24 +15,10 @@ function normalizeTermCode(label) {
   return normalized || `TERM-${new Date().getFullYear()}`;
 }
 
-function termMetadata(label) {
-  const value = String(label || 'Current Term').trim();
-  const schoolYear = value.match(/\b(20\d{2}\s*[-/]\s*20\d{2})\b/)?.[1]?.replace(/\s+/g, '') || '';
-  const lower = value.toLowerCase();
-  const semester = lower.includes('summer')
-    ? 'summer'
-    : lower.includes('2nd') || lower.includes('second') || lower.includes('spring')
-      ? '2'
-      : lower.includes('1st') || lower.includes('first') || lower.includes('fall')
-        ? '1'
-        : 'other';
-  return { schoolYear, semester };
-}
-
-export async function ensureAcademicTerm(label, { activate = false } = {}) {
-  const name = String(label || 'Current Term').trim();
+export async function ensureAcademicTerm(label, { activate = false, session = null } = {}) {
+  const metadata = parseAcademicTermLabel(label);
+  const name = metadata.name;
   const code = normalizeTermCode(name);
-  const metadata = termMetadata(name);
 
   let term = await AcademicTerm.findOneAndUpdate(
     { code },
@@ -39,22 +26,24 @@ export async function ensureAcademicTerm(label, { activate = false } = {}) {
       $setOnInsert: {
         code,
         name,
-        ...metadata,
+        schoolYear: metadata.schoolYear,
+        semester: metadata.semester,
         status: activate ? 'active' : 'planned',
         isActive: activate,
       },
     },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
+    { new: true, upsert: true, setDefaultsOnInsert: true, session }
   );
 
   if (activate) {
     const previousActiveTerms = await AcademicTerm.find({
       _id: { $ne: term._id },
       isActive: true,
-    }).select('_id');
+    }).select('_id').session(session);
     await AcademicTerm.updateMany(
       { _id: { $ne: term._id }, isActive: true },
-      { $set: { isActive: false, status: 'closed' } }
+      { $set: { isActive: false, status: 'closed' } },
+      { session }
     );
     if (previousActiveTerms.length > 0) {
       await CourseOffering.updateMany(
@@ -62,26 +51,28 @@ export async function ensureAcademicTerm(label, { activate = false } = {}) {
           term: { $in: previousActiveTerms.map((item) => item._id) },
           status: { $nin: ['closed', 'archived'] },
         },
-        { $set: { status: 'closed' } }
+        { $set: { status: 'closed' } },
+        { session }
       );
     }
     if (!term.isActive || term.status !== 'active') {
       term.isActive = true;
       term.status = 'active';
-      await term.save();
+      await term.save({ session });
     }
     await CourseOffering.updateMany(
       { term: term._id, status: 'closed' },
-      { $set: { status: 'active' } }
+      { $set: { status: 'active' } },
+      { session }
     );
   }
 
   return term;
 }
 
-async function findInstructorUser(instructorName, instructorId) {
+async function findInstructorUser(instructorName, instructorId, session = null) {
   if (instructorId) {
-    const assigned = await User.findOne({ _id: instructorId, role: 'instructor' }).select('_id');
+    const assigned = await User.findOne({ _id: instructorId, role: 'instructor' }).select('_id').session(session);
     if (assigned) return assigned._id;
   }
 
@@ -91,7 +82,7 @@ async function findInstructorUser(instructorName, instructorId) {
     .toLowerCase();
   if (!normalizedName || normalizedName === 'tba') return null;
 
-  const instructors = await User.find({ role: 'instructor' }).select('firstName lastName').lean();
+  const instructors = await User.find({ role: 'instructor' }).select('firstName lastName').session(session).lean();
   const match = instructors.find((user) =>
     `${user.firstName} ${user.lastName}`.trim().toLowerCase() === normalizedName
   );
@@ -101,7 +92,7 @@ async function findInstructorUser(instructorName, instructorId) {
 export async function syncOfficialEnrollment(
   student,
   activeTermLabel,
-  { actor = null, activateTerm = true, audit = true } = {}
+  { actor = null, activateTerm = true, audit = true, session = null, studentUserId = null } = {}
 ) {
   const selectedSubjects = student.selectedSubjects || [];
   if (selectedSubjects.length === 0) {
@@ -115,16 +106,18 @@ export async function syncOfficialEnrollment(
 
   const term = await ensureAcademicTerm(
     activeTermLabel || student.academicTerm || 'Current Term',
-    { activate: activateTerm }
+    { activate: activateTerm, session }
   );
-  const studentUser = await User.findOne({
-    role: 'student',
-    username: student.studentId,
-  }).select('_id');
+  const studentUser = studentUserId
+    ? { _id: studentUserId }
+    : await User.findOne({
+        role: 'student',
+        username: student.studentId,
+      }).select('_id').session(session);
 
   const offeringIds = [];
   for (const row of scheduleRows) {
-    const instructor = await findInstructorUser(row.instructor, row.instructorUserId);
+    const instructor = await findInstructorUser(row.instructor, row.instructorUserId, session);
     const offering = await CourseOffering.findOneAndUpdate(
       {
         term: term._id,
@@ -146,7 +139,7 @@ export async function syncOfficialEnrollment(
         },
         $setOnInsert: { lmsEnabled: false },
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { new: true, upsert: true, setDefaultsOnInsert: true, session }
     );
     offeringIds.push(offering._id);
 
@@ -162,7 +155,7 @@ export async function syncOfficialEnrollment(
           endedAt: null,
         },
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { new: true, upsert: true, setDefaultsOnInsert: true, session }
     );
   }
 
@@ -173,11 +166,12 @@ export async function syncOfficialEnrollment(
       status: 'enrolled',
       offering: { $nin: offeringIds },
     },
-    { $set: { status: 'dropped', endedAt: new Date() } }
+    { $set: { status: 'dropped', endedAt: new Date() } },
+    { session }
   );
 
   if (audit) {
-    await AcademicAuditLog.create({
+    await AcademicAuditLog.create([{
       actor: actor?._id || null,
       actorRole: actor?.role || 'system',
       action: 'synchronized_official_enrollment',
@@ -188,7 +182,7 @@ export async function syncOfficialEnrollment(
         termId: String(term._id),
         offeringIds: offeringIds.map(String),
       },
-    });
+    }], { session });
   }
 
   return { term, offeringIds, scheduleRows };

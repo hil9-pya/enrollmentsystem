@@ -3,6 +3,7 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import { FilePlus, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Badge from '../../components/Badge';
+import { authFetch, storeApplicantAccess } from '../../utils/authFetch.js';
 
 export default function StudentPortalAccess({ onVerified }) {
   const { state, setActiveStudent } = useEnrollment();
@@ -32,7 +33,7 @@ export default function StudentPortalAccess({ onVerified }) {
 
     try {
       const q = identifier.trim();
-      const res = await fetch(`/api/students/${encodeURIComponent(q)}`);
+      const res = await authFetch(`/api/students/${encodeURIComponent(q)}`);
       
       let data = {};
       try {
@@ -110,6 +111,7 @@ export default function StudentPortalAccess({ onVerified }) {
       if (!res.ok || data.error) {
         setError(data.error || `Server error (Status ${res.status})`);
       } else {
+        storeApplicantAccess(data);
         setActiveStudent(data.id);
         toast.success(`Application started! Your Student ID is ${data.id}`);
         onVerified();
@@ -124,7 +126,7 @@ export default function StudentPortalAccess({ onVerified }) {
 
   const handleQuickDemo = async (studentId) => {
     try {
-      const res = await fetch(`/api/students/${studentId}`);
+      const res = await authFetch(`/api/students/${studentId}`);
       
       let data = {};
       try {

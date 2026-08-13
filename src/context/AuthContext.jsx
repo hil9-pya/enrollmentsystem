@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { clearApplicantAccess } from '../utils/authFetch.js';
 
 const AuthContext = createContext(null);
 
@@ -57,6 +58,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    clearApplicantAccess();
   };
 
   const value = {

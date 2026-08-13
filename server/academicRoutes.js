@@ -13,6 +13,7 @@ import {
   listSubmittedGrades,
   reviewFinalGrade,
   publishFinalGrade,
+  updateMembershipStatus,
 } from './academicController.js';
 
 const router = express.Router();
@@ -32,5 +33,6 @@ router.get('/grades', authorize('registrar', 'admin'), listSubmittedGrades);
 router.post('/memberships/:id/grade/submit', authorize('instructor', 'admin'), submitFinalGrade);
 router.post('/memberships/:id/grade/review', authorize('registrar', 'admin'), reviewFinalGrade);
 router.post('/memberships/:id/grade/publish', authorize('registrar', 'admin'), publishFinalGrade);
+router.patch('/memberships/:id/status', authorize('registrar', 'admin'), updateMembershipStatus);
 
 export default router;
