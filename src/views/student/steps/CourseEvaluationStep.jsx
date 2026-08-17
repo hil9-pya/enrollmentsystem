@@ -150,7 +150,7 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
           <div className="overflow-x-auto border border-slate-200 rounded-xl">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
                   <th className="px-4 py-3.5">Code</th>
                   <th className="px-4 py-3.5">Subject Name</th>
                   <th className="px-4 py-3.5 text-center">Units</th>
@@ -169,7 +169,7 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
                   yearLevels.map((yl) => (
                     <React.Fragment key={yl}>
                       <tr className="bg-slate-100/50">
-                        <td colSpan="5" className="px-4 py-2 text-xs font-extrabold text-univ-navy uppercase tracking-widest border-t border-b border-slate-200">
+                        <td colSpan="5" className="px-4 py-2 text-xs font-semibold text-univ-navy uppercase tracking-widest border-t border-b border-slate-200">
                           Year Level {yl}
                         </td>
                       </tr>

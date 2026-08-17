@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import Section from './models/Section.js';
 import Subject from './models/Subject.js';
+import CourseOffering from './models/CourseOffering.js';
 import User from './User.js';
 import { SUBJECTS_CATALOG, addSubjectToCache } from './subjectsCatalog.js';
 import { validateSectionConflict } from './services/schedulerService.js';
@@ -88,11 +89,16 @@ export const createSection = asyncHandler(async (req, res) => {
     if (!assignedInstructor) {
       return res.status(400).json({ success: false, message: 'Assigned user must be an instructor account.' });
     }
+  } else if (String(instructor || '').trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Select an instructor account instead of entering an instructor name.',
+    });
   }
 
   const instructorName = assignedInstructor
     ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
-    : String(instructor || '').trim();
+    : '';
 
   // Check for room/instructor conflicts
   const { valid, error } = await validateSectionConflict({ subjectId, sectionCode: normalizedSectionCode, days, time, room, instructor: instructorName });
@@ -144,11 +150,19 @@ export const updateSection = asyncHandler(async (req, res) => {
     if (instructorUser && !assignedInstructor) {
       return res.status(400).json({ success: false, message: 'Assigned user must be an instructor account.' });
     }
+    if (!instructorUser && String(instructor || '').trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Select an instructor account instead of entering an instructor name.',
+      });
+    }
   }
 
-  const instructorName = assignedInstructor
-    ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
-    : String(instructor ?? section.instructor ?? '').trim();
+  const instructorName = instructorUser !== undefined
+    ? assignedInstructor
+      ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
+      : ''
+    : String(section.instructor || '').trim();
 
   // Validate room/instructor conflicts (exclude self)
   const sectionData = {
@@ -179,7 +193,29 @@ export const updateSection = asyncHandler(async (req, res) => {
   if (isActive !== undefined) section.isActive = isActive;
 
   await section.save();
-  res.json({ success: true, message: 'Section updated.', data: section });
+
+  let updatedOfferings = 0;
+  if (instructorUser !== undefined) {
+    const result = await CourseOffering.updateMany(
+      { section: section._id, status: { $ne: 'archived' } },
+      {
+        $set: {
+          instructor: assignedInstructor?._id || null,
+          instructorName: instructorName || 'TBA',
+        },
+      }
+    );
+    updatedOfferings = result.modifiedCount || 0;
+  }
+
+  res.json({
+    success: true,
+    message: updatedOfferings > 0
+      ? `Section updated. ${updatedOfferings} official offering${updatedOfferings === 1 ? '' : 's'} synchronized.`
+      : 'Section updated.',
+    data: section,
+    updatedOfferings,
+  });
 });
 
 // ---------------------------------------------------------------------------

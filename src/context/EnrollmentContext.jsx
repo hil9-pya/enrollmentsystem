@@ -5,6 +5,10 @@ import { useAuth } from './AuthContext';
 import { authFetch } from '../utils/authFetch.js';
 
 const EnrollmentContext = createContext(null);
+const matchesStudentIdentifier = (student, identifier) => (
+  Boolean(identifier)
+  && (student?.id === identifier || student?.studentId === identifier)
+);
 const safeJson = async (res) => {
   if (!res.ok) {
     let errorMsg = `Server error (Status ${res.status})`;
@@ -63,8 +67,8 @@ export function EnrollmentProvider({ children }) {
     const res = await authFetch('/api/admin/students', { cache: 'no-store' });
     const data = await safeJson(res);
     setStudents((prev) => {
-      const active = prev.find((student) => student.id === activeStudentId);
-      if (active && !data.some((student) => student.id === activeStudentId)) {
+      const active = prev.find((student) => matchesStudentIdentifier(student, activeStudentId));
+      if (active && !data.some((student) => matchesStudentIdentifier(student, activeStudentId))) {
         return [...data, active];
       }
       return data;
@@ -85,7 +89,7 @@ export function EnrollmentProvider({ children }) {
       }
 
       if (!token || user?.role === 'student') {
-        setStudents((prev) => prev.filter(s => s.id === activeStudentId));
+        setStudents((prev) => prev.filter((student) => matchesStudentIdentifier(student, activeStudentId)));
         setIsLoading(false);
         return;
       }
@@ -97,8 +101,8 @@ export function EnrollmentProvider({ children }) {
         }
         const data = await safeJson(res);
         setStudents((prev) => {
-          const active = prev.find((s) => s.id === activeStudentId);
-          if (active && !data.some((s) => s.id === activeStudentId)) {
+          const active = prev.find((student) => matchesStudentIdentifier(student, activeStudentId));
+          if (active && !data.some((student) => matchesStudentIdentifier(student, activeStudentId))) {
             return [...data, active];
           }
           return data;
@@ -279,6 +283,33 @@ export function EnrollmentProvider({ children }) {
         });
         updatedStudent = await safeJson(res);
       } 
+
+      else if (type === 'JOIN_WALK_IN_QUEUE') {
+        const res = await authFetch(`/api/students/${activeStudentId}/walk-in-queue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentPlan: payload.paymentPlan }),
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'CALL_NEXT_WALK_IN') {
+        const res = await authFetch('/api/admin/students/walk-in-queue/next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ counterNumber: payload?.counterNumber || null }),
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'UPDATE_WALK_IN_QUEUE') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/walk-in-queue/${payload.action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ counterNumber: payload.counterNumber || null }),
+        });
+        updatedStudent = await safeJson(res);
+      }
       
       else if (type === 'VERIFY_PAYMONGO_PAYMENT') {
         const res = await authFetch(`/api/students/${activeStudentId}/verify-paymongo-payment?session_id=${payload.sessionId}`, {

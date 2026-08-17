@@ -37,6 +37,26 @@ const AuditLogSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const WalkInQueueSchema = new mongoose.Schema(
+  {
+    ticketNumber: { type: String, required: true },
+    queueDate: { type: String, required: true },
+    sequence: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ['waiting', 'called', 'serving', 'skipped', 'completed', 'cancelled'],
+      default: 'waiting',
+    },
+    counterNumber: { type: String, default: null },
+    joinedAt: { type: Date, default: Date.now },
+    calledAt: { type: Date, default: null },
+    servedAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    updatedBy: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const HoldSchema = new mongoose.Schema(
   {
     type: { type: String, required: true }, // e.g., 'readmission', 'financial', 'academic'
@@ -129,6 +149,7 @@ const StudentSchema = new mongoose.Schema(
     paymentReference: { type: String, default: null },
     receiptNumber: { type: String, default: null },
     paymentDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
+    walkInQueue: { type: WalkInQueueSchema, default: null },
     submitDocumentsOnCampus: { type: Boolean, default: false },
 
     scheduleGenerated: { type: Boolean, default: false },
@@ -143,6 +164,9 @@ const StudentSchema = new mongoose.Schema(
     applicantPassword: { type: String, default: null },
     auditLogs: { type: [AuditLogSchema], default: [] },
     isDeleted: { type: Boolean, default: false },
+    archivedAt: { type: Date, default: null },
+    archivedReason: { type: String, default: '' },
+    archivedBy: { type: String, default: '' },
   },
   {
     timestamps: true,

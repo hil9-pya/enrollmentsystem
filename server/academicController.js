@@ -122,8 +122,12 @@ export const getMyClasses = asyncHandler(async (req, res) => {
   if (req.user.role === 'student') {
     const student = await resolveStudentProfileForUser(req.user);
     if (!student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
+    const studentTerms = await Student.findById(student._id).select('academicTerm lastEnrolledTerm').lean();
 
-    const memberships = await CourseMembership.find({ student: student._id, status: 'enrolled' })
+    const memberships = await CourseMembership.find({
+      student: student._id,
+      status: { $in: ['enrolled', 'completed'] },
+    })
       .populate({
         path: 'offering',
         populate: [
@@ -135,6 +139,17 @@ export const getMyClasses = asyncHandler(async (req, res) => {
     const visibleMemberships = memberships.map((membership) => {
       const item = membership.toObject();
       if (item.gradeStatus !== 'published') item.finalGrade = null;
+      const storedTerm = item.offering?.term;
+      const fallbackTerm = studentTerms?.lastEnrolledTerm || studentTerms?.academicTerm || '';
+      if (
+        storedTerm
+        && /^(1st|2nd) Semester$/i.test(String(storedTerm.name || '').trim())
+        && fallbackTerm.startsWith(storedTerm.name)
+        && /20\d{2}-20\d{2}$/.test(fallbackTerm)
+      ) {
+        item.offering.term.name = fallbackTerm;
+        item.offering.term.schoolYear = fallbackTerm.match(/20\d{2}-20\d{2}$/)?.[0] || '';
+      }
       return item;
     });
     return res.json({ success: true, data: visibleMemberships });

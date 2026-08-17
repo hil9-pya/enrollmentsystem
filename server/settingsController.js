@@ -74,12 +74,16 @@ const advanceSemester = asyncHandler(async (req, res) => {
       updateDoc = { $set: { missedSemesters: newMissed } };
       
       if (newMissed >= 2) {
+        const archivedAt = new Date();
         updateDoc.$set.isDeleted = true;
+        updateDoc.$set.archivedAt = archivedAt;
+        updateDoc.$set.archivedReason = 'Inactive for 2 consecutive semesters';
+        updateDoc.$set.archivedBy = 'System Admin';
         updateDoc.$push = {
           auditLogs: {
             action: 'Auto-archived due to missing 2 consecutive semesters',
             user: 'System Admin',
-            date: new Date()
+            date: archivedAt
           }
         };
       }

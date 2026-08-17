@@ -81,7 +81,7 @@ function AppContent() {
   if ((viewMode === 'applicant' || isApplicantVerified) && activeStudentId) {
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
+        <div className="z-50 flex min-h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>
@@ -123,18 +123,18 @@ function AppContent() {
   if (user?.role === 'student' && viewMode !== 'landing' && viewMode !== 'gateway') {
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
-          <div className="flex items-center gap-3">
+        <div className="z-50 flex min-h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
-            <div>
-              <span className="sm:hidden font-heading font-bold text-sm tracking-wide text-univ-navy">NCST Student Portal</span>
-              <span className="hidden sm:inline font-heading font-bold text-lg tracking-wide text-univ-navy">National College of Science &amp; Technology</span>
-              <span className="hidden sm:inline-block ml-3 px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded tracking-wider uppercase">Student Portal</span>
+            <div className="min-w-0">
+              <span className="font-heading text-sm font-bold tracking-wide text-univ-navy lg:hidden">NCST Student Portal</span>
+              <span className="hidden truncate font-heading text-lg font-bold tracking-wide text-univ-navy lg:inline">National College of Science &amp; Technology</span>
+              <span className="ml-3 hidden rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 xl:inline-block">Student Portal</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex shrink-0 items-center gap-4">
             <span className="hidden md:inline-block text-xs text-slate-500 font-medium">{user.email}</span>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
+            <button onClick={handleLogout} className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-xs font-bold hover:bg-slate-50 rounded-lg transition-all cursor-pointer text-slate-500 hover:text-rose-600">
               <LogOut className="w-3.5 h-3.5" />
               Sign Out
             </button>
@@ -152,7 +152,7 @@ function AppContent() {
     const ActiveView = viewMap[user.role] || AdmissionView;
     return (
       <div className="h-screen flex flex-col">
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm z-50">
+        <div className="z-50 flex min-h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="NCST Logo" className="w-9 h-9 object-contain" />
             <div>

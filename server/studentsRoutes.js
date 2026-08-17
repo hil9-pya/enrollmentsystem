@@ -22,6 +22,7 @@ import {
   rolloverStudent,
   createPaymongoCheckoutSession,
   verifyPaymongoPayment,
+  joinWalkInQueue,
 } from './studentsController.js';
 import { protectStudentRecord } from './studentAccessMiddleware.js';
 
@@ -73,6 +74,7 @@ router.post('/:id/select-program', protectStudentRecord, selectProgram);
 
 router.post('/:id/proceed-to-payment', protectStudentRecord, proceedToPayment);
 router.post('/:id/payment', protectStudentRecord, processPayment);
+router.post('/:id/walk-in-queue', protectStudentRecord, joinWalkInQueue);
 router.post('/:id/paymongo-checkout', protectStudentRecord, createPaymongoCheckoutSession);
 router.get('/:id/verify-paymongo-payment', protectStudentRecord, verifyPaymongoPayment);
 router.post('/:id/rollover', protectStudentRecord, rolloverStudent);

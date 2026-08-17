@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { PAYMENT_METHODS } from '../../../data/mockData';
-import { Banknote, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, User, Hash, Calendar, ShieldCheck, MapPin } from 'lucide-react';
+import { Banknote, BellRing, Building2, CreditCard, Smartphone, CheckCircle, XCircle, Loader2, Clock, User, Hash, Calendar, ShieldCheck } from 'lucide-react';
 import FloatingInput from '../../../components/FloatingInput';
 import Modal from '../../../components/Modal';
 import { authFetch } from '../../../utils/authFetch.js';
+
+function manilaDateKey() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
 
 export default function PaymentStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
@@ -13,10 +24,83 @@ export default function PaymentStep({ onNext, onBack }) {
 
   const selectedMethodId = student?.paymentMethod;
   const paymentStatus = student?.paymentStatus || 'unpaid';
+  const activeWalkInStatuses = ['waiting', 'called', 'serving', 'skipped'];
+  const hasActiveWalkInTicket = student?.paymentMethod === 'cash'
+    && student?.walkInQueue?.queueDate === manilaDateKey()
+    && activeWalkInStatuses.includes(student?.walkInQueue?.status);
   const downpaymentAmount = Math.min(3000, Number(student?.totalTuition) || 0);
   const canUseDownpayment = (Number(student?.totalTuition) || 0) > downpaymentAmount;
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCalledModal, setShowCalledModal] = useState(false);
+  const audioContextRef = useRef(null);
+  const notifiedEventRef = useRef(null);
+
+  function enableQueueAudio() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+      audioContextRef.current.resume().catch(() => {});
+    } catch {
+      // Visual notification remains available when browser blocks audio.
+    }
+  }
+
+  function playQueueAlert() {
+    try {
+      enableQueueAudio();
+      const context = audioContextRef.current;
+      if (!context || context.state !== 'running') return;
+
+      [0, 0.28, 0.56].forEach((delay) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const start = context.currentTime + delay;
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.16, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + 0.2);
+      });
+    } catch {
+      // Sound is optional; modal and vibration still notify the student.
+    }
+  }
+
+  const calledEventId = student?.walkInQueue?.calledAt
+    ? `${student.id}:${student.walkInQueue.calledAt}`
+    : null;
+
+  useEffect(() => {
+    if (student?.walkInQueue?.status !== 'called' || !calledEventId) return;
+    if (localStorage.getItem('walk_in_queue_acknowledged') === calledEventId) return;
+    if (notifiedEventRef.current === calledEventId) return;
+    notifiedEventRef.current = calledEventId;
+
+    setShowCalledModal(true);
+    playQueueAlert();
+    navigator.vibrate?.([200, 100, 200]);
+
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification('Your cashier number is called', {
+        body: `${student.walkInQueue.ticketNumber} — proceed to ${student.walkInQueue.counterNumber ? `counter ${student.walkInQueue.counterNumber}` : 'the cashier counter'}.`,
+      });
+    }
+  }, [calledEventId, student?.walkInQueue?.counterNumber, student?.walkInQueue?.status, student?.walkInQueue?.ticketNumber]);
+
+  useEffect(() => () => {
+    audioContextRef.current?.close().catch(() => {});
+  }, []);
+
+  function acknowledgeCalledTicket() {
+    if (calledEventId) localStorage.setItem('walk_in_queue_acknowledged', calledEventId);
+    setShowCalledModal(false);
+  }
 
   // Icon mapping
   const iconMap = {
@@ -36,12 +120,25 @@ export default function PaymentStep({ onNext, onBack }) {
   const remainingBalance = Math.max(0, (Number(student?.totalTuition) || 0) - paymentAmount);
 
   const handleSelectMethod = (methodId) => {
-    if (paymentStatus === 'paid') return;
+    if (paymentStatus === 'paid' || hasActiveWalkInTicket) return;
     dispatch({ type: 'SET_PAYMENT_METHOD', payload: { method: methodId } });
     if (['gcash', 'card'].includes(methodId)) {
       setPaymentMode('online');
     } else {
       setPaymentMode('manual');
+    }
+  };
+
+  const handleJoinWalkInQueue = async () => {
+    enableQueueAudio();
+    setIsProcessing(true);
+    try {
+      await dispatch({
+        type: 'JOIN_WALK_IN_QUEUE',
+        payload: { paymentPlan },
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -171,26 +268,6 @@ export default function PaymentStep({ onNext, onBack }) {
         errs.gcashRef = 'GCash reference number is required.';
       } else if (!/^\d{10}$|^\d{13}$/.test(formValues.gcashRef.trim())) {
         errs.gcashRef = 'GCash reference number must be exactly 10 or 13 digits.';
-      }
-    }
-
-    else if (selectedMethodId === 'cash') {
-      if (!formValues.cashDepositor.trim()) {
-        errs.cashDepositor = 'Depositor name is required.';
-      } else if (!nameRegex.test(formValues.cashDepositor.trim())) {
-        errs.cashDepositor = 'Please enter a valid depositor name (letters only, min 3 characters).';
-      }
-
-      if (!formValues.cashBranch.trim()) {
-        errs.cashBranch = 'Branch name is required.';
-      } else if (formValues.cashBranch.trim().length < 3) {
-        errs.cashBranch = 'Branch name must be at least 3 characters.';
-      }
-
-      if (!formValues.cashRef.trim()) {
-        errs.cashRef = 'Receipt reference number is required.';
-      } else if (!/^\d{6}$/.test(formValues.cashRef.trim())) {
-        errs.cashRef = 'Receipt reference number must be exactly 6 digits.';
       }
     }
 
@@ -365,39 +442,6 @@ export default function PaymentStep({ onNext, onBack }) {
             />
           </div>
         );
-      case 'cash':
-        return (
-          <div className="space-y-4">
-            <FloatingInput
-              label="Depositor / Student Name"
-              id="cashDepositor"
-              icon={User}
-              value={formValues.cashDepositor}
-              onChange={(e) => setFormValues({ ...formValues, cashDepositor: e.target.value })}
-              error={errors.cashDepositor}
-              placeholder="Depositor Name"
-            />
-            <FloatingInput
-              label="Payment Branch Location"
-              id="cashBranch"
-              icon={MapPin}
-              value={formValues.cashBranch}
-              onChange={(e) => setFormValues({ ...formValues, cashBranch: e.target.value })}
-              error={errors.cashBranch}
-              placeholder="NCST Main / Bank Branch Name"
-            />
-            <FloatingInput
-              label="Receipt Reference Code"
-              id="cashRef"
-              icon={Hash}
-              value={formValues.cashRef}
-              onChange={(e) => setFormValues({ ...formValues, cashRef: e.target.value.replace(/\D/g, '') })}
-              error={errors.cashRef}
-              placeholder="6-digit receipt number"
-              maxLength="6"
-            />
-          </div>
-        );
       default:
         return null;
     }
@@ -444,17 +488,17 @@ export default function PaymentStep({ onNext, onBack }) {
         {/* 2. Payment Plan */}
         {!isPaid && (
           <div className="mb-8">
-            <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4">Payment Plan</h3>
+            <h3 className="text-sm font-semibold text-univ-navy uppercase tracking-wider mb-4">Payment Plan</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button type="button" onClick={() => setPaymentPlan('full')}
                 className={`text-left border rounded-xl p-4 transition-all ${paymentPlan === 'full' ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                <span className="block text-xs font-extrabold text-univ-navy">Full Payment</span>
+                <span className="block text-xs font-semibold text-univ-navy">Full Payment</span>
                 <span className="block mt-1 text-sm font-bold text-univ-blue">₱{(Number(student?.totalTuition) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </button>
               {canUseDownpayment && (
                 <button type="button" onClick={() => setPaymentPlan('downpayment')}
                   className={`text-left border rounded-xl p-4 transition-all ${paymentPlan === 'downpayment' ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/20' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                  <span className="block text-xs font-extrabold text-univ-navy">Downpayment</span>
+                  <span className="block text-xs font-semibold text-univ-navy">Downpayment</span>
                   <span className="block mt-1 text-sm font-bold text-univ-blue">₱3,000.00</span>
                   <span className="block mt-1 text-[10px] font-medium text-slate-500">Remaining balance: ₱{remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                 </button>
@@ -465,7 +509,7 @@ export default function PaymentStep({ onNext, onBack }) {
 
         {/* 3. Payment Method Selector */}
         <div className="mb-8">
-          <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4">Select Payment Method</h3>
+          <h3 className="text-sm font-semibold text-univ-navy uppercase tracking-wider mb-4">Select Payment Method</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {PAYMENT_METHODS.map((method) => {
               const IconComp = iconMap[method.icon] || Banknote;
@@ -475,8 +519,8 @@ export default function PaymentStep({ onNext, onBack }) {
                 <div
                   key={method.id}
                   onClick={() => handleSelectMethod(method.id)}
-                  className={`border rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 shadow-sm ${
-                    isPaid ? 'opacity-50 cursor-not-allowed' : 'hover:border-univ-blue/30 hover:shadow-md'
+                  className={`border rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-colors ${
+                    isPaid || hasActiveWalkInTicket ? 'opacity-50 cursor-not-allowed' : 'hover:border-univ-blue/30'
                   } ${
                     isSelected
                       ? 'border-univ-blue bg-univ-blue/[0.02] ring-2 ring-univ-blue/20'
@@ -484,7 +528,7 @@ export default function PaymentStep({ onNext, onBack }) {
                   }`}
                 >
                   <IconComp className={`h-8 w-8 mb-3 transition-colors ${isSelected ? 'text-univ-blue' : 'text-slate-400'}`} />
-                  <span className={`text-xs font-extrabold uppercase tracking-wide transition-colors ${isSelected ? 'text-univ-navy' : 'text-slate-500'}`}>
+                  <span className={`text-xs font-semibold uppercase tracking-wide transition-colors ${isSelected ? 'text-univ-navy' : 'text-slate-500'}`}>
                     {method.label}
                   </span>
                 </div>
@@ -553,6 +597,30 @@ export default function PaymentStep({ onNext, onBack }) {
           </div>
         )}
 
+        {hasActiveWalkInTicket && (
+          <div className="mb-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <span className="text-xs font-semibold text-univ-navy">Walk-in cashier ticket</span>
+              <span className="text-xs font-semibold capitalize text-slate-600">{student.walkInQueue.status}</span>
+            </div>
+            <div className="grid gap-4 p-4 sm:grid-cols-[160px_1fr] sm:items-center">
+              <div>
+                <p className="text-xs text-slate-500">Queue number</p>
+                <p className="mt-1 font-mono text-3xl font-bold tracking-tight text-univ-navy">
+                  {student.walkInQueue.ticketNumber}
+                </p>
+              </div>
+              <div className="text-xs leading-relaxed text-slate-600">
+                {student.walkInQueue.status === 'waiting' && 'Wait for your number to be called at the Accounting Office.'}
+                {student.walkInQueue.status === 'called' && `Proceed to ${student.walkInQueue.counterNumber ? `counter ${student.walkInQueue.counterNumber}` : 'the cashier counter'} now.`}
+                {student.walkInQueue.status === 'serving' && 'Cashier is processing your payment.'}
+                {student.walkInQueue.status === 'skipped' && 'Your number was skipped. Ask Accounting staff to recall your ticket.'}
+                <p className="mt-1 text-slate-500">Ticket valid today only.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {(paymentStatus === 'paid' || paymentStatus === 'partial' || ['payment_confirmed', 'validation_pending', 'enrolled'].includes(student?.status)) && (
           <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4">
             <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
@@ -578,11 +646,15 @@ export default function PaymentStep({ onNext, onBack }) {
         )}
 
         {/* Action Button for Process Payment */}
-        {!isPaid && !isProcessing && (
+        {!isPaid && !isProcessing && !hasActiveWalkInTicket && (
           <div className="flex justify-end mt-6">
             <button
               type="button"
-              onClick={paymentMode === 'online' ? handleOnlinePayment : handleProcessPayment}
+              onClick={selectedMethodId === 'cash'
+                ? handleJoinWalkInQueue
+                : paymentMode === 'online'
+                  ? handleOnlinePayment
+                  : handleProcessPayment}
               disabled={!selectedMethodId}
               className={`px-4 py-3 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                 selectedMethodId
@@ -590,7 +662,11 @@ export default function PaymentStep({ onNext, onBack }) {
                   : 'bg-slate-300 opacity-50 cursor-not-allowed'
               }`}
             >
-              {paymentStatus === 'failed' ? 'Retry payment' : `Pay ₱${paymentAmount.toLocaleString()}`}
+              {selectedMethodId === 'cash'
+                ? 'Get queue number'
+                : paymentStatus === 'failed'
+                  ? 'Retry payment'
+                  : `Pay ₱${paymentAmount.toLocaleString()}`}
             </button>
           </div>
         )}
@@ -620,6 +696,37 @@ export default function PaymentStep({ onNext, onBack }) {
       </div>
 
       {/* Secure Payment Validation Modal */}
+      <Modal
+        isOpen={showCalledModal}
+        onClose={acknowledgeCalledTicket}
+        title="Your queue number is called"
+        maxWidth="max-w-sm"
+        zIndex="z-[60]"
+      >
+        <div role="alert" aria-live="assertive">
+          <div className="flex items-start gap-3">
+            <BellRing className="mt-0.5 h-5 w-5 shrink-0 text-univ-blue" aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                Queue number {student?.walkInQueue?.ticketNumber}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                Proceed to {student?.walkInQueue?.counterNumber
+                  ? `cashier counter ${student.walkInQueue.counterNumber}`
+                  : 'the cashier counter'} now.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={acknowledgeCalledTicket}
+            className="mt-5 w-full rounded-lg bg-univ-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            I’m proceeding to the cashier
+          </button>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showValidationModal}
         onClose={() => {

@@ -16,6 +16,7 @@ import { generateApplicantToken } from './studentAccessMiddleware.js';
 import { runWithOptionalTransaction } from './services/transactionService.js';
 import AcademicTerm from './models/AcademicTerm.js';
 import CourseMembership from './models/CourseMembership.js';
+import PaymentQueueCounter from './models/PaymentQueueCounter.js';
 import {
   sendVerificationOtpEmail,
 } from './services/emailService.js';
@@ -42,6 +43,21 @@ function getPaymentAmounts(student, paymentPlan) {
     : 'full';
   const amountPaid = plan === 'downpayment' ? DOWNPAYMENT_AMOUNT : total;
   return { plan, amountPaid, remainingBalance: Math.max(0, total - amountPaid) };
+}
+
+function getManilaQueueDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function queueActor(req) {
+  return req.user?.username || req.user?.email || 'Accounting Office';
 }
 
 // Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
@@ -109,7 +125,7 @@ const getStudents = asyncHandler(async (req, res) => {
 // @desc    List all deleted students
 // @route   GET /api/admin/students/deleted
 const getDeletedStudents = asyncHandler(async (req, res) => {
-  const students = await Student.find({ isDeleted: true }).sort({ _id: 1 });
+  const students = await Student.find({ isDeleted: true }).sort({ archivedAt: -1, updatedAt: -1, _id: 1 });
   res.json(students);
 });
 
@@ -119,6 +135,14 @@ const softDeleteStudent = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
   student.isDeleted = true;
+  student.archivedAt = new Date();
+  student.archivedReason = String(req.body?.reason || 'Manually archived by administrator').trim();
+  student.archivedBy = req.user?.username || req.user?.email || 'Administrator';
+  student.auditLogs.push({
+    action: student.archivedReason,
+    user: student.archivedBy,
+    date: student.archivedAt,
+  });
   await student.save();
   res.json({ message: 'Student moved to trash', id: student._id });
 });
@@ -129,6 +153,9 @@ const restoreStudent = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
   student.isDeleted = false;
+  student.archivedAt = null;
+  student.archivedReason = '';
+  student.archivedBy = '';
   await student.save();
   res.json({ message: 'Student restored', id: student._id });
 });
@@ -969,6 +996,15 @@ const confirmPayment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: Student is not pending payment.');
   }
 
+  if (
+    student.paymentMethod === 'cash'
+    && student.walkInQueue
+    && !['called', 'serving'].includes(student.walkInQueue.status)
+  ) {
+    res.status(400);
+    throw new Error('Call and serve the walk-in ticket before confirming payment.');
+  }
+
   const amounts = getPaymentAmounts(student, student.paymentPlan);
   student.amountPaid = amounts.amountPaid;
   student.remainingBalance = amounts.remainingBalance;
@@ -977,6 +1013,142 @@ const confirmPayment = asyncHandler(async (req, res) => {
     student.status = 'payment_confirmed';
   }
   markPaymentReceived(student);
+  if (student.paymentMethod === 'cash' && student.walkInQueue) {
+    student.walkInQueue.status = 'completed';
+    student.walkInQueue.completedAt = new Date();
+    student.walkInQueue.updatedBy = queueActor(req);
+    student.auditLogs.push({
+      action: `Completed Walk-in Ticket (${student.walkInQueue.ticketNumber})`,
+      user: queueActor(req),
+      date: new Date(),
+    });
+  }
+
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Student: request today's walk-in cashier ticket
+// @route   POST /api/students/:id/walk-in-queue
+const joinWalkInQueue = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'payment_pending') {
+    res.status(400);
+    throw new Error('Student is not cleared for payment.');
+  }
+  if (student.paymentMethod !== 'cash') {
+    res.status(400);
+    throw new Error('Walk-in queue is available only for cashier payments.');
+  }
+
+  const queueDate = getManilaQueueDate();
+  if (
+    student.walkInQueue?.queueDate === queueDate
+    && ['waiting', 'called', 'serving', 'skipped'].includes(student.walkInQueue.status)
+  ) {
+    return res.json(student);
+  }
+
+  const counter = await PaymentQueueCounter.findByIdAndUpdate(
+    queueDate,
+    { $inc: { sequence: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  const sequence = counter.sequence;
+  const amounts = getPaymentAmounts(student, req.body.paymentPlan);
+
+  student.paymentPlan = amounts.plan;
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
+  student.paymentStatus = 'queued';
+  student.walkInQueue = {
+    ticketNumber: `PAY-${String(sequence).padStart(3, '0')}`,
+    queueDate,
+    sequence,
+    status: 'waiting',
+    joinedAt: new Date(),
+  };
+  student.auditLogs.push({
+    action: `Joined Walk-in Payment Queue (${student.walkInQueue.ticketNumber})`,
+    user: 'Student Portal',
+    date: new Date(),
+  });
+
+  await student.save();
+  res.status(201).json(student);
+});
+
+// @desc    Accounting: call oldest waiting walk-in ticket
+// @route   POST /api/admin/students/walk-in-queue/next
+const callNextWalkInQueue = asyncHandler(async (req, res) => {
+  const now = new Date();
+  const student = await Student.findOneAndUpdate(
+    {
+      status: 'payment_pending',
+      paymentMethod: 'cash',
+      'walkInQueue.queueDate': getManilaQueueDate(now),
+      'walkInQueue.status': 'waiting',
+      isDeleted: { $ne: true },
+    },
+    {
+      $set: {
+        'walkInQueue.status': 'called',
+        'walkInQueue.calledAt': now,
+        'walkInQueue.counterNumber': req.body.counterNumber || null,
+        'walkInQueue.updatedBy': queueActor(req),
+      },
+    },
+    { new: true, sort: { 'walkInQueue.sequence': 1 } }
+  );
+
+  if (!student) {
+    res.status(404);
+    throw new Error('No waiting walk-in tickets.');
+  }
+  res.json(student);
+});
+
+// @desc    Accounting: update one walk-in ticket lifecycle
+// @route   POST /api/admin/students/:id/walk-in-queue/:action
+const updateWalkInQueue = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  if (student.paymentMethod !== 'cash' || !student.walkInQueue) {
+    res.status(400);
+    throw new Error('Student has no walk-in payment ticket.');
+  }
+
+  const transitions = {
+    call: { from: ['waiting', 'skipped'], to: 'called' },
+    'repeat-call': { from: ['called'], to: 'called' },
+    serve: { from: ['called'], to: 'serving' },
+    skip: { from: ['waiting', 'called'], to: 'skipped' },
+    recall: { from: ['skipped'], to: 'called' },
+  };
+  const transition = transitions[req.params.action];
+  if (!transition || !transition.from.includes(student.walkInQueue.status)) {
+    res.status(400);
+    throw new Error(`Cannot ${req.params.action} ticket from ${student.walkInQueue.status} status.`);
+  }
+
+  const now = new Date();
+  student.walkInQueue.status = transition.to;
+  student.walkInQueue.updatedBy = queueActor(req);
+  if (transition.to === 'called') {
+    const previousCallTime = student.walkInQueue.calledAt
+      ? new Date(student.walkInQueue.calledAt).getTime()
+      : 0;
+    student.walkInQueue.calledAt = new Date(Math.max(now.getTime(), previousCallTime + 1));
+    student.walkInQueue.counterNumber = req.body.counterNumber || student.walkInQueue.counterNumber;
+  }
+  if (transition.to === 'serving') student.walkInQueue.servedAt = now;
+  student.auditLogs.push({
+    action: `${req.params.action === 'repeat-call' ? 'Repeated Call for' : transition.to === 'called' ? 'Called' : transition.to === 'serving' ? 'Serving' : 'Skipped'} Walk-in Ticket (${student.walkInQueue.ticketNumber})`,
+    user: queueActor(req),
+    date: now,
+  });
 
   await student.save();
   res.json(student);
@@ -1302,6 +1474,9 @@ export {
   rejectAdmission,
   approveAdvising,
   confirmPayment,
+  joinWalkInQueue,
+  callNextWalkInQueue,
+  updateWalkInQueue,
   validateEnrollment,
   proceedToPayment,
   rejectAdvising,

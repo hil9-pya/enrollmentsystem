@@ -3,7 +3,7 @@ import { DollarSign, Clock, CheckCircle, TrendingUp } from 'lucide-react';
 import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import MiniStat from '../../components/MiniStat';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
 import PortalPageHeader from '../../components/PortalPageHeader';
 import SearchInput from '../../components/SearchInput';
@@ -76,10 +76,8 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
     return { expectedRevenue, collectedRevenue, pendingRevenue, paidCount, ledgerData, monthlyRevenue, programRevenue };
   }, [students, searchQuery, initialFilter]);
 
-  const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6'];
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="h-full w-full space-y-6 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
       {showOverview && (
         <>
           <PortalPageHeader
@@ -100,7 +98,7 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
 
       {showOverview && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col h-[300px]">
+          <div className="lg:col-span-2 bg-white p-5 rounded-lg border border-slate-200 flex flex-col min-h-[300px]">
             <h3 className="text-sm font-bold text-slate-900 mb-6">Revenue Collection Trend</h3>
             <div className="flex-1 w-full min-h-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -119,48 +117,27 @@ export default function AccountingDashboard({ students, onNavigate, initialFilte
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col h-[300px]">
-            <h3 className="text-sm font-bold text-slate-900 mb-2">Revenue by Program</h3>
-            <div className="flex-1 w-full min-h-0 relative">
-               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={metrics.programRevenue}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {metrics.programRevenue.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatPeso(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center Label */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total</span>
-                <span className="text-lg font-extrabold text-slate-900">{formatPeso(metrics.collectedRevenue)}</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap justify-center gap-3 mt-2">
-              {metrics.programRevenue.map((entry, index) => (
-                <div key={entry.name} className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
-                  {entry.name}
+          <div className="bg-white p-5 rounded-lg border border-slate-200 flex flex-col min-h-[300px]">
+            <h3 className="text-sm font-semibold text-slate-900">Revenue by program</h3>
+            <p className="mt-1 text-xs text-slate-500">Collected tuition grouped by program.</p>
+            <div className="mt-5 divide-y divide-slate-100 border-y border-slate-200">
+              {metrics.programRevenue.map((entry) => (
+                <div key={entry.name} className="flex items-center justify-between gap-4 py-3 text-sm">
+                  <span className="font-medium text-slate-700">{entry.name}</span>
+                  <span className="font-semibold text-slate-950">{formatPeso(entry.value)}</span>
                 </div>
               ))}
+            </div>
+            <div className="mt-auto flex items-center justify-between pt-4 text-sm">
+              <span className="text-slate-600">Total collected</span>
+              <span className="font-bold text-slate-950">{formatPeso(metrics.collectedRevenue)}</span>
             </div>
           </div>
         </div>
       )}
 
       {/* Master Ledger Grid */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-lg border border-slate-200">
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-bold text-slate-900">Master Ledger Directory</h2>

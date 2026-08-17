@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
-import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, RefreshCw, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, Loader2 } from 'lucide-react';
 import { authFetch } from '../../../utils/authFetch.js';
 
 const MIN_OTP_VERIFY_LOADING_MS = 700;
@@ -391,7 +391,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         <div className="flex items-start gap-3 bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 shadow-sm">
           <ArrowRightLeft className="h-5 w-5 text-slate-900 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Transferee Applicant</p>
+            <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Transferee Applicant</p>
             <p className="text-xs text-slate-700 mt-1 leading-relaxed font-medium">
               As a transferee, please provide your complete academic history from your previous institution. This information is required for credit transfer evaluation and proper year-level placement.
             </p>
@@ -400,7 +400,7 @@ export default function RegistrationStep({ onNext, onBack }) {
       )}
 
       <div className="space-y-1">
-        <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Personal Information</h3>
+        <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">Personal Information</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FloatingInput
@@ -490,7 +490,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         {isTransferee && (
           <>
             <div className="pt-6 mt-2 border-t border-slate-100">
-              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Previous Academic History</h3>
+              <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Previous Academic History</h3>
               <p className="text-[10px] text-slate-400 font-medium mb-4">Required for credit transfer evaluation</p>
 
               <div className="space-y-4">
@@ -563,7 +563,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         )}
 
         <div className="pt-6 mt-4 border-t border-slate-100">
-          <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Account Security</h3>
+          <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">Account Security</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FloatingInput
               label="Applicant Password"
@@ -603,38 +603,56 @@ export default function RegistrationStep({ onNext, onBack }) {
       </div>
 
       {otpSent && (
-        <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
-          <div className="flex items-start gap-3 mb-4">
-            <ShieldCheck className="w-5 h-5 text-univ-blue mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-extrabold text-univ-navy">Verify your email</p>
-              <p className="text-xs text-slate-600 mt-1">Enter the 6-digit code sent to <strong>{draft.email}</strong>. Code expires in 10 minutes.</p>
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-univ-blue" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-univ-navy">Verify your email</p>
+              <p id="email-verification-help" className="mt-1 text-xs leading-relaxed text-slate-600">
+                Enter the 6-digit code sent to <strong className="font-semibold text-slate-700">{draft.email}</strong>. Code expires in 10 minutes.
+              </p>
+
+              <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+                <div className="w-full sm:w-56">
+                  <label htmlFor="email-verification-code" className="mb-1.5 block text-xs font-medium text-slate-700">
+                    Verification code
+                  </label>
+                  <input
+                    id="email-verification-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    disabled={isVerifyingOtp}
+                    aria-invalid={Boolean(otpError)}
+                    aria-describedby={otpError ? 'email-verification-help email-verification-error' : 'email-verification-help'}
+                    onChange={(event) => {
+                      setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
+                      setOtpError('');
+                    }}
+                    placeholder="000000"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center font-mono text-lg font-semibold tracking-[0.3em] text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-univ-blue focus:ring-2 focus:ring-univ-blue/15 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={requestOtp}
+                  disabled={isEmailAction}
+                  className="rounded-md px-1 py-2.5 text-xs font-semibold text-univ-blue transition-colors hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {isEmailAction && !isVerifyingOtp ? 'Sending code…' : 'Resend code'}
+                </button>
+              </div>
+
+              {otpError && (
+                <p id="email-verification-error" className="mt-2 text-xs font-semibold text-rose-600">
+                  {otpError}
+                </p>
+              )}
             </div>
           </div>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={otp}
-            disabled={isVerifyingOtp}
-            onChange={(event) => {
-              setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
-              setOtpError('');
-            }}
-            placeholder="000000"
-            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-[0.4em] outline-none focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500"
-          />
-          {otpError && <p className="mt-2 text-xs font-bold text-rose-600">{otpError}</p>}
-          <button
-            type="button"
-            onClick={requestOtp}
-            disabled={isEmailAction}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-univ-blue disabled:text-slate-400"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isEmailAction && !isVerifyingOtp ? 'animate-spin' : ''}`} />
-            {isEmailAction && !isVerifyingOtp ? 'Sending code…' : 'Resend code'}
-          </button>
         </div>
       )}
 

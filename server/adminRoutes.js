@@ -14,6 +14,8 @@ import {
   softDeleteStudent,
   restoreStudent,
   permanentlyDeleteStudent,
+  callNextWalkInQueue,
+  updateWalkInQueue,
 } from './studentsController.js';
 import { protect, authorize } from './authMiddleware.js';
 
@@ -27,6 +29,7 @@ router.get('/', authorize('admin', 'admission', 'adviser', 'accounting', 'regist
 
 // Admin-specific deletion routes
 router.get('/deleted', authorize('admin'), getDeletedStudents);
+router.post('/walk-in-queue/next', authorize('admin', 'accounting'), callNextWalkInQueue);
 router.delete('/:id', authorize('admin'), softDeleteStudent);
 router.post('/:id/restore', authorize('admin'), restoreStudent);
 router.delete('/:id/permanent', authorize('admin'), permanentlyDeleteStudent);
@@ -40,6 +43,7 @@ router.post('/:id/approve-advising', authorize('admin', 'adviser'), approveAdvis
 router.post('/:id/reject-advising', authorize('admin', 'adviser'), rejectAdvising);
 router.post('/:id/subjects', authorize('admin', 'adviser'), setSubjects);
 router.post('/:id/confirm-payment', authorize('admin', 'accounting'), confirmPayment);
+router.post('/:id/walk-in-queue/:action', authorize('admin', 'accounting'), updateWalkInQueue);
 router.post('/:id/validate-enrollment', authorize('admin', 'registrar'), validateEnrollment);
 
 export default router;

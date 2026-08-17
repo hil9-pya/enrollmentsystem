@@ -898,9 +898,9 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
           {/* Individual Document Downloads */}
           <div>
             <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Download Documents</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {/* Card 1 */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
+              <div className="flex min-h-56 flex-col justify-between rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                   <div className="p-2.5 rounded-xl bg-indigo-50 text-univ-indigo inline-block mb-3.5 shadow-sm">
                     <FileDown className="h-6 w-6 stroke-[2]" />
@@ -912,14 +912,14 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
                 </div>
                 <button
                   onClick={handleDownloadSchedule}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-univ-indigo px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-univ-blue cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" /> Download Schedule
                 </button>
               </div>
  
               {/* Card 2 */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
+              <div className="flex min-h-56 flex-col justify-between rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                   <div className="p-2.5 rounded-xl bg-indigo-50 text-univ-indigo inline-block mb-3.5 shadow-sm">
                     <FileDown className="h-6 w-6 stroke-[2]" />
@@ -931,14 +931,14 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
                 </div>
                 <button
                   onClick={handleDownloadRegForm}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-univ-indigo px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-univ-blue cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" /> Download COR
                 </button>
               </div>
  
               {/* Card 3 */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between h-56 shadow-sm hover:border-slate-200 hover:shadow-premium-lg transition-all duration-300">
+              <div className="flex min-h-56 flex-col justify-between rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                   <div className="p-2.5 rounded-xl bg-indigo-50 text-univ-indigo inline-block mb-3.5 shadow-sm">
                     <FileDown className="h-6 w-6 stroke-[2]" />
@@ -950,7 +950,7 @@ export default function FulfillmentStep({ onReturnToGateway, onRefresh }) {
                 </div>
                 <button
                   onClick={handleDownloadReceipt}
-                  className="mt-4 w-full flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-white bg-univ-indigo hover:bg-univ-blue rounded-lg transition-all shadow-sm cursor-pointer"
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-univ-indigo px-3 py-2.5 text-xs font-bold text-white transition-colors hover:bg-univ-blue cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" /> Download Receipt
                 </button>

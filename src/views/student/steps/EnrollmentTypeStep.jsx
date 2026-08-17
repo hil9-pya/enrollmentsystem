@@ -50,7 +50,7 @@ export default function EnrollmentTypeStep({ onNext }) {
                     <Icon className="h-6 w-6 stroke-[2]" />
                   </div>
                 )}
-                <p className="text-sm font-extrabold text-univ-navy">{et.label}</p>
+                <p className="text-sm font-semibold text-univ-navy">{et.label}</p>
                 <p className="text-xs text-slate-400 mt-1.5 leading-relaxed font-medium">{et.description}</p>
               </div>
             </button>

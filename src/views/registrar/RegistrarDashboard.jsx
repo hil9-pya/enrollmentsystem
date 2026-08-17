@@ -6,6 +6,7 @@ import Badge from '../../components/Badge';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
 import PortalPageHeader from '../../components/PortalPageHeader';
 import SearchInput from '../../components/SearchInput';
+import MiniStat from '../../components/MiniStat';
 
 export default function RegistrarDashboard({ students, onNavigate, initialFilter, onViewDetails, showOverview = true }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,36 +49,10 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
         </div>
 
         {/* Compact Metrics */}
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-              <Users className="w-5 h-5 text-slate-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Records</p>
-              <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{metrics.totalStudents}</p>
-            </div>
-          </div>
-          <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center border border-amber-100">
-              <Clock className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pending Validation</p>
-              <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{metrics.pending}</p>
-            </div>
-          </div>
-          <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
-              <CheckCircle className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Officially Enrolled</p>
-              <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{metrics.enrolled}</p>
-            </div>
-          </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MiniStat title="Total records" value={metrics.totalStudents} icon={<Users className="h-4 w-4" />} />
+          <MiniStat title="Pending validation" value={metrics.pending} icon={<Clock className="h-4 w-4" />} colorClass="text-amber-600" onClick={() => onNavigate('pending')} />
+          <MiniStat title="Officially enrolled" value={metrics.enrolled} icon={<CheckCircle className="h-4 w-4" />} colorClass="text-emerald-600" onClick={() => onNavigate('enrolled')} />
         </div>
       </div>
       )}

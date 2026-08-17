@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import { useConfirm } from '../../../context/ConfirmationContext';
 import { toast } from 'react-hot-toast';
@@ -98,6 +98,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
   const [submitting, setSubmitting] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestText, setRequestText] = useState('');
+  const selectedCourseLoadRef = useRef(null);
 
   const studentId = student?._id || student?.id;
   const selectedSubjects = useMemo(() => student?.selectedSubjects || [], [student?.selectedSubjects]);
@@ -148,6 +149,11 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
   }, [selectedSubjects, subjects, getSubjectById]);
 
   const unitLimit = student?.overloadPermit ? 21 : 18;
+
+  const showSelectedCourseLoad = () => {
+    selectedCourseLoadRef.current?.scrollIntoView({ block: 'start' });
+    selectedCourseLoadRef.current?.focus({ preventScroll: true });
+  };
 
   // Build rich entries for ScheduleGrid
   const gridEntries = useMemo(() => {
@@ -301,11 +307,11 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left p-3 font-extrabold text-slate-500 uppercase tracking-wider">Subject</th>
-                  <th className="text-left p-3 font-extrabold text-slate-500 uppercase tracking-wider">Section</th>
-                  <th className="text-left p-3 font-extrabold text-slate-500 uppercase tracking-wider">Schedule</th>
-                  <th className="text-left p-3 font-extrabold text-slate-500 uppercase tracking-wider">Room</th>
-                  <th className="text-center p-3 font-extrabold text-slate-500 uppercase tracking-wider">Units</th>
+                  <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Subject</th>
+                  <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Section</th>
+                  <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Schedule</th>
+                  <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Room</th>
+                  <th className="text-center p-3 font-semibold text-slate-500 uppercase tracking-wider">Units</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -319,7 +325,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                   return (
                     <tr key={s.subjectId} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-3">
-                        <div className="font-extrabold text-univ-navy">{sub.code}</div>
+                        <div className="font-semibold text-univ-navy">{sub.code}</div>
                         <div className="text-slate-500 font-medium mt-0.5">{sub.name}</div>
                       </td>
                       <td className="p-3 font-mono font-bold text-slate-700">{sec?.code || '—'}</td>
@@ -327,14 +333,14 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                         {sched.day || '—'} · {sched.time || '—'}
                       </td>
                       <td className="p-3 text-slate-500">{sched.room || '—'}</td>
-                      <td className="p-3 text-center font-extrabold text-univ-navy">{sub.units}</td>
+                      <td className="p-3 text-center font-semibold text-univ-navy">{sub.units}</td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 border-t-2 border-slate-200">
-                  <td colSpan={4} className="p-3 font-extrabold text-slate-700">Total Units</td>
+                  <td colSpan={4} className="p-3 font-semibold text-slate-700">Total Units</td>
                   <td className="p-3 text-center font-extrabold text-lg text-univ-navy">{totalUnits}</td>
                 </tr>
               </tfoot>
@@ -343,7 +349,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
 
           {/* Visual grid */}
           <div className="mb-6">
-            <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-3">Weekly View</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Weekly View</h3>
             <ScheduleGrid entries={gridEntries} />
           </div>
 
@@ -378,7 +384,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
             <p className="text-sm text-slate-500 font-medium leading-relaxed">
               Select subjects and sections for your curriculum.
               {academicTermLabel && (
-                <span className="ml-1 font-extrabold text-univ-blue">{academicTermLabel}</span>
+                <span className="ml-1 font-semibold text-univ-blue">{academicTermLabel}</span>
               )}
             </p>
           </div>
@@ -386,13 +392,13 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
           <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm">
             <button
               onClick={() => setView(VIEW_LIST)}
-              className={`px-3 py-2 text-[10px] font-extrabold transition-colors cursor-pointer ${view === VIEW_LIST ? 'bg-univ-blue text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+              className={`px-3 py-2 text-[10px] font-semibold transition-colors cursor-pointer ${view === VIEW_LIST ? 'bg-univ-blue text-white' : 'text-slate-500 hover:bg-slate-50'}`}
             >
               List
             </button>
             <button
               onClick={() => setView(VIEW_GRID)}
-              className={`px-3 py-2 text-[10px] font-extrabold transition-colors cursor-pointer ${view === VIEW_GRID ? 'bg-univ-blue text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+              className={`px-3 py-2 text-[10px] font-semibold transition-colors cursor-pointer ${view === VIEW_GRID ? 'bg-univ-blue text-white' : 'text-slate-500 hover:bg-slate-50'}`}
             >
               Grid
             </button>
@@ -404,7 +410,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex gap-3 items-start shadow-sm">
             <Clock className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <div className="text-xs">
-              <span className="font-extrabold text-amber-900 uppercase tracking-wider block mb-1">Subject Modification Request Pending</span>
+              <span className="font-semibold text-amber-900 uppercase tracking-wider block mb-1">Subject Modification Request Pending</span>
               <p className="text-amber-800 font-mono italic">"{student.subjectChangeRequest}"</p>
             </div>
           </div>
@@ -428,13 +434,23 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="text-[10px] font-extrabold border border-slate-200 rounded-xl px-3 py-2.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-univ-blue cursor-pointer"
+                  className="text-[10px] font-semibold border border-slate-200 rounded-xl px-3 py-2.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-univ-blue cursor-pointer"
                 >
                   <option value="all">All Subjects</option>
                   <option value="curriculum">Curriculum Only</option>
                   <option value="elective">Electives Only</option>
                 </select>
               </div>
+
+              <button
+                type="button"
+                onClick={showSelectedCourseLoad}
+                aria-controls="selected-course-load"
+                className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-univ-blue transition-colors hover:border-blue-200 hover:bg-blue-50/40 lg:hidden"
+              >
+                <span>Selected courses ({selectedSubjects.length})</span>
+                <span className="font-medium text-slate-500">{totalUnits} units</span>
+              </button>
 
               {loadingSubjects ? (
                 <div className="flex items-center justify-center py-16 gap-3 text-slate-400 text-xs">
@@ -447,7 +463,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                   <p className="text-xs font-bold">No subjects found.</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
+                <div className="space-y-3 lg:max-h-[560px] lg:overflow-y-auto lg:pr-1">
                   {filteredSubjects.map((sub) => {
                     const selectedEntry = getSelectedForSubject(sub.id);
                     const isSelected = !!selectedEntry;
@@ -482,7 +498,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                               <span aria-hidden="true">&middot;</span>
                               <span>{sub.units} units</span>
                             </div>
-                            <h4 className="text-sm font-extrabold text-univ-navy leading-snug">{sub.name}</h4>
+                            <h4 className="text-sm font-semibold text-univ-navy leading-snug">{sub.name}</h4>
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
@@ -553,7 +569,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                                       {sec.instructor}
                                     </p>
                                     {conflictMsg && (
-                                      <p className="text-[10px] text-rose-600 font-extrabold flex items-center gap-1 mt-0.5">
+                                      <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
                                         <AlertTriangle className="w-3 h-3 text-rose-500 shrink-0" />
                                         <span>Schedule Conflict: {conflictMsg}</span>
                                       </p>
@@ -606,8 +622,13 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
             </div>
 
             {/* ── Right: Selected Subjects Panel ── */}
-            <div className="lg:col-span-2 border border-slate-200 rounded-2xl p-5 bg-slate-50/50 flex flex-col min-h-[400px]">
-              <h3 className="text-xs font-extrabold text-univ-navy uppercase tracking-wider border-b border-slate-200 pb-2.5 mb-4">
+            <div
+              id="selected-course-load"
+              ref={selectedCourseLoadRef}
+              tabIndex={-1}
+              className="flex min-h-0 scroll-mt-4 flex-col rounded-lg border border-slate-200 bg-slate-50/50 p-5 outline-none lg:col-span-2 lg:min-h-[400px] lg:rounded-2xl"
+            >
+              <h3 className="text-xs font-semibold text-univ-navy uppercase tracking-wider border-b border-slate-200 pb-2.5 mb-4">
                 Selected Course Load
               </h3>
 
@@ -638,7 +659,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                             </span>
                             <span className="text-[10px] text-slate-400 font-bold">{sub.units}u</span>
                           </div>
-                          <h5 className="text-xs font-extrabold text-univ-navy truncate mt-1">{sub.name}</h5>
+                          <h5 className="text-xs font-semibold text-univ-navy truncate mt-1">{sub.name}</h5>
                           <span className="text-[10px] text-slate-500 font-mono font-medium block truncate mt-0.5">
                             {sched.day || '—'} · {sched.time || '—'}
                           </span>
@@ -690,7 +711,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
                 <div className="mt-4 border-t border-slate-200 pt-4">
                   <button
                     onClick={() => setView(VIEW_GRID)}
-                    className="w-full text-center text-[10px] font-extrabold text-indigo-600 hover:text-indigo-700 cursor-pointer"
+                    className="w-full text-center text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer"
                   >
                     View Weekly Grid →
                   </button>
@@ -742,7 +763,7 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
             </p>
           </div>
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Advising Request Message</label>
+            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Advising Request Message</label>
             <textarea
               value={requestText}
               onChange={(e) => setRequestText(e.target.value)}
@@ -751,10 +772,10 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-            <button onClick={() => setShowRequestModal(false)} className="px-6 py-2.5 text-xs font-extrabold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer shadow-sm">
+            <button onClick={() => setShowRequestModal(false)} className="px-6 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all cursor-pointer shadow-sm">
               Cancel
             </button>
-            <button onClick={handleSubmitRequest} className="px-6 py-2.5 text-xs font-extrabold text-white bg-univ-blue hover:bg-blue-700 rounded-xl transition-all cursor-pointer shadow-md">
+            <button onClick={handleSubmitRequest} className="px-6 py-2.5 text-xs font-semibold text-white bg-univ-blue hover:bg-blue-700 rounded-xl transition-all cursor-pointer shadow-md">
               Submit Request
             </button>
           </div>

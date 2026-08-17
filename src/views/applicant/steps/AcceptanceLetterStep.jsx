@@ -67,7 +67,7 @@ export default function AcceptanceLetterStep() {
           <p>Your submitted credentials have met our admission standards. You are now officially cleared to proceed to the next steps of your enrollment.</p>
 
           <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl my-8">
-            <h3 className="text-sm font-extrabold text-univ-navy uppercase tracking-wider mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-univ-navy uppercase tracking-wider mb-4 flex items-center gap-2">
               <CheckCircle size={16} className="text-blue-600" />
               Your Student Credentials
             </h3>

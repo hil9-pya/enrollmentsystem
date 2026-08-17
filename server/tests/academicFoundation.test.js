@@ -6,6 +6,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import Student from '../Student.js';
 import User from '../User.js';
 import Section from '../models/Section.js';
+import CourseOffering from '../models/CourseOffering.js';
 import CourseMembership from '../models/CourseMembership.js';
 import AcademicTerm from '../models/AcademicTerm.js';
 import { getEnrolledSchedule, submitSchedule } from '../schedulerController.js';
@@ -19,6 +20,7 @@ import {
 import { parseAcademicTermLabel, repairStoredAcademicTermLabel } from '../academicTermUtils.js';
 import { confirmPayment, validateEnrollment } from '../studentsController.js';
 import { generateApplicantToken, protectStudentRecord } from '../studentAccessMiddleware.js';
+import { updateSection } from '../adminSchedulerController.js';
 
 function invoke(handler, req) {
   return new Promise((resolve, reject) => {
@@ -58,13 +60,14 @@ test('official enrollment creates one roster membership and grade publication up
       lastName: 'Officer',
       role: 'registrar',
     });
-    await User.create({
+    const studentUser = await User.create({
       username: 'STU-2026-9999',
       email: 'student@test.local',
       password: 'password123',
       firstName: 'Test',
       lastName: 'Student',
       role: 'student',
+      studentProfile: 'APP-2026-9999',
     });
 
     const section = await Section.create({
@@ -154,6 +157,11 @@ test('official enrollment creates one roster membership and grade publication up
       body: { grade: 1.75 },
       user: instructor,
     });
+    const privatePendingGrade = await invoke(getMyClasses, { user: studentUser });
+    assert.equal(privatePendingGrade.status, 200);
+    assert.equal(privatePendingGrade.payload.data.length, 1);
+    assert.equal(privatePendingGrade.payload.data[0].finalGrade, null);
+    assert.equal(privatePendingGrade.payload.data[0].offering.term.name, '1st Semester 2026-2027');
     const returnedGrade = await invoke(reviewFinalGrade, {
       params: { id: membership._id },
       body: { action: 'return', notes: 'Verify the encoded class record.' },
@@ -189,6 +197,12 @@ test('official enrollment creates one roster membership and grade publication up
     assert.equal(student.academicRecord.length, 1);
     assert.equal(student.academicRecord[0].grade, 1.75);
 
+    const visiblePublishedGrade = await invoke(getMyClasses, { user: studentUser });
+    assert.equal(visiblePublishedGrade.status, 200);
+    assert.equal(visiblePublishedGrade.payload.data.length, 1);
+    assert.equal(visiblePublishedGrade.payload.data[0].status, 'completed');
+    assert.equal(visiblePublishedGrade.payload.data[0].finalGrade, 1.75);
+
     const publishedRoster = await invoke(getOfferingRoster, {
       params: { id: membership.offering },
       user: instructor,
@@ -196,6 +210,74 @@ test('official enrollment creates one roster membership and grade publication up
     assert.equal(publishedRoster.status, 200);
     assert.equal(publishedRoster.payload.data.length, 1);
     assert.equal(publishedRoster.payload.data[0].gradeStatus, 'published');
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('section instructor assignment requires an account and synchronizes official offerings', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    const instructor = await User.create({
+      username: 'linked-instructor',
+      email: 'linked-instructor@test.local',
+      password: 'password123',
+      firstName: 'Lina',
+      lastName: 'Santos',
+      role: 'instructor',
+    });
+    const term = await AcademicTerm.create({
+      code: 'AY2026-2027-1',
+      name: '1st Semester 2026-2027',
+      schoolYear: '2026-2027',
+      semester: '1',
+      status: 'active',
+      isActive: true,
+    });
+    const section = await Section.create({
+      subjectId: 'cs101',
+      sectionCode: 'CS-11M1',
+      days: 'MWF',
+      time: '8:00 AM - 9:30 AM',
+      instructor: 'Legacy Name',
+      maxSlots: 40,
+    });
+    const offering = await CourseOffering.create({
+      term: term._id,
+      subjectId: 'cs101',
+      subjectCode: 'CS 101',
+      subjectName: 'Intro to Computing',
+      units: 3,
+      sectionKey: String(section._id),
+      sectionCode: section.sectionCode,
+      section: section._id,
+      instructorName: 'Legacy Name',
+      status: 'active',
+    });
+
+    const rejected = await invoke(updateSection, {
+      params: { id: section._id },
+      body: { instructor: 'Another Plain Name', instructorUser: '' },
+    });
+    assert.equal(rejected.status, 400);
+    assert.match(rejected.payload.message, /instructor account/i);
+
+    const linked = await invoke(updateSection, {
+      params: { id: section._id },
+      body: { instructorUser: String(instructor._id) },
+    });
+    assert.equal(linked.status, 200);
+    assert.equal(linked.payload.updatedOfferings, 1);
+
+    const updatedSection = await Section.findById(section._id);
+    const updatedOffering = await CourseOffering.findById(offering._id);
+    assert.equal(String(updatedSection.instructorUser), String(instructor._id));
+    assert.equal(updatedSection.instructor, 'Lina Santos');
+    assert.equal(String(updatedOffering.instructor), String(instructor._id));
+    assert.equal(updatedOffering.instructorName, 'Lina Santos');
   } finally {
     await mongoose.disconnect();
     await mongo.stop();
