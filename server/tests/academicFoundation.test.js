@@ -9,8 +9,10 @@ import Section from '../models/Section.js';
 import CourseOffering from '../models/CourseOffering.js';
 import CourseMembership from '../models/CourseMembership.js';
 import AcademicTerm from '../models/AcademicTerm.js';
+import AcademicAuditLog from '../models/AcademicAuditLog.js';
 import { getEnrolledSchedule, submitSchedule } from '../schedulerController.js';
 import {
+  assignOfferingInstructor,
   getOfferingRoster,
   getMyClasses,
   publishFinalGrade,
@@ -21,6 +23,7 @@ import { parseAcademicTermLabel, repairStoredAcademicTermLabel } from '../academ
 import { confirmPayment, validateEnrollment } from '../studentsController.js';
 import { generateApplicantToken, protectStudentRecord } from '../studentAccessMiddleware.js';
 import { updateSection } from '../adminSchedulerController.js';
+import { buildAcademicIntegrityAudit } from '../services/academicIntegrityAuditService.js';
 
 function invoke(handler, req) {
   return new Promise((resolve, reject) => {
@@ -278,6 +281,155 @@ test('section instructor assignment requires an account and synchronizes officia
     assert.equal(updatedSection.instructor, 'Lina Santos');
     assert.equal(String(updatedOffering.instructor), String(instructor._id));
     assert.equal(updatedOffering.instructorName, 'Lina Santos');
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('admin can link instructor directly to orphan offering and clear integrity finding', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    const instructor = await User.create({
+      username: 'direct-link-instructor',
+      email: 'direct-link@test.local',
+      password: 'password123',
+      firstName: 'Mara',
+      lastName: 'Reyes',
+      role: 'instructor',
+    });
+    const term = await AcademicTerm.create({
+      code: 'AY2026-2027-DIRECT',
+      name: '1st Semester 2026-2027',
+      schoolYear: '2026-2027',
+      semester: '1',
+      status: 'active',
+      isActive: true,
+    });
+    const offering = await CourseOffering.create({
+      term: term._id,
+      subjectId: 'cs101',
+      subjectCode: 'CS 101',
+      subjectName: 'Intro to Computing',
+      units: 3,
+      sectionKey: 'deleted-section-snapshot',
+      sectionCode: 'CS-11M1',
+      section: null,
+      schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: '1101' },
+      instructorName: 'Mara Reyes',
+      status: 'active',
+    });
+
+    const before = await buildAcademicIntegrityAudit();
+    assert.ok(before.issues.some((issue) => (
+      issue.type === 'unlinked_instructor' && issue.records.offeringId === String(offering._id)
+    )));
+
+    const linked = await invoke(assignOfferingInstructor, {
+      params: { id: offering._id },
+      body: { instructorId: instructor._id },
+      user: { role: 'admin' },
+    });
+    assert.equal(linked.status, 200);
+    assert.equal(String(linked.payload.data.instructor), String(instructor._id));
+    assert.equal(linked.payload.data.instructorName, 'Mara Reyes');
+
+    const after = await buildAcademicIntegrityAudit();
+    assert.equal(after.issues.some((issue) => (
+      issue.type === 'unlinked_instructor' && issue.records.offeringId === String(offering._id)
+    )), false);
+    assert.equal(await AcademicAuditLog.countDocuments({ action: 'assigned_instructor', entityId: String(offering._id) }), 1);
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('academic integrity audit detects legacy conflicts without changing records', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    const term = await AcademicTerm.create({
+      code: 'AY2025-2026-2',
+      name: '2nd Semester 2025-2026',
+      schoolYear: '2025-2026',
+      semester: '2',
+      status: 'closed',
+      isActive: false,
+    });
+    const student = await Student.create({
+      _id: 'STU-2026-AUDIT',
+      studentId: 'STU-2026-AUDIT',
+      firstName: 'Audit',
+      lastName: 'Student',
+      status: 'enrolled',
+      academicTerm: '1st Semester 2026-2027',
+    });
+    const section = await Section.create({
+      subjectId: 'cs101',
+      sectionCode: 'CS-11M1',
+      days: 'MWF',
+      time: '8:00 AM - 9:30 AM',
+      room: '1101',
+      instructor: 'Legacy Instructor',
+      maxSlots: 40,
+      enrolledCount: 3,
+      enrolledStudentIds: [student._id],
+    });
+    const offeringOne = await CourseOffering.create({
+      term: term._id,
+      subjectId: 'cs101',
+      subjectCode: 'CS 101',
+      subjectName: 'Intro to Computing',
+      units: 3,
+      sectionKey: 'legacy-one',
+      sectionCode: section.sectionCode,
+      section: section._id,
+      schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: '1101' },
+      instructorName: 'Legacy Instructor',
+      status: 'active',
+    });
+    const offeringTwo = await CourseOffering.create({
+      term: term._id,
+      subjectId: 'cs101',
+      subjectCode: 'CS 101',
+      subjectName: 'Intro to Computing',
+      units: 3,
+      sectionKey: 'legacy-two',
+      sectionCode: section.sectionCode,
+      section: section._id,
+      schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: '1101' },
+      instructorName: 'Legacy Instructor',
+      status: 'active',
+    });
+    await CourseMembership.create([
+      { student: student._id, term: term._id, offering: offeringOne._id, status: 'enrolled', source: 'migration' },
+      { student: student._id, term: term._id, offering: offeringTwo._id, status: 'enrolled', source: 'migration' },
+    ]);
+
+    const before = {
+      offerings: await CourseOffering.countDocuments(),
+      memberships: await CourseMembership.countDocuments(),
+      sectionCount: (await Section.findById(section._id)).enrolledCount,
+    };
+    const audit = await buildAcademicIntegrityAudit();
+    const issueTypes = new Set(audit.issues.map((issue) => issue.type));
+
+    assert.equal(audit.readOnly, true);
+    assert.ok(issueTypes.has('duplicate_offering'));
+    assert.ok(issueTypes.has('duplicate_membership'));
+    assert.ok(issueTypes.has('active_membership_wrong_term'));
+    assert.ok(issueTypes.has('student_term_mismatch'));
+    assert.ok(issueTypes.has('section_count_drift'));
+    assert.ok(issueTypes.has('unlinked_instructor'));
+    assert.deepEqual({
+      offerings: await CourseOffering.countDocuments(),
+      memberships: await CourseMembership.countDocuments(),
+      sectionCount: (await Section.findById(section._id)).enrolledCount,
+    }, before);
   } finally {
     await mongoose.disconnect();
     await mongo.stop();

@@ -10,6 +10,7 @@ import AcademicAuditLog from './models/AcademicAuditLog.js';
 import Section from './models/Section.js';
 import { ensureAcademicTerm } from './services/academicFoundationService.js';
 import { parseAcademicTermLabel } from './academicTermUtils.js';
+import { buildAcademicIntegrityAudit } from './services/academicIntegrityAuditService.js';
 
 const TERM_DATE_FIELDS = [
   'enrollmentStartsAt',
@@ -116,6 +117,11 @@ export const listCourseOfferings = asyncHandler(async (req, res) => {
     .populate('instructor', 'username firstName lastName email role')
     .sort({ subjectCode: 1, sectionCode: 1 });
   res.json({ success: true, data: offerings });
+});
+
+export const getAcademicIntegrityAudit = asyncHandler(async (_req, res) => {
+  const audit = await buildAcademicIntegrityAudit();
+  res.json({ success: true, data: audit });
 });
 
 export const getMyClasses = asyncHandler(async (req, res) => {

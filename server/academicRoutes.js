@@ -14,6 +14,7 @@ import {
   reviewFinalGrade,
   publishFinalGrade,
   updateMembershipStatus,
+  getAcademicIntegrityAudit,
 } from './academicController.js';
 
 const router = express.Router();
@@ -26,6 +27,7 @@ router.post('/terms/:id/activate', authorize('admin'), activateAcademicTerm);
 
 router.get('/my-classes', authorize('student', 'instructor', 'registrar', 'admin'), getMyClasses);
 router.get('/offerings', authorize('instructor', 'adviser', 'registrar', 'admin'), listCourseOfferings);
+router.get('/integrity-audit', authorize('admin'), getAcademicIntegrityAudit);
 router.get('/offerings/:id/roster', authorize('instructor', 'registrar', 'admin'), getOfferingRoster);
 router.put('/offerings/:id/instructor', authorize('registrar', 'admin'), assignOfferingInstructor);
 

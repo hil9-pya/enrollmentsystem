@@ -201,7 +201,11 @@ export default function App() {
     <AuthProvider>
       <EnrollmentProvider>
         <ConfirmationProvider>
-          <Toaster position="top-right" />
+          <Toaster
+            position="bottom-right"
+            gutter={8}
+            containerStyle={{ bottom: 20, right: 20 }}
+          />
           <AppContent />
         </ConfirmationProvider>
       </EnrollmentProvider>

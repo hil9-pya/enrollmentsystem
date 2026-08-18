@@ -2,6 +2,7 @@ import React from 'react';
 import {
   BookOpen,
   LayoutDashboard,
+  ListChecks,
   Settings,
   Trash2,
   UserCog,
@@ -29,6 +30,7 @@ const NAV_GROUPS = [
     group: 'Administration',
     items: [
       { id: 'courses', label: 'Course Management', icon: BookOpen },
+      { id: 'integrity', label: 'Data Integrity', icon: ListChecks },
       { id: 'staff', label: 'Staff Management', icon: UserCog },
     ],
   },

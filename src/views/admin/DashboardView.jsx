@@ -15,6 +15,7 @@ import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
+import IntegrityAuditTab from './IntegrityAuditTab';
 import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
@@ -32,6 +33,14 @@ const ROLE_TONES = {
   accounting: 'success',
   registrar: 'warning',
 };
+const STAFF_ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'instructor', label: 'Instructor' },
+  { value: 'admission', label: 'Admission Office' },
+  { value: 'adviser', label: 'Academic Adviser' },
+  { value: 'accounting', label: 'Accounting Office' },
+  { value: 'registrar', label: 'Registrar Office' },
+];
 
 const authFetch = (url, options = {}) => {
   const token = localStorage.getItem('token');
@@ -781,6 +790,8 @@ function StaffTab() {
   const [editingUser, setEditingUser] = useState(null);
   const [form, setForm] = useState({ username: '', email: '', firstName: '', lastName: '', role: 'admission', password: '' });
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   const loadUsers = useCallback(async () => {
     try {
@@ -792,6 +803,21 @@ function StaffTab() {
   }, []);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  const filteredUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return users.filter((user) => {
+      const matchesRole = !roleFilter || user.role === roleFilter;
+      const searchable = [
+        user.firstName,
+        user.lastName,
+        `${user.firstName || ''} ${user.lastName || ''}`,
+        user.username,
+        user.email,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return matchesRole && (!query || searchable.includes(query));
+    });
+  }, [roleFilter, searchQuery, users]);
 
   const handleSubmit = async () => {
     if (!form.email || !form.username || !form.role) { toast.error('Please fill in all required fields'); return; }
@@ -904,6 +930,39 @@ function StaffTab() {
         </div>
       )}
 
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search name, username, or email…"
+          />
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            aria-label="Filter staff accounts by role"
+            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All roles</option>
+            {STAFF_ROLE_OPTIONS.map((role) => (
+              <option key={role.value} value={role.value}>{role.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>{filteredUsers.length} of {users.length} staff accounts</span>
+          {(searchQuery || roleFilter) && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setRoleFilter(''); }}
+              className="font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Users Table */}
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
@@ -920,9 +979,9 @@ function StaffTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {users.length === 0 ? (
-                <tr><td colSpan={5} className="py-16 text-center text-slate-400">No staff accounts found.</td></tr>
-              ) : users.map(user => {
+              {filteredUsers.length === 0 ? (
+                <tr><td colSpan={5} className="py-16 text-center text-slate-400">{users.length ? 'No staff accounts match these filters.' : 'No staff accounts found.'}</td></tr>
+              ) : filteredUsers.map(user => {
                 const RoleIcon = roleIcons[user.role] || Users;
                 return (
                   <tr key={user._id} className="hover:bg-slate-50/60 transition-colors">
@@ -1230,6 +1289,7 @@ export default function DashboardView() {
           {activeTab === 'staff' && <StaffTab />}
           {activeTab === 'settings' && <SettingsTab />}
           {activeTab === 'courses' && <CourseManagementTab />}
+          {activeTab === 'integrity' && <IntegrityAuditTab />}
       </main>
     </PortalShell>
   );
