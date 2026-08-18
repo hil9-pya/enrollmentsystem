@@ -16,6 +16,7 @@ import settingsRoutes from './settingsRoutes.js';
 import schedulerRoutes from './schedulerRoutes.js';
 import paymongoRoutes from './paymongoRoutes.js';
 import academicRoutes from './academicRoutes.js';
+import lmsRoutes from './lmsRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
 import { startCleanupTask } from './cron.js';
 import { initCatalog } from './subjectsCatalog.js';
@@ -184,6 +185,7 @@ const startServer = async () => {
     app.use('/api/scheduler', schedulerRoutes);
     app.use('/api/paymongo', paymongoRoutes);
     app.use('/api/academic', academicRoutes);
+    app.use('/api/lms', lmsRoutes);
 
     // Error Handling Middleware
     app.use(notFound);

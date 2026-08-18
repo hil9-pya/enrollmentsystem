@@ -16,6 +16,8 @@ import DashboardView from './views/admin/DashboardView';
 import InstructorView from './views/instructor/InstructorView';
 import PaymongoCheckoutView from './views/public/PaymongoCheckoutView';
 import PaymentSuccessView from './views/public/PaymentSuccessView';
+import LmsLoginView from './views/lms/LmsLoginView';
+import LmsView from './views/lms/LmsView';
 
 import { LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
@@ -37,6 +39,7 @@ function AppContent() {
       portal === 'student' ||
       portal === 'staff' ||
       portal === 'admin' ||
+      portal === 'lms' ||
       portal === 'paymongo-checkout' ||
       portal === 'payment-success'
     ) return portal;
@@ -74,6 +77,44 @@ function AppContent() {
         <div className="w-10 h-10 border-4 border-univ-blue/30 border-t-univ-blue rounded-full animate-spin mb-4"></div>
         <p className="text-slate-500 font-medium animate-pulse">Loading system data...</p>
       </div>
+    );
+  }
+
+  // Dedicated Learning Management System
+  if (viewMode === 'lms') {
+    if (!user) {
+      return (
+        <LmsLoginView
+          onBack={() => {
+            window.history.pushState({}, '', '/?portal=gateway');
+            setViewMode('gateway');
+          }}
+        />
+      );
+    }
+
+    return (
+      <LmsView
+        onBack={() => {
+          const destination = user.role === 'student' ? 'student' : user.role === 'admin' ? 'admin' : 'instructor';
+          window.history.pushState({}, '', `/?portal=${destination}`);
+          setViewMode(destination);
+        }}
+        onSignOut={async () => {
+          const isConfirmed = await confirm({
+            title: 'Sign Out',
+            message: 'Are you sure you want to sign out of NCST LMS?',
+            confirmText: 'Sign Out',
+            cancelText: 'Cancel',
+            type: 'warning'
+          });
+          if (isConfirmed) {
+            logout();
+            window.history.pushState({}, '', '/?portal=lms');
+            setViewMode('lms');
+          }
+        }}
+      />
     );
   }
 

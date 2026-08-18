@@ -246,7 +246,15 @@ export async function buildAcademicIntegrityAudit() {
         legacyTerm ? 'info' : activeMemberships.length ? 'warning' : 'info',
         'Offering points to deleted section',
         `${offering.subjectCode} ${offering.sectionCode} keeps its snapshot, but source section no longer exists.`,
-        { offeringId, sectionId: idOf(offering.section), activeMembershipCount: activeMemberships.length },
+        {
+          offeringId,
+          sectionId: idOf(offering.section),
+          subjectId: offering.subjectId,
+          subjectCode: offering.subjectCode,
+          sectionCode: offering.sectionCode,
+          schedule: `${offering.schedule?.day || 'TBA'} ${offering.schedule?.time || 'TBA'} · ${offering.schedule?.room || 'TBA'}`,
+          activeMembershipCount: activeMemberships.length,
+        },
         activeMemberships.length
           ? 'Map offering to correct live section before LMS synchronization.'
           : 'Keep snapshot for history; no repair required unless class must become active again.'

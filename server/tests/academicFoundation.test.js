@@ -15,7 +15,10 @@ import {
   assignOfferingInstructor,
   getOfferingRoster,
   getMyClasses,
+  linkOfferingSection,
   publishFinalGrade,
+  repairDeterministicIntegrityIssues,
+  repairMembershipReservation,
   reviewFinalGrade,
   submitFinalGrade,
 } from '../academicController.js';
@@ -24,6 +27,11 @@ import { confirmPayment, validateEnrollment } from '../studentsController.js';
 import { generateApplicantToken, protectStudentRecord } from '../studentAccessMiddleware.js';
 import { updateSection } from '../adminSchedulerController.js';
 import { buildAcademicIntegrityAudit } from '../services/academicIntegrityAuditService.js';
+import { syncOfficialEnrollment } from '../services/academicFoundationService.js';
+import {
+  applyMissingSectionReconstruction,
+  previewMissingSectionReconstruction,
+} from '../services/missingSectionReconstructionService.js';
 
 function invoke(handler, req) {
   return new Promise((resolve, reject) => {
@@ -213,6 +221,7 @@ test('official enrollment creates one roster membership and grade publication up
     assert.equal(publishedRoster.status, 200);
     assert.equal(publishedRoster.payload.data.length, 1);
     assert.equal(publishedRoster.payload.data[0].gradeStatus, 'published');
+
   } finally {
     await mongoose.disconnect();
     await mongo.stop();
@@ -341,6 +350,214 @@ test('admin can link instructor directly to orphan offering and clear integrity 
       issue.type === 'unlinked_instructor' && issue.records.offeringId === String(offering._id)
     )), false);
     assert.equal(await AcademicAuditLog.countDocuments({ action: 'assigned_instructor', entityId: String(offering._id) }), 1);
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('admin integrity repairs reconnect section, restore reservation, and complete published grade', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    const term = await AcademicTerm.create({
+      code: 'AY2026-2027-REPAIR',
+      name: '1st Semester 2026-2027',
+      schoolYear: '2026-2027',
+      semester: '1',
+      status: 'active',
+      isActive: true,
+    });
+    const student = await Student.create({
+      _id: 'APP-2026-REPAIR',
+      studentId: 'STU-2026-REPAIR',
+      firstName: 'Repair',
+      lastName: 'Student',
+      status: 'enrolled',
+      academicTerm: term.name,
+    });
+    const deletedSection = await Section.create({
+      subjectId: 'cs101',
+      sectionCode: 'CS-11M1',
+      days: 'MWF',
+      time: '8:00 AM - 9:30 AM',
+      room: '1101',
+      maxSlots: 40,
+    });
+    const offering = await CourseOffering.create({
+      term: term._id,
+      subjectId: 'cs101',
+      subjectCode: 'CS 101',
+      subjectName: 'Intro to Computing',
+      units: 3,
+      sectionKey: 'repair-snapshot',
+      sectionCode: deletedSection.sectionCode,
+      section: deletedSection._id,
+      schedule: { day: 'MWF', time: '8:00 AM - 9:30 AM', room: '1101' },
+      instructorName: 'TBA',
+      status: 'active',
+    });
+    await deletedSection.deleteOne();
+    const liveSection = await Section.create({
+      subjectId: 'cs101',
+      sectionCode: 'CS-11A1',
+      days: 'TTH',
+      time: '1:00 PM - 2:30 PM',
+      room: '1102',
+      maxSlots: 40,
+      enrolledCount: 0,
+      enrolledStudentIds: [],
+    });
+    const membership = await CourseMembership.create({
+      student: student._id,
+      term: term._id,
+      offering: offering._id,
+      status: 'enrolled',
+      finalGrade: 1.75,
+      gradeStatus: 'published',
+      gradePublishedAt: new Date(),
+    });
+
+    const before = await buildAcademicIntegrityAudit();
+    assert.ok(before.issues.some((issue) => issue.type === 'missing_section' && issue.records.offeringId === String(offering._id)));
+    assert.ok(before.issues.some((issue) => issue.type === 'published_grade_status_mismatch' && issue.records.membershipId === String(membership._id)));
+
+    const linked = await invoke(linkOfferingSection, {
+      params: { id: offering._id },
+      body: { sectionId: liveSection._id },
+      user: { role: 'admin' },
+    });
+    assert.equal(linked.status, 200);
+    assert.equal(String(linked.payload.data.section), String(liveSection._id));
+    assert.deepEqual(linked.payload.data.schedule, offering.schedule);
+
+    const afterLink = await buildAcademicIntegrityAudit();
+    assert.ok(afterLink.issues.some((issue) => issue.type === 'membership_missing_reservation' && issue.records.membershipId === String(membership._id)));
+
+    const reservation = await invoke(repairMembershipReservation, {
+      params: { id: membership._id },
+      body: {},
+      user: { role: 'admin' },
+    });
+    assert.equal(reservation.status, 200);
+    const repairedSection = await Section.findById(liveSection._id).select('+enrolledStudentIds');
+    assert.equal(repairedSection.enrolledCount, 1);
+    assert.deepEqual(repairedSection.enrolledStudentIds.map(String), [student._id]);
+
+    const grade = await invoke(repairDeterministicIntegrityIssues, {
+      body: {},
+      user: { role: 'admin' },
+    });
+    assert.equal(grade.status, 200);
+    assert.equal(grade.payload.data.repairedPublishedGradeStatuses, 1);
+    const repairedMembership = await CourseMembership.findById(membership._id);
+    assert.equal(repairedMembership.status, 'completed');
+    assert.equal(repairedMembership.gradeStatus, 'published');
+
+    const after = await buildAcademicIntegrityAudit();
+    const remainingTypes = after.issues
+      .filter((issue) => issue.records?.membershipId === String(membership._id) || issue.records?.offeringId === String(offering._id))
+      .map((issue) => issue.type);
+    assert.equal(remainingTypes.includes('missing_section'), false);
+    assert.equal(remainingTypes.includes('membership_missing_reservation'), false);
+    assert.equal(remainingTypes.includes('published_grade_status_mismatch'), false);
+    assert.equal(await AcademicAuditLog.countDocuments({
+      action: { $in: ['linked_offering_section', 'repaired_membership_reservation', 'repaired_published_grade_status'] },
+    }), 3);
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('missing active section is reconstructed from offering snapshot with roster intact', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    const term = await AcademicTerm.create({
+      code: 'AY2026-2027-RECONSTRUCT',
+      name: '1st Semester 2026-2027',
+      schoolYear: '2026-2027',
+      semester: '1',
+      status: 'active',
+      isActive: true,
+    });
+    const student = await Student.create({
+      _id: 'APP-2026-RECONSTRUCT',
+      studentId: 'STU-2026-RECONSTRUCT',
+      firstName: 'Roster',
+      lastName: 'Student',
+      status: 'enrolled',
+      academicTerm: term.name,
+    });
+    const deletedSection = await Section.create({
+      subjectId: 'cs101',
+      sectionCode: 'CS-11A1',
+      days: 'M',
+      time: '8:00 AM - 9:30 AM',
+      room: '1101',
+      maxSlots: 40,
+    });
+    const deletedSectionId = deletedSection._id;
+    student.selectedSubjects = [{ subjectId: 'cs101', sectionId: String(deletedSectionId) }];
+    await student.save();
+    const offering = await CourseOffering.create({
+      term: term._id,
+      subjectId: 'cs101',
+      subjectCode: 'CS 101',
+      subjectName: 'Intro to Computing',
+      units: 3,
+      sectionKey: String(deletedSectionId),
+      sectionCode: 'CS-11A1',
+      section: deletedSectionId,
+      schedule: { day: 'M', time: '8:00 AM - 9:30 AM', room: '1101' },
+      instructorName: 'Test Instructor',
+      capacity: 40,
+      status: 'active',
+    });
+    await deletedSection.deleteOne();
+    await CourseMembership.create({
+      student: student._id,
+      term: term._id,
+      offering: offering._id,
+      status: 'enrolled',
+    });
+
+    const preview = await previewMissingSectionReconstruction();
+    assert.equal(preview.summary.candidates, 1);
+    assert.equal(preview.summary.recreateOriginalId, 1);
+    assert.equal(preview.summary.activeMemberships, 1);
+    const result = await applyMissingSectionReconstruction(preview);
+    assert.deepEqual(result, { recreatedSections: 1, relinkedOfferings: 0, restoredReservations: 1 });
+
+    const restored = await Section.findById(deletedSectionId).select('+enrolledStudentIds');
+    assert.ok(restored);
+    assert.equal(restored.sectionCode, 'CS-11A1');
+    assert.equal(restored.enrolledCount, 1);
+    assert.deepEqual(restored.enrolledStudentIds.map(String), [student._id]);
+    assert.equal(String((await CourseOffering.findById(offering._id)).section), String(deletedSectionId));
+    const audit = await buildAcademicIntegrityAudit();
+    assert.equal(audit.issues.some((issue) => issue.type === 'missing_section'), false);
+    assert.equal(audit.issues.some((issue) => issue.type === 'membership_missing_reservation'), false);
+
+    await CourseMembership.updateOne(
+      { student: student._id, offering: offering._id },
+      {
+        $set: {
+          status: 'completed',
+          finalGrade: 1.75,
+          gradeStatus: 'published',
+          gradePublishedAt: new Date(),
+          endedAt: new Date(),
+        },
+      }
+    );
+    await syncOfficialEnrollment(student, term.name, { activateTerm: false, audit: false });
+    const preserved = await CourseMembership.findOne({ student: student._id, offering: offering._id });
+    assert.equal(preserved.status, 'completed');
+    assert.equal(preserved.gradeStatus, 'published');
   } finally {
     await mongoose.disconnect();
     await mongo.stop();

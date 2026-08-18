@@ -11,6 +11,10 @@ import Section from './models/Section.js';
 import { ensureAcademicTerm } from './services/academicFoundationService.js';
 import { parseAcademicTermLabel } from './academicTermUtils.js';
 import { buildAcademicIntegrityAudit } from './services/academicIntegrityAuditService.js';
+import {
+  applyDeterministicAcademicRepairs,
+  previewDeterministicAcademicRepairs,
+} from './services/deterministicAcademicRepairService.js';
 
 const TERM_DATE_FIELDS = [
   'enrollmentStartsAt',
@@ -205,6 +209,85 @@ export const assignOfferingInstructor = asyncHandler(async (req, res) => {
     instructorId: String(instructor._id),
   });
   res.json({ success: true, data: offering });
+});
+
+export const linkOfferingSection = asyncHandler(async (req, res) => {
+  const offering = await CourseOffering.findById(req.params.id);
+  if (!offering) return res.status(404).json({ success: false, message: 'Course offering not found.' });
+
+  const section = await Section.findById(req.body.sectionId);
+  if (!section) return res.status(404).json({ success: false, message: 'Class section not found.' });
+  if (section.subjectId !== offering.subjectId) {
+    return res.status(409).json({ success: false, message: 'Selected section belongs to a different subject.' });
+  }
+
+  const previousSectionId = offering.section ? String(offering.section) : null;
+  offering.section = section._id;
+  await offering.save();
+  await recordAcademicAction(req, 'linked_offering_section', 'course_offering', offering._id, {
+    previousSectionId,
+    sectionId: String(section._id),
+    preservedSnapshot: true,
+  });
+  res.json({ success: true, data: offering });
+});
+
+export const repairPublishedGradeStatus = asyncHandler(async (req, res) => {
+  const membership = await CourseMembership.findById(req.params.id);
+  if (!membership) return res.status(404).json({ success: false, message: 'Course membership not found.' });
+  if (membership.gradeStatus !== 'published' || membership.finalGrade == null) {
+    return res.status(409).json({ success: false, message: 'Only memberships with a published final grade can be repaired.' });
+  }
+  if (membership.status !== 'completed') {
+    const previousStatus = membership.status;
+    membership.status = 'completed';
+    membership.endedAt = membership.gradePublishedAt || new Date();
+    await membership.save();
+    await recordAcademicAction(req, 'repaired_published_grade_status', 'course_membership', membership._id, {
+      previousStatus,
+      status: 'completed',
+    });
+  }
+  res.json({ success: true, data: membership });
+});
+
+export const repairDeterministicIntegrityIssues = asyncHandler(async (req, res) => {
+  const preview = await previewDeterministicAcademicRepairs();
+  const result = await applyDeterministicAcademicRepairs(preview, {
+    actor: req.user,
+    actorRole: req.user?.role || 'admin',
+  });
+  res.json({ success: true, data: result });
+});
+
+export const repairMembershipReservation = asyncHandler(async (req, res) => {
+  const membership = await CourseMembership.findById(req.params.id).populate('offering');
+  if (!membership) return res.status(404).json({ success: false, message: 'Course membership not found.' });
+  if (membership.status !== 'enrolled') {
+    return res.status(409).json({ success: false, message: 'Only enrolled memberships require active section reservations.' });
+  }
+  if (!membership.offering?.section) {
+    return res.status(409).json({ success: false, message: 'Link the offering to a live section first.' });
+  }
+
+  const section = await Section.findById(membership.offering.section).select('+enrolledStudentIds');
+  if (!section) return res.status(404).json({ success: false, message: 'Linked class section no longer exists.' });
+  const studentMarker = String(membership.student);
+  const markers = (section.enrolledStudentIds || []).map(String);
+  if (!markers.includes(studentMarker)) {
+    if (markers.length >= section.maxSlots) {
+      return res.status(409).json({ success: false, message: 'Class section is already full.' });
+    }
+    section.enrolledStudentIds.push(studentMarker);
+  }
+  section.enrolledCount = section.enrolledStudentIds.length;
+  await section.save();
+  await recordAcademicAction(req, 'repaired_membership_reservation', 'course_membership', membership._id, {
+    studentId: studentMarker,
+    sectionId: String(section._id),
+    enrolledCount: section.enrolledCount,
+  });
+  res.json({ success: true, data: { membershipId: membership._id, section } });
 });
 
 export const submitFinalGrade = asyncHandler(async (req, res) => {

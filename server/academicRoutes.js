@@ -15,6 +15,10 @@ import {
   publishFinalGrade,
   updateMembershipStatus,
   getAcademicIntegrityAudit,
+  linkOfferingSection,
+  repairMembershipReservation,
+  repairPublishedGradeStatus,
+  repairDeterministicIntegrityIssues,
 } from './academicController.js';
 
 const router = express.Router();
@@ -30,11 +34,15 @@ router.get('/offerings', authorize('instructor', 'adviser', 'registrar', 'admin'
 router.get('/integrity-audit', authorize('admin'), getAcademicIntegrityAudit);
 router.get('/offerings/:id/roster', authorize('instructor', 'registrar', 'admin'), getOfferingRoster);
 router.put('/offerings/:id/instructor', authorize('registrar', 'admin'), assignOfferingInstructor);
+router.put('/offerings/:id/section', authorize('admin'), linkOfferingSection);
 
 router.get('/grades', authorize('registrar', 'admin'), listSubmittedGrades);
 router.post('/memberships/:id/grade/submit', authorize('instructor', 'admin'), submitFinalGrade);
 router.post('/memberships/:id/grade/review', authorize('registrar', 'admin'), reviewFinalGrade);
 router.post('/memberships/:id/grade/publish', authorize('registrar', 'admin'), publishFinalGrade);
 router.patch('/memberships/:id/status', authorize('registrar', 'admin'), updateMembershipStatus);
+router.post('/integrity-repairs/memberships/:id/published-grade-status', authorize('admin'), repairPublishedGradeStatus);
+router.post('/integrity-repairs/memberships/:id/reservation', authorize('admin'), repairMembershipReservation);
+router.post('/integrity-repairs/deterministic', authorize('admin'), repairDeterministicIntegrityIssues);
 
 export default router;

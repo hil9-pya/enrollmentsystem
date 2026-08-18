@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, Loader2, Wrench } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PortalPageHeader from '../../components/PortalPageHeader';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
 import SearchInput from '../../components/SearchInput';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../../context/ConfirmationContext';
 
 const SEVERITY_STYLES = {
   critical: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -32,6 +33,7 @@ function recordSummary(records = {}) {
 
 export default function IntegrityAuditTab() {
   const { token: contextToken, logout } = useAuth();
+  const { confirm } = useConfirm();
   const [audit, setAudit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,25 +43,34 @@ export default function IntegrityAuditTab() {
   const [assignmentIssue, setAssignmentIssue] = useState(null);
   const [selectedInstructorId, setSelectedInstructorId] = useState('');
   const [savingAssignment, setSavingAssignment] = useState(false);
+  const [sections, setSections] = useState([]);
+  const [sectionIssue, setSectionIssue] = useState(null);
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [savingSection, setSavingSection] = useState(false);
+  const [repairingIssueId, setRepairingIssueId] = useState('');
+  const [repairingDeterministic, setRepairingDeterministic] = useState(false);
 
   const loadAudit = useCallback(async () => {
     setLoading(true);
     try {
       const token = contextToken || localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const [response, usersResponse] = await Promise.all([
+      const [response, usersResponse, sectionsResponse] = await Promise.all([
         fetch('/api/academic/integrity-audit', { headers }),
         fetch('/api/admin/users', { headers }),
+        fetch('/api/scheduler/admin/sections', { headers }),
       ]);
-      const [payload, usersPayload] = await Promise.all([response.json(), usersResponse.json()]);
-      if (response.status === 401 || usersResponse.status === 401) {
+      const [payload, usersPayload, sectionsPayload] = await Promise.all([response.json(), usersResponse.json(), sectionsResponse.json()]);
+      if (response.status === 401 || usersResponse.status === 401 || sectionsResponse.status === 401) {
         logout();
         throw new Error('Session expired. Please sign in again.');
       }
       if (!response.ok || !payload.success) throw new Error(payload.message || 'Unable to run integrity audit.');
       if (!usersResponse.ok) throw new Error(usersPayload.message || 'Unable to load instructor accounts.');
+      if (!sectionsResponse.ok || !sectionsPayload.success) throw new Error(sectionsPayload.message || 'Unable to load class sections.');
       setAudit(payload.data);
       setInstructors((Array.isArray(usersPayload) ? usersPayload : []).filter((user) => user.role === 'instructor'));
+      setSections(sectionsPayload.data || []);
     } catch (error) {
       toast.error(error.message || 'Unable to run integrity audit.');
     } finally {
@@ -88,6 +99,88 @@ export default function IntegrityAuditTab() {
       toast.error(error.message || 'Unable to assign instructor.');
     } finally {
       setSavingAssignment(false);
+    }
+  };
+
+  const linkSection = async (event) => {
+    event.preventDefault();
+    if (!sectionIssue?.records?.offeringId || !selectedSectionId) return;
+    setSavingSection(true);
+    try {
+      const token = contextToken || localStorage.getItem('token');
+      const response = await fetch(`/api/academic/offerings/${sectionIssue.records.offeringId}/section`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sectionId: selectedSectionId }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message || 'Unable to link section.');
+      toast.success('Offering linked to live section.');
+      setSectionIssue(null);
+      setSelectedSectionId('');
+      await loadAudit();
+    } catch (error) {
+      toast.error(error.message || 'Unable to link section.');
+    } finally {
+      setSavingSection(false);
+    }
+  };
+
+  const runMembershipRepair = async (issue) => {
+    const membershipId = issue.records?.membershipId;
+    if (!membershipId) return;
+    const approved = await confirm({
+      title: 'Repair Section Reservation',
+      message: 'Add this enrolled student to the linked section reservation list and recalculate its enrollment count?',
+      confirmText: 'Repair Reservation',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!approved) return;
+    setRepairingIssueId(issue.id);
+    try {
+      const token = contextToken || localStorage.getItem('token');
+      const response = await fetch(`/api/academic/integrity-repairs/memberships/${membershipId}/reservation`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message || 'Unable to repair record.');
+      toast.success('Section reservation repaired.');
+      await loadAudit();
+    } catch (error) {
+      toast.error(error.message || 'Unable to repair record.');
+    } finally {
+      setRepairingIssueId('');
+    }
+  };
+
+  const repairDeterministicIssues = async () => {
+    const count = (audit?.issues || []).filter((issue) => issue.type === 'published_grade_status_mismatch').length;
+    if (!count) return;
+    const approved = await confirm({
+      title: 'Repair Deterministic Issues',
+      message: `Mark ${count} published-grade membership${count === 1 ? '' : 's'} as completed? Grades and publication dates remain unchanged.`,
+      confirmText: 'Repair Issues',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!approved) return;
+    setRepairingDeterministic(true);
+    try {
+      const token = contextToken || localStorage.getItem('token');
+      const response = await fetch('/api/academic/integrity-repairs/deterministic', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message || 'Unable to repair deterministic issues.');
+      toast.success(`${payload.data.repairedPublishedGradeStatuses} deterministic issue${payload.data.repairedPublishedGradeStatuses === 1 ? '' : 's'} repaired.`);
+      await loadAudit();
+    } catch (error) {
+      toast.error(error.message || 'Unable to repair deterministic issues.');
+    } finally {
+      setRepairingDeterministic(false);
     }
   };
 
@@ -122,8 +215,21 @@ export default function IntegrityAuditTab() {
     <div className="h-full space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
       <PortalPageHeader
         title="Academic data integrity"
-        description="Read-only checks for duplicate offerings, invalid memberships, term mismatches, roster counts, and incomplete schedule records."
-        actions={<PortalRefreshButton onRefresh={loadAudit} />}
+        description="Audit academic records, auto-repair deterministic status mismatches, and review ambiguous schedule or roster links."
+        actions={<>
+          {(audit?.issues || []).some((issue) => issue.type === 'published_grade_status_mismatch') && (
+            <button
+              type="button"
+              onClick={repairDeterministicIssues}
+              disabled={repairingDeterministic}
+              className="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-white px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              {repairingDeterministic ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+              {repairingDeterministic ? 'Repairing…' : 'Repair deterministic issues'}
+            </button>
+          )}
+          <PortalRefreshButton onRefresh={loadAudit} />
+        </>}
       />
 
       <div className="flex items-start gap-3 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -213,6 +319,26 @@ export default function IntegrityAuditTab() {
                         Assign instructor
                       </button>
                     )}
+                    {issue.type === 'missing_section' && issue.records?.offeringId && (
+                      <button
+                        type="button"
+                        onClick={() => { setSectionIssue(issue); setSelectedSectionId(''); }}
+                        className="mt-3 rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        Link live section
+                      </button>
+                    )}
+                    {issue.type === 'membership_missing_reservation' && issue.records?.membershipId && (
+                      <button
+                        type="button"
+                        onClick={() => runMembershipRepair(issue)}
+                        disabled={repairingIssueId === issue.id}
+                        className="mt-3 inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                      >
+                        {repairingIssueId === issue.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Repair reservation
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -255,6 +381,50 @@ export default function IntegrityAuditTab() {
             <button type="submit" disabled={savingAssignment || !selectedInstructorId} className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
               {savingAssignment && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {savingAssignment ? 'Saving…' : 'Assign instructor'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(sectionIssue)}
+        onClose={() => { if (!savingSection) { setSectionIssue(null); setSelectedSectionId(''); } }}
+        title="Link live section"
+        maxWidth="max-w-lg"
+      >
+        <form onSubmit={linkSection} className="space-y-4">
+          <div className="border-b border-slate-100 pb-4 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">{sectionIssue?.records?.subjectCode} {sectionIssue?.records?.sectionCode}</p>
+            <p className="mt-1 text-xs text-slate-500">Stored schedule: {sectionIssue?.records?.schedule}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-600">Link restores source reference. Existing official schedule snapshot and roster remain unchanged.</p>
+          </div>
+          <div>
+            <label htmlFor="integrity-section" className="mb-1.5 block text-xs font-semibold text-slate-700">Live section for same subject</label>
+            <select
+              id="integrity-section"
+              value={selectedSectionId}
+              onChange={(event) => setSelectedSectionId(event.target.value)}
+              required
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select section…</option>
+              {sections
+                .filter((section) => section.subjectId === sectionIssue?.records?.subjectId)
+                .map((section) => (
+                  <option key={section._id || section.id} value={section._id || section.id}>
+                    {section.sectionCode} · {section.days} {section.time} · {section.room || 'TBA'}
+                  </option>
+                ))}
+            </select>
+            {sections.filter((section) => section.subjectId === sectionIssue?.records?.subjectId).length === 0 && (
+              <p className="mt-1.5 text-xs text-amber-700">No live section exists for this subject. Create one in Course Management first.</p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button type="button" onClick={() => { setSectionIssue(null); setSelectedSectionId(''); }} disabled={savingSection} className="rounded-md border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+            <button type="submit" disabled={savingSection || !selectedSectionId} className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
+              {savingSection && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {savingSection ? 'Saving…' : 'Link section'}
             </button>
           </div>
         </form>

@@ -165,16 +165,25 @@ export async function syncOfficialEnrollment(
     );
     offeringIds.push(offering._id);
 
+    const existingMembership = await CourseMembership.findOne({
+      student: student._id,
+      offering: offering._id,
+    }).select('status gradeStatus enrolledAt endedAt gradePublishedAt').session(session);
+    const preserveCompletion = existingMembership?.status === 'completed'
+      || existingMembership?.gradeStatus === 'published';
+
     await CourseMembership.findOneAndUpdate(
       { student: student._id, offering: offering._id },
       {
         $set: {
           studentUser: studentUser?._id || null,
           term: term._id,
-          status: 'enrolled',
+          status: preserveCompletion ? 'completed' : 'enrolled',
           source: 'registrar',
-          enrolledAt: student.enrolledAt || new Date(),
-          endedAt: null,
+          enrolledAt: existingMembership?.enrolledAt || student.enrolledAt || new Date(),
+          endedAt: preserveCompletion
+            ? existingMembership?.endedAt || existingMembership?.gradePublishedAt || new Date()
+            : null,
         },
       },
       { new: true, upsert: true, setDefaultsOnInsert: true, session }

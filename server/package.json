@@ -11,6 +11,8 @@
     "test": "node --test tests/*.test.js",
     "audit:legacy": "node scripts/cleanupLegacyAcademicData.js",
     "audit:integrity": "node scripts/runAcademicIntegrityAudit.js",
+    "repair:deterministic": "node scripts/repairDeterministicAcademicIssues.js --apply",
+    "repair:missing-sections": "node scripts/reconstructMissingSections.js --apply",
     "cleanup:legacy": "node scripts/cleanupLegacyAcademicData.js --apply"
   },
   "dependencies": {
