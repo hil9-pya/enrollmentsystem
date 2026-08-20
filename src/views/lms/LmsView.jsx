@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, BookOpen, ExternalLink, LogOut, RefreshCw, Settings2 } from 'lucide-react';
+import { ArrowRight, Bell, BookOpen, ExternalLink, LayoutDashboard, LogOut, RefreshCw, Settings2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import LmsClassView from './LmsClassView';
+import LmsDashboard from './LmsDashboard';
+import LmsNotifications from './LmsNotifications';
 
 const allowedRoles = new Set(['student', 'instructor', 'admin']);
 
@@ -52,7 +54,13 @@ function ClassCard({ offering, role, onOpen }) {
 export default function LmsView({ onBack, onSignOut }) {
   const { user, token } = useAuth();
   const [classes, setClasses] = useState([]);
+  const [activeView, setActiveView] = useState('dashboard');
   const [selectedClass, setSelectedClass] = useState(null);
+  const [selectedClassTab, setSelectedClassTab] = useState('overview');
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsError, setNotificationsError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState('');
   const [error, setError] = useState('');
@@ -78,6 +86,34 @@ export default function LmsView({ onBack, onSignOut }) {
   }, [token, user?.role]);
 
   useEffect(() => { loadClasses(); }, [loadClasses]);
+
+  const loadNotifications = useCallback(async () => {
+    if (!allowedRoles.has(user?.role)) return;
+    setNotificationsError('');
+    try {
+      const response = await fetch('/api/lms/notifications', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load notifications.');
+      setNotifications(payload.data || []);
+      setUnreadCount(payload.unreadCount || 0);
+    } catch (requestError) {
+      setNotificationsError(requestError.message);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [token, user?.role]);
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = window.setInterval(loadNotifications, 30_000);
+    return () => window.clearInterval(interval);
+  }, [loadNotifications]);
+
+  const openClass = (offering, tab = 'overview') => {
+    setActiveView('classes');
+    setSelectedClassTab(tab);
+    setSelectedClass(offering);
+  };
 
   const groupedClasses = useMemo(() => classes, [classes]);
 
@@ -134,9 +170,16 @@ export default function LmsView({ onBack, onSignOut }) {
       </header>
 
       <div className="border-b border-slate-200 bg-white px-4 sm:px-6">
-        <nav className="mx-auto flex h-11 max-w-6xl items-end" aria-label="LMS navigation">
-          <button type="button" onClick={() => setSelectedClass(null)} className="h-11 border-b-2 border-univ-blue px-1 text-sm font-semibold text-univ-blue">
-            {user.role === 'admin' ? 'Course access' : 'My courses'}
+        <nav className="mx-auto flex h-11 max-w-6xl items-end gap-6" aria-label="LMS navigation">
+          <button type="button" onClick={() => { setSelectedClass(null); setSelectedClassTab('overview'); setActiveView('dashboard'); }} className={`inline-flex h-11 items-center gap-2 border-b-2 px-1 text-sm font-semibold ${activeView === 'dashboard' && !selectedClass ? 'border-univ-blue text-univ-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+            <LayoutDashboard className="h-4 w-4" /> Dashboard
+          </button>
+          <button type="button" onClick={() => { setSelectedClass(null); setSelectedClassTab('overview'); setActiveView('classes'); }} className={`inline-flex h-11 items-center gap-2 border-b-2 px-1 text-sm font-semibold ${activeView === 'classes' || selectedClass ? 'border-univ-blue text-univ-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+            {user.role === 'admin' ? <Settings2 className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}{user.role === 'admin' ? 'Course access' : 'My courses'}
+          </button>
+          <button type="button" onClick={() => { setSelectedClass(null); setSelectedClassTab('overview'); setActiveView('notifications'); loadNotifications(); }} className={`inline-flex h-11 items-center gap-2 border-b-2 px-1 text-sm font-semibold ${activeView === 'notifications' && !selectedClass ? 'border-univ-blue text-univ-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+            <Bell className="h-4 w-4" /> Notifications
+            {unreadCount > 0 && <span className="min-w-5 rounded-md bg-indigo-100 px-1.5 py-0.5 text-center text-[11px] font-bold text-indigo-700">{unreadCount > 99 ? '99+' : unreadCount}</span>}
           </button>
         </nav>
       </div>
@@ -144,7 +187,20 @@ export default function LmsView({ onBack, onSignOut }) {
       <main className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
             <div className="mx-auto max-w-6xl space-y-6">
               {selectedClass ? (
-                <LmsClassView offering={selectedClass} role={user.role} token={token} onBack={() => { setSelectedClass(null); loadClasses(); }} />
+                <LmsClassView offering={selectedClass} role={user.role} token={token} initialTab={selectedClassTab} onBack={() => { setSelectedClass(null); setSelectedClassTab('overview'); loadClasses(); loadNotifications(); }} />
+              ) : activeView === 'dashboard' ? (
+                <LmsDashboard role={user.role} token={token} onOpenClass={openClass} />
+              ) : activeView === 'notifications' ? (
+                <LmsNotifications
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  isLoading={notificationsLoading}
+                  error={notificationsError}
+                  token={token}
+                  onReload={loadNotifications}
+                  onUnreadChange={setUnreadCount}
+                  onOpenClass={openClass}
+                />
               ) : (
                 <>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -185,7 +241,7 @@ export default function LmsView({ onBack, onSignOut }) {
                               <p className="mt-1 text-xs text-slate-500">{formatTerm(offering.term)} · {offering.instructorName || 'Instructor not assigned'}</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <button type="button" onClick={() => setSelectedClass(offering)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Preview class</button>
+                              <button type="button" onClick={() => openClass(offering)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Preview class</button>
                               <button
                                 type="button"
                                 onClick={() => updateAccess(offering)}
@@ -206,7 +262,7 @@ export default function LmsView({ onBack, onSignOut }) {
                         <p className="text-xs text-slate-500">{classes.length} {classes.length === 1 ? 'course' : 'courses'}</p>
                       </div>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {classes.map((offering) => <ClassCard key={offering._id} offering={offering} role={user.role} onOpen={setSelectedClass} />)}
+                        {classes.map((offering) => <ClassCard key={offering._id} offering={offering} role={user.role} onOpen={openClass} />)}
                       </div>
                     </section>
                   )}

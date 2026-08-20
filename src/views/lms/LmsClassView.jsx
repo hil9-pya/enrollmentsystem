@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Download, FileText, Loader2, Megaphone, Pin, Search, Trash2, Upload } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useConfirm } from '../../context/ConfirmationContext';
+import LmsAssignmentsTab from './LmsAssignmentsTab';
+import LmsGradebookTab from './LmsGradebookTab';
 
 const tabs = [
   { id: 'overview', label: 'Course home' },
   { id: 'announcements', label: 'Announcements' },
   { id: 'materials', label: 'Materials' },
+  { id: 'assignments', label: 'Assignments' },
 ];
 
 function displayName(user) {
@@ -25,9 +28,9 @@ function formatSize(bytes) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function LmsClassView({ offering: initialOffering, role, token, onBack }) {
+export default function LmsClassView({ offering: initialOffering, role, token, onBack, initialTab = 'overview' }) {
   const { confirm } = useConfirm();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [classData, setClassData] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [materials, setMaterials] = useState([]);
@@ -38,6 +41,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const [isSaving, setIsSaving] = useState(false);
   const [announcementDraft, setAnnouncementDraft] = useState({ title: '', body: '', isPinned: false });
   const [materialDraft, setMaterialDraft] = useState({ title: '', description: '', file: null });
+  const materialFileInputRef = useRef(null);
 
   const offeringId = initialOffering._id;
   const canManage = Boolean(classData?.canManage);
@@ -75,7 +79,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   useEffect(() => { loadClass(); }, [loadClass]);
 
   const visibleTabs = useMemo(() => (
-    canManage ? [...tabs, { id: 'roster', label: 'Roster' }] : tabs
+    canManage ? [...tabs, { id: 'gradebook', label: 'Gradebook' }, { id: 'roster', label: 'Roster' }] : tabs
   ), [canManage]);
 
   const filteredRoster = useMemo(() => {
@@ -122,7 +126,6 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const uploadMaterial = async (event) => {
     event.preventDefault();
     if (!materialDraft.file) return toast.error('Select a file to upload.');
-    const form = event.currentTarget;
     setIsSaving(true);
     try {
       const formData = new FormData();
@@ -138,7 +141,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to upload material.');
       setMaterials((current) => [payload.data, ...current]);
       setMaterialDraft({ title: '', description: '', file: null });
-      form.reset();
+      if (materialFileInputRef.current) materialFileInputRef.current.value = '';
       toast.success('Learning material uploaded.');
     } catch (requestError) {
       toast.error(requestError.message);
@@ -227,11 +230,12 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
               <h2 className="text-sm font-semibold text-slate-900">Course summary</h2>
               <p className="mt-0.5 text-xs text-slate-500">Current activity and published resources</p>
             </div>
-            <dl className="grid divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <dl className="grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
               {[
                 { label: 'Enrolled students', value: classData.rosterCount },
                 { label: 'Announcements', value: classData.announcementCount },
                 { label: 'Learning materials', value: classData.materialCount },
+                { label: 'Assignments', value: classData.assignmentCount },
               ].map((item) => (
                 <div key={item.label} className="px-5 py-4">
                   <dt className="text-xs font-medium text-slate-500">{item.label}</dt>
@@ -324,12 +328,25 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
               <fieldset disabled={!isEnabled || isSaving} className="mt-4 space-y-3 disabled:opacity-60">
                 <input value={materialDraft.title} onChange={(event) => setMaterialDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Display title (optional)" className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20" />
                 <textarea value={materialDraft.description} onChange={(event) => setMaterialDraft((current) => ({ ...current, description: event.target.value }))} rows="3" placeholder="Short description (optional)" className="w-full resize-y rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20" />
-                <label className="block rounded-md border border-dashed border-slate-300 p-4 text-center text-xs font-medium text-slate-600 hover:border-indigo-400"><Upload className="mx-auto mb-2 h-5 w-5 text-slate-400" />{materialDraft.file?.name || 'Choose a file up to 20 MB'}<input type="file" required onChange={(event) => setMaterialDraft((current) => ({ ...current, file: event.target.files?.[0] || null }))} className="sr-only" /></label>
+                <label className="block rounded-md border border-dashed border-slate-300 p-4 text-center text-xs font-medium text-slate-600 hover:border-indigo-400"><Upload className="mx-auto mb-2 h-5 w-5 text-slate-400" />{materialDraft.file?.name || 'Choose a file up to 20 MB'}<input ref={materialFileInputRef} type="file" required onClick={(event) => { event.currentTarget.value = ''; }} onChange={(event) => setMaterialDraft((current) => ({ ...current, file: event.target.files?.[0] || null }))} className="sr-only" /></label>
                 <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-univ-blue px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Upload</button>
               </fieldset>
             </form>
           )}
         </div>
+      )}
+
+      {activeTab === 'assignments' && (
+        <LmsAssignmentsTab
+          offeringId={offeringId}
+          canManage={canManage}
+          isEnabled={isEnabled}
+          token={token}
+        />
+      )}
+
+      {activeTab === 'gradebook' && canManage && (
+        <LmsGradebookTab offeringId={offeringId} token={token} />
       )}
 
       {activeTab === 'roster' && canManage && (

@@ -10,6 +10,7 @@ const LmsMaterialSchema = new mongoose.Schema(
     storageName: { type: String, required: true, trim: true, unique: true },
     mimeType: { type: String, required: true, trim: true },
     size: { type: Number, required: true, min: 0 },
+    checksum: { type: String, default: '', trim: true, index: true },
   },
   { timestamps: true }
 );
