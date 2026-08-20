@@ -20,6 +20,7 @@ import {
   getOfferingGradebook,
   gradeSubmission,
   listAssignments,
+  listLmsAssignmentsOverview,
   listAnnouncements,
   listLmsNotifications,
   markAllLmsNotificationsRead,
@@ -27,9 +28,11 @@ import {
   setOfferingLmsStatus,
   submitAssignment,
   returnSubmission,
+  searchLms,
   updateAssignment,
   deleteAssignment,
 } from '../lmsController.js';
+import { getMyClasses } from '../academicController.js';
 
 function invoke(handler, req) {
   return new Promise((resolve, reject) => {
@@ -168,6 +171,13 @@ test('LMS class access follows official membership and assigned instructor', asy
     assert.equal(assignmentResult.payload.data.points, 20);
     assert.equal(await LmsNotification.countDocuments({ targetUser: studentUser._id, readAt: null }), 2);
 
+    const studentSearch = await invoke(searchLms, { user: studentUser, query: { q: 'Module' } });
+    assert.equal(studentSearch.status, 200);
+    assert.equal(studentSearch.payload.data.some((item) => item.type === 'Assignment' && item.title === 'Module 1 exercise'), true);
+    const instructorSearch = await invoke(searchLms, { user: instructor, query: { q: 'Welcome' } });
+    assert.equal(instructorSearch.status, 200);
+    assert.equal(instructorSearch.payload.data.some((item) => item.type === 'Announcement' && item.title === 'Welcome'), true);
+
     const studentDeadlineNotifications = await invoke(listLmsNotifications, { user: studentUser });
     assert.equal(studentDeadlineNotifications.status, 200);
     assert.equal(studentDeadlineNotifications.payload.unreadCount, 3);
@@ -179,6 +189,11 @@ test('LMS class access follows official membership and assigned instructor', asy
     assert.equal(studentDashboardBeforeSubmission.status, 200);
     assert.equal(studentDashboardBeforeSubmission.payload.data.counts.classes, 1);
     assert.equal(studentDashboardBeforeSubmission.payload.data.counts.upcoming, 1);
+
+    const upcomingOverview = await invoke(listLmsAssignmentsOverview, { user: studentUser, query: {} });
+    assert.equal(upcomingOverview.status, 200);
+    assert.equal(upcomingOverview.payload.pagination.total, 1);
+    assert.equal(upcomingOverview.payload.data[0].state, 'upcoming');
 
     const studentAssignments = await invoke(listAssignments, {
       params: { offeringId: offering._id },
@@ -200,6 +215,11 @@ test('LMS class access follows official membership and assigned instructor', asy
     assert.equal(submitted.payload.data.status, 'submitted');
     assert.equal(await LmsNotification.countDocuments({ targetUser: instructor._id, type: 'submission' }), 1);
     assert.equal(await LmsNotification.countDocuments({ targetUser: otherInstructor._id }), 0);
+
+    const gradingOverview = await invoke(listLmsAssignmentsOverview, { user: instructor, query: { state: 'grading' } });
+    assert.equal(gradingOverview.status, 200);
+    assert.equal(gradingOverview.payload.pagination.total, 1);
+    assert.equal(gradingOverview.payload.data[0].pendingSubmissionCount, 1);
 
     const instructorDashboard = await invoke(getLmsDashboard, { user: instructor });
     assert.equal(instructorDashboard.status, 200);
@@ -230,6 +250,11 @@ test('LMS class access follows official membership and assigned instructor', asy
     assert.equal(studentDashboardAfterGrade.status, 200);
     assert.equal(studentDashboardAfterGrade.payload.data.counts.upcoming, 0);
     assert.equal(studentDashboardAfterGrade.payload.data.recentGrades.length, 1);
+
+    const gradedOverview = await invoke(listLmsAssignmentsOverview, { user: studentUser, query: { state: 'graded' } });
+    assert.equal(gradedOverview.status, 200);
+    assert.equal(gradedOverview.payload.pagination.total, 1);
+    assert.equal(gradedOverview.payload.data[0].submission.score, 18);
 
     const gradebook = await invoke(getOfferingGradebook, {
       params: { offeringId: offering._id },
@@ -311,6 +336,13 @@ test('LMS class access follows official membership and assigned instructor', asy
     assert.equal(blockedClosedSubmission.continued, false);
     assert.equal(blockedClosedSubmission.status, 409);
 
+    const blockedClosedReturn = await invoke(returnSubmission, {
+      params: { id: submitted.payload.data._id },
+      body: { feedback: 'Try another revision.' },
+      user: instructor,
+    });
+    assert.equal(blockedClosedReturn.status, 409);
+
     const archived = await invoke(deleteAssignment, {
       params: { id: assignmentResult.payload.data._id },
       user: instructor,
@@ -321,6 +353,18 @@ test('LMS class access follows official membership and assigned instructor', asy
     assert.equal(await LmsAssignment.countDocuments({ offering: offering._id }), 1);
     assert.equal(await LmsSubmission.countDocuments({ offering: offering._id }), 1);
 
+    await LmsAssignment.insertMany(Array.from({ length: 13 }, (_, index) => ({
+      offering: offering._id,
+      author: instructor._id,
+      title: `Dashboard assignment ${index + 1}`,
+      dueAt: new Date(Date.now() + (index + 2) * 86_400_000),
+      points: 10,
+      status: 'published',
+    })));
+    const boundedInstructorDashboard = await invoke(getLmsDashboard, { user: instructor });
+    assert.equal(boundedInstructorDashboard.payload.data.counts.upcoming, 13);
+    assert.equal(boundedInstructorDashboard.payload.data.upcomingAssignments.length, 12);
+
     const blockedInstructor = await invoke(createAnnouncement, {
       params: { offeringId: offering._id },
       body: { title: 'Wrong class', body: 'Must not publish.' },
@@ -328,6 +372,67 @@ test('LMS class access follows official membership and assigned instructor', asy
     });
     assert.equal(blockedInstructor.status, 403);
     assert.equal(await LmsAnnouncement.countDocuments({ offering: offering._id }), 1);
+
+    const membership = await CourseMembership.findOne({ offering: offering._id, student: student._id });
+    membership.status = 'completed';
+    await membership.save();
+    const notificationsBeforeCompletedAnnouncement = await LmsNotification.countDocuments({ targetUser: studentUser._id });
+    const completedAnnouncement = await invoke(createAnnouncement, {
+      params: { offeringId: offering._id },
+      body: { title: 'Current students only', body: 'Completed memberships must not receive this.' },
+      user: instructor,
+    });
+    assert.equal(completedAnnouncement.status, 201);
+    assert.equal(await LmsNotification.countDocuments({ targetUser: studentUser._id }), notificationsBeforeCompletedAnnouncement);
+    const completedCurrentClasses = await invoke(getMyClasses, { user: studentUser, query: { scope: 'current' } });
+    assert.equal(completedCurrentClasses.status, 200);
+    assert.equal(completedCurrentClasses.payload.data.length, 0);
+    const completedHistoricalClasses = await invoke(getMyClasses, { user: studentUser, query: {} });
+    assert.equal(completedHistoricalClasses.payload.data.length, 1);
+    membership.status = 'enrolled';
+    await membership.save();
+
+    term.status = 'closed';
+    term.isActive = false;
+    await term.save();
+    offering.status = 'closed';
+    offering.lmsEnabled = true;
+    await offering.save();
+
+    const blockedInactiveWrite = await invoke(createAnnouncement, {
+      params: { offeringId: offering._id },
+      body: { title: 'Closed term', body: 'Must not publish.' },
+      user: instructor,
+    });
+    assert.equal(blockedInactiveWrite.status, 409);
+
+    const currentClasses = await invoke(getMyClasses, { user: studentUser, query: { scope: 'current' } });
+    assert.equal(currentClasses.status, 200);
+    assert.equal(currentClasses.payload.data.length, 0);
+
+    const historicalClasses = await invoke(getMyClasses, { user: studentUser, query: {} });
+    assert.equal(historicalClasses.status, 200);
+    assert.equal(historicalClasses.payload.data.length, 1);
+
+    const blockedInactiveEnable = await invoke(setOfferingLmsStatus, {
+      params: { offeringId: offering._id },
+      body: { enabled: true },
+      user: admin,
+    });
+    assert.equal(blockedInactiveEnable.status, 409);
+
+    await LmsNotification.insertMany(Array.from({ length: 55 }, (_, index) => ({
+      targetUser: studentUser._id,
+      offering: offering._id,
+      type: 'announcement',
+      title: `Paged notification ${index + 1}`,
+      readAt: new Date(),
+    })));
+    const secondNotificationPage = await invoke(listLmsNotifications, { user: studentUser, query: { page: '2', limit: '50' } });
+    assert.equal(secondNotificationPage.status, 200);
+    assert.equal(secondNotificationPage.payload.pagination.page, 2);
+    assert.equal(secondNotificationPage.payload.pagination.pages >= 2, true);
+    assert.equal(secondNotificationPage.payload.data.length > 0, true);
 
     const disabled = await invoke(setOfferingLmsStatus, {
       params: { offeringId: offering._id },

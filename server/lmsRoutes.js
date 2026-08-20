@@ -28,9 +28,11 @@ import {
   listMaterials,
   listLmsNotifications,
   listAssignments,
+  listLmsAssignmentsOverview,
   listAssignmentSubmissions,
   gradeSubmission,
   returnSubmission,
+  searchLms,
   markAllLmsNotificationsRead,
   markLmsNotificationRead,
   setOfferingLmsStatus,
@@ -67,16 +69,18 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/dashboard', authorize('student', 'instructor', 'admin'), getLmsDashboard);
+router.get('/search', authorize('student', 'instructor', 'admin'), searchLms);
+router.get('/assignments', authorize('student', 'instructor', 'admin'), listLmsAssignmentsOverview);
 router.get('/notifications', authorize('student', 'instructor', 'admin'), listLmsNotifications);
 router.get('/storage/audit', authorize('admin'), auditLmsStorage);
 router.patch('/notifications/read-all', authorize('student', 'instructor', 'admin'), markAllLmsNotificationsRead);
 router.patch('/notifications/:id/read', authorize('student', 'instructor', 'admin'), markLmsNotificationRead);
-router.get('/offerings/:offeringId', authorize('student', 'instructor', 'registrar', 'admin'), getLmsClass);
+router.get('/offerings/:offeringId', authorize('student', 'instructor', 'admin'), getLmsClass);
 router.patch('/offerings/:offeringId/status', authorize('admin'), setOfferingLmsStatus);
-router.get('/offerings/:offeringId/announcements', authorize('student', 'instructor', 'registrar', 'admin'), listAnnouncements);
+router.get('/offerings/:offeringId/announcements', authorize('student', 'instructor', 'admin'), listAnnouncements);
 router.post('/offerings/:offeringId/announcements', authorize('instructor', 'admin'), createAnnouncement);
 router.delete('/announcements/:id', authorize('instructor', 'admin'), deleteAnnouncement);
-router.get('/offerings/:offeringId/materials', authorize('student', 'instructor', 'registrar', 'admin'), listMaterials);
+router.get('/offerings/:offeringId/materials', authorize('student', 'instructor', 'admin'), listMaterials);
 router.post(
   '/offerings/:offeringId/materials',
   authorize('instructor', 'admin'),
@@ -85,9 +89,9 @@ router.post(
   validateLmsUploadedFile,
   createMaterial
 );
-router.get('/materials/:id/download', authorize('student', 'instructor', 'registrar', 'admin'), downloadMaterial);
+router.get('/materials/:id/download', authorize('student', 'instructor', 'admin'), downloadMaterial);
 router.delete('/materials/:id', authorize('instructor', 'admin'), deleteMaterial);
-router.get('/offerings/:offeringId/assignments', authorize('student', 'instructor', 'registrar', 'admin'), listAssignments);
+router.get('/offerings/:offeringId/assignments', authorize('student', 'instructor', 'admin'), listAssignments);
 router.get('/offerings/:offeringId/gradebook', authorize('instructor', 'admin'), getOfferingGradebook);
 router.post('/offerings/:offeringId/assignments', authorize('instructor', 'admin'), createAssignment);
 router.patch('/assignments/:id', authorize('instructor', 'admin'), updateAssignment);

@@ -11,7 +11,7 @@ function studentName(student) {
   return [student?.lastName, student?.firstName].filter(Boolean).join(', ') || 'Unknown student';
 }
 
-export default function LmsGradebookTab({ offeringId, token }) {
+export default function LmsGradebookTab({ offeringId, token, canEdit }) {
   const [data, setData] = useState({ assignments: [], memberships: [], submissions: [], totalPoints: 0 });
   const [drafts, setDrafts] = useState({});
   const [dirty, setDirty] = useState({});
@@ -158,6 +158,8 @@ export default function LmsGradebookTab({ offeringId, token }) {
         </div>
       </div>
 
+      {!canEdit && <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-xs text-amber-800">Closed-term gradebook. Scores are read-only.</div>}
+
       {data.assignments.length === 0 ? (
         <div className="p-10 text-center text-sm text-slate-500">Create an assignment before using gradebook.</div>
       ) : rows.length === 0 ? (
@@ -186,10 +188,10 @@ export default function LmsGradebookTab({ offeringId, token }) {
                       return (
                         <td key={assignment._id} className="border-r border-slate-100 px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            <input type="number" min="0" max={assignment.points} step="0.01" value={drafts[submission._id] ?? ''} onChange={(event) => { setDrafts((current) => ({ ...current, [submission._id]: event.target.value })); setDirty((current) => ({ ...current, [submission._id]: true })); }} aria-label={`${assignment.title} score for ${studentName(student)}`} className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums outline-none focus:border-univ-blue focus:ring-2 focus:ring-blue-500/20" />
+                            <input type="number" min="0" max={assignment.points} step="0.01" value={drafts[submission._id] ?? ''} disabled={!canEdit} onChange={(event) => { setDrafts((current) => ({ ...current, [submission._id]: event.target.value })); setDirty((current) => ({ ...current, [submission._id]: true })); }} aria-label={`${assignment.title} score for ${studentName(student)}`} className="w-20 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums outline-none focus:border-univ-blue focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100" />
                             <span className="text-xs text-slate-400">/ {assignment.points}</span>
                           </div>
-                          <div className="mt-2 flex items-center justify-between gap-2"><span className={`text-xs font-medium ${submission.status === 'late' ? 'text-amber-700' : submission.status === 'graded' ? 'text-emerald-700' : 'text-slate-500'}`}>{submission.status === 'late' ? 'Late' : submission.status === 'graded' ? 'Graded' : 'Ungraded'}</span>{dirty[submission._id] && <button type="button" onClick={() => saveScore(submission, assignment)} disabled={savingKey === key || drafts[submission._id] === ''} className="rounded-md bg-univ-blue px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{savingKey === key ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}</button>}</div>
+                          <div className="mt-2 flex items-center justify-between gap-2"><span className={`text-xs font-medium ${submission.status === 'late' ? 'text-amber-700' : submission.status === 'graded' ? 'text-emerald-700' : 'text-slate-500'}`}>{submission.status === 'late' ? 'Late' : submission.status === 'graded' ? 'Graded' : 'Ungraded'}</span>{canEdit && dirty[submission._id] && <button type="button" onClick={() => saveScore(submission, assignment)} disabled={savingKey === key || drafts[submission._id] === ''} className="rounded-md bg-univ-blue px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{savingKey === key ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}</button>}</div>
                         </td>
                       );
                     })}

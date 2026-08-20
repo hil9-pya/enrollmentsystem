@@ -129,15 +129,20 @@ export const getAcademicIntegrityAudit = asyncHandler(async (_req, res) => {
 });
 
 export const getMyClasses = asyncHandler(async (req, res) => {
+  const currentOnly = req.query?.scope === 'current';
   if (req.user.role === 'student') {
     const student = await resolveStudentProfileForUser(req.user);
     if (!student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
     const studentTerms = await Student.findById(student._id).select('academicTerm lastEnrolledTerm').lean();
 
-    const memberships = await CourseMembership.find({
+    const membershipFilter = {
       student: student._id,
-      status: { $in: ['enrolled', 'completed'] },
-    })
+      status: currentOnly ? 'enrolled' : { $in: ['enrolled', 'completed'] },
+    };
+    if (currentOnly) {
+      membershipFilter.term = { $in: await AcademicTerm.find({ isActive: true }).distinct('_id') };
+    }
+    const memberships = await CourseMembership.find(membershipFilter)
       .populate({
         path: 'offering',
         populate: [
@@ -146,7 +151,10 @@ export const getMyClasses = asyncHandler(async (req, res) => {
         ],
       })
       .sort({ createdAt: 1 });
-    const visibleMemberships = memberships.map((membership) => {
+    const visibleMemberships = memberships.filter((membership) => (
+      membership.offering
+      && (!currentOnly || ['active', 'open'].includes(membership.offering.status))
+    )).map((membership) => {
       const item = membership.toObject();
       if (item.gradeStatus !== 'published') item.finalGrade = null;
       const storedTerm = item.offering?.term;
@@ -169,6 +177,7 @@ export const getMyClasses = asyncHandler(async (req, res) => {
   if (req.user.role === 'instructor') {
     const activeTermIds = await AcademicTerm.find({ isActive: true }).distinct('_id');
     filter.term = { $in: activeTermIds };
+    if (currentOnly) filter.status = { $in: ['active', 'open'] };
   }
   const offerings = await CourseOffering.find(filter)
     .populate('term', 'code name schoolYear semester status isActive')

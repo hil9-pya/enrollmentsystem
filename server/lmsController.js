@@ -58,6 +58,17 @@ function sendAccessError(res, error) {
   return res.status(error.status).json({ success: false, message: error.message });
 }
 
+function getLmsWriteBlock(offering) {
+  if (!offering?.lmsEnabled) return 'Enable LMS for this offering before changing class content.';
+  if (!['active', 'open'].includes(offering.status) || !offering.term?.isActive) {
+    return 'This class belongs to an inactive or closed academic term. LMS records are read-only.';
+  }
+  if (offering.term?.lmsClosesAt && Date.now() > new Date(offering.term.lmsClosesAt).getTime()) {
+    return 'LMS editing has closed for this academic term.';
+  }
+  return '';
+}
+
 function isCurrentLmsOffering(offering) {
   return Boolean(
     offering?.lmsEnabled
@@ -81,6 +92,50 @@ async function findCurrentLmsOfferings(filter = {}) {
   return offerings.filter(isCurrentLmsOffering);
 }
 
+async function findViewerCurrentLmsOfferings(user) {
+  if (user.role === 'student') {
+    const student = await resolveStudentProfileForUser(user);
+    if (!student) return { student: null, classes: [] };
+    const memberships = await CourseMembership.find({ student: student._id, status: 'enrolled' }).populate({
+      path: 'offering',
+      populate: { path: 'term', select: 'code name schoolYear semester status isActive' },
+    });
+    return { student, classes: memberships.map((membership) => membership.offering).filter(isCurrentLmsOffering) };
+  }
+  if (user.role === 'instructor') return { student: null, classes: await findCurrentLmsOfferings({ instructor: user._id }) };
+  if (user.role === 'admin') return { student: null, classes: await findCurrentLmsOfferings() };
+  return { student: null, classes: [] };
+}
+
+function escapeSearchPattern(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export const searchLms = asyncHandler(async (req, res) => {
+  const query = String(req.query?.q || '').trim().slice(0, 100);
+  if (query.length < 2) return res.json({ success: true, data: [] });
+  const { student, classes } = await findViewerCurrentLmsOfferings(req.user);
+  if (req.user.role === 'student' && !student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
+  const offeringIds = classes.map((offering) => offering._id);
+  if (offeringIds.length === 0) return res.json({ success: true, data: [] });
+  const pattern = new RegExp(escapeSearchPattern(query), 'i');
+  const assignmentStatus = req.user.role === 'student' ? { $in: ['published', 'closed'] } : { $ne: 'archived' };
+  const [assignments, announcements, materials] = await Promise.all([
+    LmsAssignment.find({ offering: { $in: offeringIds }, status: assignmentStatus, title: pattern })
+      .populate('offering', dashboardOfferingFields()).sort({ dueAt: 1 }).limit(8),
+    LmsAnnouncement.find({ offering: { $in: offeringIds }, $or: [{ title: pattern }, { body: pattern }] })
+      .populate('offering', dashboardOfferingFields()).sort({ publishedAt: -1 }).limit(8),
+    LmsMaterial.find({ offering: { $in: offeringIds }, $or: [{ title: pattern }, { description: pattern }, { originalName: pattern }] })
+      .populate('offering', dashboardOfferingFields()).sort({ createdAt: -1 }).limit(8),
+  ]);
+  const rows = [
+    ...assignments.map((item) => ({ id: `assignment-${item._id}`, type: 'Assignment', title: item.title, detail: item.offering?.subjectCode, offering: item.offering, tab: 'assignments' })),
+    ...announcements.map((item) => ({ id: `announcement-${item._id}`, type: 'Announcement', title: item.title, detail: item.offering?.subjectCode, offering: item.offering, tab: 'announcements' })),
+    ...materials.map((item) => ({ id: `material-${item._id}`, type: 'Material', title: item.title, detail: item.offering?.subjectCode, offering: item.offering, tab: 'materials' })),
+  ].slice(0, 12);
+  res.json({ success: true, data: rows });
+});
+
 export const getLmsDashboard = asyncHandler(async (req, res) => {
   const role = req.user.role;
   let classes = [];
@@ -91,7 +146,7 @@ export const getLmsDashboard = asyncHandler(async (req, res) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
     const memberships = await CourseMembership.find({
       student: student._id,
-      status: { $in: ['enrolled', 'completed'] },
+      status: 'enrolled',
     }).populate({
       path: 'offering',
       populate: { path: 'term', select: 'code name schoolYear semester status isActive' },
@@ -158,9 +213,9 @@ export const getLmsDashboard = asyncHandler(async (req, res) => {
           overdue: overdueAssignments.length,
           returned: returnedSubmissions.length,
         },
-        upcomingAssignments,
-        overdueAssignments,
-        returnedSubmissions,
+        upcomingAssignments: upcomingAssignments.slice(0, 12),
+        overdueAssignments: overdueAssignments.slice(0, 12),
+        returnedSubmissions: returnedSubmissions.slice(0, 8),
         recentGrades,
         latestAnnouncements: announcements,
         recentMaterials: materials,
@@ -168,16 +223,21 @@ export const getLmsDashboard = asyncHandler(async (req, res) => {
     });
   }
 
-  const [pendingSubmissions, upcomingAssignments, enrolledStudents] = await Promise.all([
-    LmsSubmission.find({ offering: { $in: offeringIds }, status: { $in: ['submitted', 'late'] } })
+  const pendingFilter = { offering: { $in: offeringIds }, status: { $in: ['submitted', 'late'] } };
+  const upcomingFilter = { offering: { $in: offeringIds }, status: 'published', dueAt: { $gte: new Date() } };
+  const [pendingSubmissions, pendingGradingCount, upcomingAssignments, upcomingCount, enrolledStudents] = await Promise.all([
+    LmsSubmission.find(pendingFilter)
       .populate('student', 'studentId firstName lastName schoolEmail')
       .populate('assignment', 'title dueAt points status')
       .populate('offering', dashboardOfferingFields())
-      .sort({ submittedAt: 1 }),
-    LmsAssignment.find({ offering: { $in: offeringIds }, status: 'published', dueAt: { $gte: new Date() } })
+      .sort({ submittedAt: 1 })
+      .limit(12),
+    LmsSubmission.countDocuments(pendingFilter),
+    LmsAssignment.find(upcomingFilter)
       .populate('offering', dashboardOfferingFields())
       .sort({ dueAt: 1 })
       .limit(12),
+    LmsAssignment.countDocuments(upcomingFilter),
     CourseMembership.distinct('student', { offering: { $in: offeringIds }, status: 'enrolled' }),
   ]);
 
@@ -187,13 +247,107 @@ export const getLmsDashboard = asyncHandler(async (req, res) => {
       ...emptyData,
       counts: {
         ...emptyData.counts,
-        upcoming: upcomingAssignments.length,
-        pendingGrading: pendingSubmissions.length,
+        upcoming: upcomingCount,
+        pendingGrading: pendingGradingCount,
         students: enrolledStudents.length,
       },
       upcomingAssignments,
       pendingSubmissions,
     },
+  });
+});
+
+export const listLmsAssignmentsOverview = asyncHandler(async (req, res) => {
+  const role = req.user.role;
+  const query = req.query || {};
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 25));
+  const stateFilter = String(query.state || 'all').trim().toLowerCase();
+  const search = String(query.search || '').trim().toLowerCase();
+  let classes = [];
+  let student = null;
+
+  if (role === 'student') {
+    student = await resolveStudentProfileForUser(req.user);
+    if (!student) return res.status(404).json({ success: false, message: 'Student profile not found.' });
+    const memberships = await CourseMembership.find({
+      student: student._id,
+      status: 'enrolled',
+    }).populate({
+      path: 'offering',
+      populate: { path: 'term', select: 'code name schoolYear semester status isActive' },
+    });
+    classes = memberships.map((membership) => membership.offering).filter(isCurrentLmsOffering);
+  } else if (role === 'instructor') {
+    classes = await findCurrentLmsOfferings({ instructor: req.user._id });
+  } else if (role === 'admin') {
+    classes = await findCurrentLmsOfferings();
+  } else {
+    return res.status(403).json({ success: false, message: 'Your account cannot access LMS assignments.' });
+  }
+
+  const offeringIds = classes.map((offering) => offering._id);
+  if (offeringIds.length === 0) {
+    return res.json({ success: true, data: [], pagination: { page, limit, total: 0, pages: 0 } });
+  }
+  const assignments = await LmsAssignment.find({
+    offering: { $in: offeringIds },
+    status: { $in: ['published', 'closed'] },
+  }).populate('offering', dashboardOfferingFields()).sort({ dueAt: 1 });
+  const assignmentIds = assignments.map((assignment) => assignment._id);
+  const submissionFilter = { assignment: { $in: assignmentIds } };
+  if (role === 'student') submissionFilter.student = student._id;
+  const submissions = await LmsSubmission.find(submissionFilter).lean();
+  const submissionsByAssignment = new Map();
+  submissions.forEach((submission) => {
+    const key = String(submission.assignment);
+    const rows = submissionsByAssignment.get(key) || [];
+    rows.push(submission);
+    submissionsByAssignment.set(key, rows);
+  });
+  const now = Date.now();
+  let rows = assignments.map((assignmentDocument) => {
+    const assignment = assignmentDocument.toObject();
+    const assignmentSubmissions = submissionsByAssignment.get(String(assignment._id)) || [];
+    if (role === 'student') {
+      const submission = assignmentSubmissions[0] || null;
+      let state;
+      if (submission) state = submission.status;
+      else if (assignment.status === 'closed') state = 'missing';
+      else state = new Date(assignment.dueAt).getTime() < now ? 'overdue' : 'upcoming';
+      return { assignment, offering: assignment.offering, submission, state };
+    }
+    const pendingSubmissionCount = assignmentSubmissions.filter((submission) => ['submitted', 'late'].includes(submission.status)).length;
+    const gradedSubmissionCount = assignmentSubmissions.filter((submission) => submission.status === 'graded').length;
+    const state = pendingSubmissionCount > 0
+      ? 'grading'
+      : assignment.status === 'closed'
+        ? 'closed'
+        : new Date(assignment.dueAt).getTime() < now ? 'overdue' : 'upcoming';
+    return {
+      assignment,
+      offering: assignment.offering,
+      state,
+      submissionCount: assignmentSubmissions.length,
+      pendingSubmissionCount,
+      gradedSubmissionCount,
+    };
+  });
+  if (stateFilter !== 'all') rows = rows.filter((row) => row.state === stateFilter);
+  if (search) {
+    rows = rows.filter((row) => [
+      row.assignment?.title,
+      row.offering?.subjectCode,
+      row.offering?.subjectName,
+      row.offering?.sectionCode,
+    ].some((value) => String(value || '').toLowerCase().includes(search)));
+  }
+  const total = rows.length;
+  const start = (page - 1) * limit;
+  res.json({
+    success: true,
+    data: rows.slice(start, start + limit),
+    pagination: { page, limit, total, pages: total === 0 ? 0 : Math.ceil(total / limit) },
   });
 });
 
@@ -207,8 +361,9 @@ async function requireEnabledEditor(req, res) {
     res.status(403).json({ success: false, message: 'Only assigned instructors or Admin can manage class content.' });
     return null;
   }
-  if (!access.offering.lmsEnabled) {
-    res.status(409).json({ success: false, message: 'Enable LMS for this offering before adding content.' });
+  const writeBlock = getLmsWriteBlock(access.offering);
+  if (writeBlock) {
+    res.status(409).json({ success: false, message: writeBlock });
     return null;
   }
   return access;
@@ -228,7 +383,7 @@ async function logLmsAction(req, action, entityType, entityId, metadata = {}) {
 async function findStudentNotificationRecipients(offeringId) {
   const memberships = await CourseMembership.find({
     offering: offeringId,
-    status: { $in: ['enrolled', 'completed'] },
+    status: 'enrolled',
   }).select('student studentUser').lean();
   const recipientIds = new Set(memberships.filter((item) => item.studentUser).map((item) => String(item.studentUser)));
   const profilesWithoutUsers = memberships.filter((item) => !item.studentUser).map((item) => item.student);
@@ -380,7 +535,7 @@ async function ensureStudentDeadlineReminders(user) {
   if (!student) return;
   const memberships = await CourseMembership.find({
     student: student._id,
-    status: { $in: ['enrolled', 'completed'] },
+    status: 'enrolled',
   }).populate({
     path: 'offering',
     populate: { path: 'term', select: 'isActive' },
@@ -429,15 +584,26 @@ async function ensureStudentDeadlineReminders(user) {
 
 export const listLmsNotifications = asyncHandler(async (req, res) => {
   if (req.user.role === 'student') await ensureStudentDeadlineReminders(req.user);
-  const [notifications, unreadCount] = await Promise.all([
+  const query = req.query || {};
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 50));
+  const notificationFilter = { targetUser: req.user._id };
+  const [notifications, unreadCount, total] = await Promise.all([
     LmsNotification.find({ targetUser: req.user._id })
       .populate('actor', 'firstName lastName role')
       .populate('offering', dashboardOfferingFields())
       .sort({ createdAt: -1 })
-      .limit(50),
+      .skip((page - 1) * limit)
+      .limit(limit),
     LmsNotification.countDocuments({ targetUser: req.user._id, readAt: null }),
+    LmsNotification.countDocuments(notificationFilter),
   ]);
-  res.json({ success: true, data: notifications, unreadCount });
+  res.json({
+    success: true,
+    data: notifications,
+    unreadCount,
+    pagination: { page, limit, total, pages: total === 0 ? 0 : Math.ceil(total / limit) },
+  });
 });
 
 export const markLmsNotificationRead = asyncHandler(async (req, res) => {
@@ -621,10 +787,19 @@ export const deleteMaterial = asyncHandler(async (req, res) => {
 });
 
 export const setOfferingLmsStatus = asyncHandler(async (req, res) => {
-  const offering = await CourseOffering.findById(req.params.offeringId);
+  const offering = await CourseOffering.findById(req.params.offeringId)
+    .populate('term', 'status isActive lmsClosesAt');
   if (!offering) return res.status(404).json({ success: false, message: 'Class offering not found.' });
   if (typeof req.body.enabled !== 'boolean') {
     return res.status(400).json({ success: false, message: 'Enabled must be true or false.' });
+  }
+  if (req.body.enabled) {
+    if (!['active', 'open'].includes(offering.status) || !offering.term?.isActive) {
+      return res.status(409).json({ success: false, message: 'LMS can only be enabled for an active offering in the active academic term.' });
+    }
+    if (offering.term?.lmsClosesAt && Date.now() > new Date(offering.term.lmsClosesAt).getTime()) {
+      return res.status(409).json({ success: false, message: 'LMS has closed for this academic term.' });
+    }
   }
   offering.lmsEnabled = req.body.enabled;
   await offering.save();
@@ -707,7 +882,8 @@ export const updateAssignment = asyncHandler(async (req, res) => {
   const access = await getAssignmentAccess(req, req.params.id);
   if (access.error) return sendAccessError(res, access.error);
   if (!access.canManage) return res.status(403).json({ success: false, message: 'Only assigned instructors or Admin can edit assignments.' });
-  if (!access.offering.lmsEnabled) return res.status(409).json({ success: false, message: 'Enable LMS before changing assignments.' });
+  const writeBlock = getLmsWriteBlock(access.offering);
+  if (writeBlock) return res.status(409).json({ success: false, message: writeBlock });
   if (access.assignment.status === 'archived') return res.status(409).json({ success: false, message: 'Archived assignments cannot be edited.' });
 
   const previousDueAt = access.assignment.dueAt;
@@ -772,7 +948,8 @@ export const deleteAssignment = asyncHandler(async (req, res) => {
   const access = await getAssignmentAccess(req, req.params.id);
   if (access.error) return sendAccessError(res, access.error);
   if (!access.canManage) return res.status(403).json({ success: false, message: 'Only assigned instructors or Admin can delete assignments.' });
-  if (!access.offering.lmsEnabled) return res.status(409).json({ success: false, message: 'Enable LMS before changing assignments.' });
+  const writeBlock = getLmsWriteBlock(access.offering);
+  if (writeBlock) return res.status(409).json({ success: false, message: writeBlock });
   const submissionCount = await LmsSubmission.countDocuments({ assignment: access.assignment._id });
   if (submissionCount > 0) {
     access.assignment.status = 'archived';
@@ -796,7 +973,8 @@ export const authorizeSubmissionUpload = asyncHandler(async (req, res, next) => 
   if (!access.membership || req.user.role !== 'student') {
     return res.status(403).json({ success: false, message: 'Only enrolled students can submit assignment work.' });
   }
-  if (!access.offering.lmsEnabled) return res.status(409).json({ success: false, message: 'LMS is not enabled for this class.' });
+  const writeBlock = getLmsWriteBlock(access.offering);
+  if (writeBlock) return res.status(409).json({ success: false, message: writeBlock });
   if (access.assignment.status !== 'published') return res.status(409).json({ success: false, message: 'Assignment is closed.' });
   const isLate = Date.now() > access.assignment.dueAt.getTime();
   const existing = await LmsSubmission.findOne({
@@ -947,6 +1125,8 @@ export const gradeSubmission = asyncHandler(async (req, res) => {
   const access = await resolveViewer(req, submission.offering);
   if (access.error) return sendAccessError(res, access.error);
   if (!access.canManage) return res.status(403).json({ success: false, message: 'Only assigned instructors or Admin can grade submissions.' });
+  const writeBlock = getLmsWriteBlock(access.offering);
+  if (writeBlock) return res.status(409).json({ success: false, message: writeBlock });
   if (req.body.score === '' || req.body.score === null || req.body.score === undefined) {
     return res.status(400).json({ success: false, message: 'Score is required.' });
   }
@@ -984,6 +1164,11 @@ export const returnSubmission = asyncHandler(async (req, res) => {
   const access = await resolveViewer(req, submission.offering);
   if (access.error) return sendAccessError(res, access.error);
   if (!access.canManage) return res.status(403).json({ success: false, message: 'Only assigned instructors or Admin can return submissions.' });
+  const writeBlock = getLmsWriteBlock(access.offering);
+  if (writeBlock) return res.status(409).json({ success: false, message: writeBlock });
+  if (submission.assignment.status !== 'published') {
+    return res.status(409).json({ success: false, message: 'Reopen assignment before returning work for revision.' });
+  }
   const feedback = String(req.body.feedback || '').trim();
   if (!feedback) return res.status(400).json({ success: false, message: 'Feedback is required when returning work.' });
   submission.status = 'returned';
