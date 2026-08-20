@@ -4,6 +4,7 @@ import StatusBadge from '../../components/StatusBadge';
 import SearchInput from '../../components/SearchInput';
 import { ExternalLink } from 'lucide-react';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import PortalPageHeader from '../../components/PortalPageHeader';
 
 export default function ApplicantManagement({ students, initialFilter, onViewDetails, onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,13 +40,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-8 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2 shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold text-univ-navy">Applicant management</h1>
-          <p className="text-xs text-slate-500 mt-1.5 font-medium">View and manage all student applications.</p>
-        </div>
-        <PortalRefreshButton />
-      </div>
+      <PortalPageHeader title="Applicant management" description="View and manage all student applications." actions={<PortalRefreshButton />} />
 
       <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4 shrink-0">
         <div className="relative flex-1 w-full">
@@ -69,7 +64,7 @@ export default function ApplicantManagement({ students, initialFilter, onViewDet
                 onNavigate(val);
               }
             }}
-            className="flex-1 md:flex-none border border-slate-200 text-xs font-semibold rounded-xl px-3 py-2 bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-univ-indigo cursor-pointer"
+            className="flex-1 md:flex-none border border-slate-200 text-xs font-semibold rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-univ-indigo cursor-pointer"
           >
             <option value="">All Applicants</option>
             <option value="documents_submitted">Applications for Review</option>

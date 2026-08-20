@@ -12,7 +12,7 @@ import ClearanceStep from './steps/ClearanceStep';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import PortalShell from '../../components/PortalShell';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
-import Badge from '../../components/Badge';
+import StudentAcademicView from './StudentAcademicView';
 
 export const STUDENT_STEPS = [
   { key: 'clearance', label: 'Holds & Clearances' },
@@ -128,6 +128,8 @@ export default function StudentView() {
   const { user, logout } = useAuth();
   const student = getActiveStudent();
   const [isProfileReady, setIsProfileReady] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [portalPage, setPortalPage] = useState('enrollment');
 
   const hasActiveHolds = student?.holds?.some(h => h.status === 'active');
   const [currentStep, setCurrentStep] = useState(() => {
@@ -159,11 +161,19 @@ export default function StudentView() {
     let cancelled = false;
     setIsVerified(true);
     setIsProfileReady(false);
+    setProfileError('');
     setActiveStudent(user.studentId);
+
+    if (user.studentArchived) {
+      setProfileError('Your student profile is archived. Contact the Registrar for reactivation.');
+      setIsProfileReady(true);
+      return undefined;
+    }
 
     refreshActiveStudent(user.studentId)
       .catch((error) => {
         console.error('Failed to refresh student profile:', error.message || error);
+        if (!cancelled) setProfileError(error.message || 'Unable to load student profile.');
       })
       .finally(() => {
         if (!cancelled) setIsProfileReady(true);
@@ -172,7 +182,7 @@ export default function StudentView() {
     return () => {
       cancelled = true;
     };
-  }, [user?.role, user?.studentId, setActiveStudent, refreshActiveStudent]);
+  }, [user?.role, user?.studentId, user?.studentArchived, setActiveStudent, refreshActiveStudent]);
 
   // Initialize resume state on student switch, then let users navigate manually.
   useEffect(() => {
@@ -286,10 +296,14 @@ export default function StudentView() {
     if (targetIndex < 0) return;
     if (!isCompleted && targetIndex > activeIndex) return;
 
+    setPortalPage('enrollment');
     setCurrentStep(stepKey);
   }, [completedSteps, effectiveStep]);
 
   const renderStep = () => {
+    if (portalPage === 'classes' || portalPage === 'record') {
+      return <StudentAcademicView view={portalPage} student={student} />;
+    }
     switch (effectiveStep) {
       case 'clearance':
         return <ClearanceStep onNext={onNext} />;
@@ -319,10 +333,32 @@ export default function StudentView() {
   const isWaitingForFulfillment = effectiveStep === 'fulfillment' && student?.status !== 'enrolled';
   const isClearedForEnrollment = effectiveStep === 'clearance'
     && !(student?.holds || []).some((hold) => hold.status === 'active');
-  const isCenteredStatusStep = isWaitingForFulfillment || isClearedForEnrollment;
+  const isCenteredStatusStep = portalPage === 'enrollment' && (isWaitingForFulfillment || isClearedForEnrollment);
 
   if (!isVerified) {
     return <StudentPortalAccess onVerified={() => setIsVerified(true)} />;
+  }
+
+  if (isProfileReady && profileError) {
+    return (
+      <div className="flex h-full min-h-[28rem] items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md rounded-lg border border-amber-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-base font-semibold text-slate-900">Student profile unavailable</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{profileError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              logout?.();
+              setActiveStudent(null);
+              window.location.href = '/?portal=gateway&tab=student';
+            }}
+            className="mt-5 rounded-md bg-univ-blue px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            Return to sign in
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const isAuthenticatedProfile = Boolean(
@@ -341,8 +377,8 @@ export default function StudentView() {
 
   const sidebar = (<>
       {/* ── Sidebar ─────────────────────────────────────────────── */}
-      <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
-        <div className="p-5 flex flex-1 items-center overflow-y-auto">
+      <aside className="flex w-68 shrink-0 flex-col border-r border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-1 flex-col justify-center overflow-y-auto p-5">
           <StepIndicator
             currentStep={effectiveStep}
             completedSteps={completedSteps}
@@ -355,24 +391,21 @@ export default function StudentView() {
 
         {/* ── Student Info Footer ─────────────────────────────── */}
         {hasStudentInfo && (
-          <div className="p-5 border-t border-slate-100 bg-slate-50/30">
-            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-premium">
-              <Badge tone={student?.status === 'enrolled' ? 'success' : 'info'}>
-                {student?.status === 'enrolled' ? 'Enrolled' : 'Active applicant'}
-              </Badge>
-              <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
+          <div className="border-t border-slate-200 bg-white p-4">
+            <div className="px-1">
+              <p className="text-sm font-semibold text-univ-navy leading-none">
                 {student.firstName} {student.lastName}
               </p>
-              <p className="font-mono text-[9px] text-slate-400 mt-1.5">{student.studentId || student.id}</p>
+              <p className="mt-1.5 font-mono text-xs text-slate-500">{student.studentId || student.id}</p>
             </div>
             <button
               onClick={() => {
                 setActiveStudent(null);
                 setIsVerified(false);
               }}
-              className="mt-3 w-full py-2 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold text-slate-500 hover:text-rose-600 transition-all rounded-lg text-center cursor-pointer uppercase tracking-wider"
+              className="mt-3 w-full rounded-lg border border-slate-200 py-1.5 text-center text-xs font-semibold text-slate-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
             >
-              Exit Portal
+              Exit portal
             </button>
           </div>
         )}
@@ -384,13 +417,42 @@ export default function StudentView() {
     <PortalShell
       sidebar={sidebar}
       portalTitle="Student Portal"
-      mobileTitle={currentStepDefinition?.label || 'Enrollment Progress'}
-      mobileSubtitle={`Step ${currentStepNumber} of ${STUDENT_STEPS.length}`}
+      mobileTitle={portalPage === 'classes' ? 'My classes' : portalPage === 'record' ? 'Academic record' : currentStepDefinition?.label || 'Enrollment Progress'}
+      mobileSubtitle={portalPage === 'enrollment' ? `Step ${currentStepNumber} of ${STUDENT_STEPS.length}` : 'Student records'}
     >
       {/* Main Content */}
       <main className="h-full min-w-0 overflow-y-auto bg-slate-50/70">
-        <div className={`${isCenteredStatusStep ? 'flex min-h-full items-center justify-center' : 'max-w-4xl mx-auto'} p-4 sm:p-5 lg:p-8`}>
-          {!isCenteredStatusStep && (
+        {student?.status === 'enrolled' && (
+          <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 sm:px-5 lg:px-8" aria-label="Student workspace">
+            <div className="flex gap-6" role="tablist" aria-label="Student records">
+              {[
+                { id: 'enrollment', label: 'Enrollment' },
+                { id: 'classes', label: 'My classes' },
+                { id: 'record', label: 'Academic record' },
+              ].map((item) => {
+                const isActive = portalPage === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setPortalPage(item.id)}
+                    className={`border-b-2 py-3 text-sm font-semibold transition-colors ${
+                      isActive
+                        ? 'border-univ-blue text-univ-blue'
+                        : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-univ-navy'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
+        <div className={`${isCenteredStatusStep ? 'flex min-h-full items-center justify-center' : portalPage === 'enrollment' ? 'max-w-4xl mx-auto' : 'max-w-6xl mx-auto'} p-4 sm:p-5 lg:p-8`}>
+          {!isCenteredStatusStep && portalPage === 'enrollment' && (
             <div className="mb-4 flex justify-end">
               <PortalRefreshButton onRefresh={() => refreshActiveStudent(user.studentId)} />
             </div>

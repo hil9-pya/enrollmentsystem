@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
-import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, RefreshCw } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Lock, School, BookOpen, ArrowRightLeft, Hash, AlertCircle, CheckCircle, ChevronDown, ShieldCheck, Loader2 } from 'lucide-react';
+import { authFetch } from '../../../utils/authFetch.js';
+
+const MIN_OTP_VERIFY_LOADING_MS = 700;
 
 // Strips characters commonly used in injection attacks before sending to backend.
 // Since we use MongoDB (not SQL), this guards against NoSQL operator injection.
@@ -74,23 +77,28 @@ function buildPersistPayload(draft, isTransferee) {
 }
 
 function SelectField({ label, id, icon: Icon, value, onChange, options, error, required }) {
+  const errorId = `${id}-error`;
   return (
-    <div className="relative mb-6 w-full">
+    <div className="mb-5 w-full">
+      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-700">
+        {label}
+        {required && <span className="ml-0.5 text-rose-600" aria-hidden="true">*</span>}
+      </label>
       <div className="relative">
         {Icon && (
-          <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-colors duration-300 ${error ? 'text-rose-400' : 'text-slate-400'}`}>
-            <Icon className="h-5 w-5" />
-          </div>
+          <Icon className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${error ? 'text-rose-500' : 'text-slate-400'}`} aria-hidden="true" />
         )}
         <select
           id={id}
           value={value}
           onChange={onChange}
           required={required}
-          className={`w-full pl-11 pr-8 pt-5 pb-2 rounded-xl text-sm font-medium transition-all duration-300 outline-none appearance-none cursor-pointer
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          className={`w-full appearance-none rounded-lg border py-2.5 pr-8 text-sm font-medium outline-none transition-colors duration-150 cursor-pointer ${Icon ? 'pl-9' : 'pl-3'}
             ${error
-              ? 'bg-rose-50/50 border border-rose-300 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10'
-              : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10 hover:border-slate-300'
+              ? 'border-rose-400 bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15'
+              : 'border-slate-200 bg-white hover:border-slate-300 focus:border-univ-blue focus:ring-2 focus:ring-univ-blue/15'
             }
           `}
         >
@@ -98,18 +106,12 @@ function SelectField({ label, id, icon: Icon, value, onChange, options, error, r
             <option key={opt.value} value={opt.value} disabled={opt.value === ''}>{opt.label}</option>
           ))}
         </select>
-        <label
-          htmlFor={id}
-          className={`absolute text-xs font-extrabold uppercase tracking-widest -translate-y-3 scale-75 transition-all duration-300 top-4 left-11 origin-[0] z-10 ${error ? 'text-rose-500' : 'text-slate-500'}`}
-        >
-          {label} {required && <span className="text-rose-500 ml-0.5">*</span>}
-        </label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
       </div>
       {error && (
-        <div className="flex items-center gap-1 mt-1.5 animate-in slide-in-from-top-1">
-          <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
-          <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wide">{error}</span>
+        <div id={errorId} className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-rose-600">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
     </div>
@@ -132,6 +134,7 @@ export default function RegistrationStep({ onNext, onBack }) {
   const [otpSent, setOtpSent] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [isEmailAction, setIsEmailAction] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const saveTimerRef = useRef(null);
   const dirtyRef = useRef(false);
   const studentRef = useRef(student);
@@ -147,6 +150,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     setOtp('');
     setOtpSent(false);
     setOtpError('');
+    setIsVerifyingOtp(false);
     dirtyRef.current = false;
   }, [student?.id]);
 
@@ -310,7 +314,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     setIsEmailAction(true);
     setOtpError('');
     try {
-      const response = await fetch(`/api/students/${student.id}/email-verification/send`, {
+      const response = await authFetch(`/api/students/${student.id}/email-verification/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: draft.email.trim() }),
@@ -344,20 +348,31 @@ export default function RegistrationStep({ onNext, onBack }) {
       return;
     }
     setIsEmailAction(true);
+    setIsVerifyingOtp(true);
     setOtpError('');
+    const verificationStartedAt = Date.now();
+    const waitForLoadingPaint = async () => {
+      const remaining = MIN_OTP_VERIFY_LOADING_MS - (Date.now() - verificationStartedAt);
+      if (remaining > 0) {
+        await new Promise(resolve => setTimeout(resolve, remaining));
+      }
+    };
     try {
-      const response = await fetch(`/api/students/${student.id}/email-verification/verify`, {
+      const response = await authFetch(`/api/students/${student.id}/email-verification/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ otp }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || data.message || 'Could not verify email.');
+      await waitForLoadingPaint();
       onNext();
     } catch (error) {
+      await waitForLoadingPaint();
       setOtpError(error.message);
     } finally {
       setIsEmailAction(false);
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -376,7 +391,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         <div className="flex items-start gap-3 bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mb-6 shadow-sm">
           <ArrowRightLeft className="h-5 w-5 text-slate-900 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Transferee Applicant</p>
+            <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Transferee Applicant</p>
             <p className="text-xs text-slate-700 mt-1 leading-relaxed font-medium">
               As a transferee, please provide your complete academic history from your previous institution. This information is required for credit transfer evaluation and proper year-level placement.
             </p>
@@ -385,7 +400,7 @@ export default function RegistrationStep({ onNext, onBack }) {
       )}
 
       <div className="space-y-1">
-        <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Personal Information</h3>
+        <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">Personal Information</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FloatingInput
@@ -475,7 +490,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         {isTransferee && (
           <>
             <div className="pt-6 mt-2 border-t border-slate-100">
-              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Previous Academic History</h3>
+              <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Previous Academic History</h3>
               <p className="text-[10px] text-slate-400 font-medium mb-4">Required for credit transfer evaluation</p>
 
               <div className="space-y-4">
@@ -548,7 +563,7 @@ export default function RegistrationStep({ onNext, onBack }) {
         )}
 
         <div className="pt-6 mt-4 border-t border-slate-100">
-          <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Account Security</h3>
+          <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-4">Account Security</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FloatingInput
               label="Applicant Password"
@@ -556,6 +571,7 @@ export default function RegistrationStep({ onNext, onBack }) {
               type="password"
               icon={Lock}
               value={password}
+              autoComplete="new-password"
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errors.password) setErrors(prev => ({ ...prev, password: undefined }));
@@ -570,6 +586,7 @@ export default function RegistrationStep({ onNext, onBack }) {
               type="password"
               icon={Lock}
               value={confirmPassword}
+              autoComplete="new-password"
               onChange={(e) => {
                 setConfirmPassword(e.target.value);
                 if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: undefined }));
@@ -586,36 +603,56 @@ export default function RegistrationStep({ onNext, onBack }) {
       </div>
 
       {otpSent && (
-        <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
-          <div className="flex items-start gap-3 mb-4">
-            <ShieldCheck className="w-5 h-5 text-univ-blue mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-extrabold text-univ-navy">Verify your email</p>
-              <p className="text-xs text-slate-600 mt-1">Enter the 6-digit code sent to <strong>{draft.email}</strong>. Code expires in 10 minutes.</p>
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-univ-blue" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-univ-navy">Verify your email</p>
+              <p id="email-verification-help" className="mt-1 text-xs leading-relaxed text-slate-600">
+                Enter the 6-digit code sent to <strong className="font-semibold text-slate-700">{draft.email}</strong>. Code expires in 10 minutes.
+              </p>
+
+              <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row sm:items-end">
+                <div className="w-full sm:w-56">
+                  <label htmlFor="email-verification-code" className="mb-1.5 block text-xs font-medium text-slate-700">
+                    Verification code
+                  </label>
+                  <input
+                    id="email-verification-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    disabled={isVerifyingOtp}
+                    aria-invalid={Boolean(otpError)}
+                    aria-describedby={otpError ? 'email-verification-help email-verification-error' : 'email-verification-help'}
+                    onChange={(event) => {
+                      setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
+                      setOtpError('');
+                    }}
+                    placeholder="000000"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center font-mono text-lg font-semibold tracking-[0.3em] text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-univ-blue focus:ring-2 focus:ring-univ-blue/15 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={requestOtp}
+                  disabled={isEmailAction}
+                  className="rounded-md px-1 py-2.5 text-xs font-semibold text-univ-blue transition-colors hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {isEmailAction && !isVerifyingOtp ? 'Sending code…' : 'Resend code'}
+                </button>
+              </div>
+
+              {otpError && (
+                <p id="email-verification-error" className="mt-2 text-xs font-semibold text-rose-600">
+                  {otpError}
+                </p>
+              )}
             </div>
           </div>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={otp}
-            onChange={(event) => {
-              setOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
-              setOtpError('');
-            }}
-            placeholder="000000"
-            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-center font-mono text-xl font-bold tracking-[0.4em] outline-none focus:border-univ-blue focus:ring-4 focus:ring-univ-blue/10"
-          />
-          {otpError && <p className="mt-2 text-xs font-bold text-rose-600">{otpError}</p>}
-          <button
-            type="button"
-            onClick={requestOtp}
-            disabled={isEmailAction}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-univ-blue disabled:text-slate-400"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Resend code
-          </button>
         </div>
       )}
 
@@ -630,7 +667,8 @@ export default function RegistrationStep({ onNext, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+          disabled={isEmailAction}
+          className="min-w-24 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
         >
           Back
         </button>
@@ -638,9 +676,14 @@ export default function RegistrationStep({ onNext, onBack }) {
           type="button"
           onClick={otpSent ? handleVerifyOtp : handleNext}
           disabled={isEmailAction}
-          className="rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:bg-slate-400 cursor-pointer"
+          className="inline-flex min-w-40 items-center justify-center gap-2 rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-wait disabled:bg-slate-400 cursor-pointer"
         >
-          {isEmailAction ? 'Please wait...' : otpSent ? 'Verify and continue' : 'Send verification code'}
+          {isEmailAction ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isVerifyingOtp ? 'Verifying code…' : 'Sending code…'}
+            </>
+          ) : otpSent ? 'Verify and continue' : 'Send verification code'}
         </button>
       </div>
     </div>

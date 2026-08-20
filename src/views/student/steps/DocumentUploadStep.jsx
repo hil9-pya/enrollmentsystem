@@ -200,7 +200,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
       <p className="text-sm text-slate-500 mb-2 leading-relaxed font-medium">
         Please upload the required files for your NCST admission evaluation.
       </p>
-      <p className="text-[10px] text-slate-400 mb-6 font-extrabold uppercase tracking-widest">
+      <p className="text-[10px] text-slate-500 mb-6 font-semibold uppercase tracking-widest">
         Accepted formats: PDF, JPEG, PNG — Max size: 5MB per file
       </p>
 
@@ -209,7 +209,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         <div className="mb-6 bg-slate-50 border border-slate-200/60 rounded-2xl p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <ShieldCheck className="w-5 h-5 text-slate-900 flex-shrink-0" />
-            <p className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Transferee Document Requirements</p>
+            <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Transferee Document Requirements</p>
           </div>
           <p className="text-xs text-slate-700 mb-3 leading-relaxed font-medium">
             All documents must be <strong className="text-slate-900">original or certified true copies</strong> authenticated by your previous school's Registrar. Scanned copies must be clear and complete, no blurred, cropped, or incomplete pages will be accepted.
@@ -241,7 +241,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/50 rounded-xl p-4 mb-6 shadow-sm">
           <AlertCircle className="h-5 w-5 text-univ-gold shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-extrabold text-univ-gold uppercase tracking-wider">Documents Submitted</p>
+            <p className="text-xs font-semibold text-univ-gold uppercase tracking-wider">Documents Submitted</p>
             <p className="text-xs text-slate-600 mt-1 leading-relaxed font-medium">
               Your files have been successfully submitted for review. They are currently being evaluated by the Admissions office. You can still update or replace your documents below while review is pending.
             </p>
@@ -254,7 +254,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
         <div className="flex items-start gap-3 bg-rose-50 border border-rose-200/50 rounded-xl p-4 mb-6 shadow-sm">
           <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-extrabold text-rose-700 uppercase tracking-wider">Resubmission Required</p>
+            <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider">Resubmission Required</p>
             <p className="text-xs text-rose-600 mt-1 leading-relaxed font-medium">
               Some of your documents were not approved. Please review the feedback, upload corrected copies, and submit again.
             </p>
@@ -273,7 +273,7 @@ export default function DocumentUploadStep({ onNext, onBack }) {
             className="mt-1 h-4.5 w-4.5 text-univ-blue border-slate-300 rounded focus:ring-univ-blue cursor-pointer transition-all"
           />
           <label htmlFor="submit-on-campus" className="cursor-pointer select-none">
-            <span className="text-xs font-extrabold text-univ-navy block uppercase tracking-wide">Submit remaining documents on-campus</span>
+            <span className="text-xs font-semibold text-univ-navy block uppercase tracking-wide">Submit remaining documents on-campus</span>
             <span className="text-[11px] text-slate-500 mt-1 block leading-relaxed font-medium">
               Check this option if you prefer to submit your supporting documents physically at the Office of the Registrar. **Your primary credential ({enrollmentType === 'transfer' ? 'Transfer Credentials' : enrollmentType === 'returning' ? 'Re-admission Form' : 'Form 138 / Report Card'}) must still be uploaded online** to proceed with academic evaluation.
             </span>

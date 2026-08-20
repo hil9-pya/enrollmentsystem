@@ -60,7 +60,7 @@ export default function PortalShell({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="lg:hidden flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 shadow-sm">
+        <div className="lg:hidden flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
           <button
             ref={menuButtonRef}
             type="button"
@@ -96,19 +96,19 @@ export default function PortalShell({
           />
           <div
             ref={drawerRef}
-            className="relative flex h-full w-[min(85vw,20rem)] flex-col bg-white shadow-2xl"
+            className="relative flex h-full w-[min(85vw,20rem)] flex-col border-r border-slate-200 bg-white shadow-lg"
           >
             <button
               type="button"
               onClick={() => setIsMenuOpen(false)}
-              className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-md bg-white/90 text-slate-500 shadow-sm hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo"
+              className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-univ-indigo"
               aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
             </button>
             <div
               className="min-h-0 flex-1 [&>aside]:h-full [&>aside]:w-full [&>aside]:border-r-0"
-              onClickCapture={(event) => {
+              onClick={(event) => {
                 if (event.target.closest('button')) setIsMenuOpen(false);
               }}
             >

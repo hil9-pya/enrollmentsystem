@@ -134,7 +134,7 @@ export default function ScheduleGrid({ entries = [] }) {
           {DAYS.map((d) => (
             <div
               key={d}
-              className="border-b border-r border-slate-200 bg-slate-50 h-8 flex items-center justify-center text-[10px] font-extrabold text-slate-500 uppercase tracking-wider"
+              className="border-b border-r border-slate-200 bg-slate-50 h-8 flex items-center justify-center text-[10px] font-semibold text-slate-500 uppercase tracking-wider"
             >
               {DAY_LABELS[d]}
             </div>
@@ -191,7 +191,7 @@ export default function ScheduleGrid({ entries = [] }) {
                     className={`absolute inset-x-0.5 rounded-lg border px-1.5 py-1 overflow-hidden cursor-default shadow-sm ${PALETTE[block.colorIdx]}`}
                     style={{ top: top + 1, height: height - 2 }}
                   >
-                    <p className="text-[9px] font-extrabold leading-tight truncate">{block.label}</p>
+                    <p className="text-[9px] font-semibold leading-tight truncate">{block.label}</p>
                     {height > 28 && (
                       <p className="text-[8px] font-medium leading-tight truncate opacity-70">{block.sublabel}</p>
                     )}

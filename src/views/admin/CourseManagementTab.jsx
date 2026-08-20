@@ -3,10 +3,13 @@ import { toast } from 'react-hot-toast';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { useAuth } from '../../context/AuthContext';
 import {
-  Plus, Search, Pencil, Trash2, X, Save, Loader2,
-  BookOpen, Users, ChevronDown, ChevronUp, RefreshCw,
+  Plus, Search, Pencil, Trash2, Save, Loader2,
+  BookOpen, Users, ChevronDown, ChevronUp,
   Calendar, Building2, GraduationCap,
 } from 'lucide-react';
+import PortalPageHeader from '../../components/PortalPageHeader';
+import PortalRefreshButton from '../../components/PortalRefreshButton';
+import Modal from '../../components/Modal';
 
 const PROGRAMS = [
   { id: 'bscs', label: 'BS Computer Science' },
@@ -81,15 +84,8 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h3 className="text-base font-extrabold text-slate-900">Add New Subject</h3>
-          <button onClick={onClose} className="p-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-7 space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add new subject" maxWidth="max-w-lg">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">ID (Unique) *</label>
@@ -155,8 +151,7 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -203,11 +198,11 @@ function daysOverlap(days1 = '', days2 = '') {
   return d1.some(d => d2.includes(d));
 }
 
-function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, initialData }) {
+function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, instructors, initialData }) {
   const [form, setForm] = useState({
     subjectId: '', sectionCode: '', days: 'MWF',
     startTime: '8:00 AM', endTime: '9:30 AM',
-    room: '', instructor: '', maxSlots: 40, ...initialData,
+    room: '', instructor: '', instructorUser: '', maxSlots: 40, ...initialData,
   });
   const [saving, setSaving] = useState(false);
 
@@ -221,7 +216,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
       }
       setForm({
         subjectId: '', sectionCode: '', days: 'MWF',
-        startTime, endTime, room: '', instructor: '', maxSlots: 40,
+        startTime, endTime, room: '', instructor: '', instructorUser: '', maxSlots: 40,
         ...initialData, time: undefined,
       });
     }
@@ -237,6 +232,10 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
     }
     if (!roomCodeIsValid) {
       toast.error('Room must be a 4-digit code like 1101.');
+      return;
+    }
+    if (form.instructor?.trim() && !form.instructorUser) {
+      toast.error('Select a real instructor account or leave the section unassigned.');
       return;
     }
     setSaving(true);
@@ -256,15 +255,19 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
   }, [form.room, form.days, form.startTime, form.endTime, allSections, initialData]);
 
   const instructorConflicts = useMemo(() => {
-    if (!form.instructor?.trim()) return [];
+    if (!form.instructorUser && !form.instructor?.trim()) return [];
     return (allSections || []).filter(sec => {
       if (sec._id === initialData?.id) return false;
-      if (!sec.instructor) return false;
-      if (sec.instructor.toLowerCase() !== form.instructor.toLowerCase()) return false;
+      const sameAccount = form.instructorUser
+        && (sec.instructorUser?._id || sec.instructorUser) === form.instructorUser;
+      const sameLegacyName = !form.instructorUser
+        && sec.instructor
+        && sec.instructor.toLowerCase() === form.instructor.toLowerCase();
+      if (!sameAccount && !sameLegacyName) return false;
       return daysOverlap(form.days, sec.days) &&
         timesOverlap(`${form.startTime} - ${form.endTime}`, sec.time);
     });
-  }, [form.instructor, form.days, form.startTime, form.endTime, allSections, initialData]);
+  }, [form.instructor, form.instructorUser, form.days, form.startTime, form.endTime, allSections, initialData]);
 
   // All existing sections for same room (for the availability grid)
   const roomSchedule = useMemo(() => {
@@ -303,17 +306,12 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h3 className="text-base font-extrabold text-slate-900">
-            {initialData?.id ? 'Edit Section' : 'Add New Section'}
-          </h3>
-          <button onClick={onClose} className="p-2 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialData?.id ? 'Edit section' : 'Add new section'}
+      maxWidth="max-w-2xl"
+    >
         <div className="flex gap-0 divide-x divide-slate-100">
           {/* ── Left: Form ── */}
           <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-4 min-w-0">
@@ -430,9 +428,30 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             {/* Instructor */}
             <div>
               <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Instructor</label>
-              <input type="text" value={form.instructor} onChange={(e) => setForm({ ...form, instructor: e.target.value })}
-                placeholder="e.g. Prof. Juan dela Cruz"
-                className={`w-full px-3 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 ${instructorConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`} />
+              <select
+                value={form.instructorUser || ''}
+                onChange={(e) => {
+                  const selected = instructors.find((user) => user._id === e.target.value);
+                  setForm({
+                    ...form,
+                    instructorUser: e.target.value,
+                    instructor: selected ? `${selected.firstName || ''} ${selected.lastName || ''}`.trim() : '',
+                  });
+                }}
+                className={`w-full px-3 py-2 text-xs border rounded-md bg-white focus:outline-none focus:ring-1 ${instructorConflicts.length > 0 ? 'border-rose-400 focus:ring-rose-400 bg-rose-50' : 'border-slate-200 focus:ring-indigo-500'}`}
+              >
+                <option value="">No instructor assigned</option>
+                {instructors.map((user) => (
+                  <option key={user._id} value={user._id}>
+                    {[user.firstName, user.lastName].filter(Boolean).join(' ') || user.username} ({user.email})
+                  </option>
+                ))}
+              </select>
+              {!form.instructorUser && form.instructor && (
+                <p className="mt-1 text-[10px] font-semibold text-amber-700">
+                  Legacy assignment: {form.instructor}. Select its instructor account before saving, or choose no instructor.
+                </p>
+              )}
               {instructorConflicts.length > 0 && (
                 <p className="text-[10px] text-rose-600 font-bold mt-1">⚠ This instructor is already teaching {instructorConflicts.length} section(s) at this exact time &amp; day — cannot double-book.</p>
               )}
@@ -512,8 +531,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, init
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -532,6 +550,7 @@ export default function CourseManagementTab() {
   }, [ctxToken]);
   const [subjects, setSubjects] = useState([]);
   const [sections, setSections] = useState([]);
+  const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [programFilter, setProgramFilter] = useState('');
@@ -550,16 +569,19 @@ export default function CourseManagementTab() {
       ]);
       const subData = await subRes.json();
       const secData = await secRes.json();
-      if (subRes.status === 401 || secRes.status === 401) {
+      const userRes = await authFetch('/api/admin/users');
+      const userData = await userRes.json();
+      if (subRes.status === 401 || secRes.status === 401 || userRes.status === 401) {
         toast.error('Session expired. Please sign in again.');
         logout();
         return;
       }
-      if (!subRes.ok || !subData.success || !secRes.ok || !secData.success) {
-        throw new Error(subData.message || secData.message || 'Failed to load course data.');
+      if (!subRes.ok || !subData.success || !secRes.ok || !secData.success || !userRes.ok) {
+        throw new Error(subData.message || secData.message || userData.message || 'Failed to load course data.');
       }
       setSubjects(subData.data);
       setSections(secData.data);
+      setInstructors((userData || []).filter((user) => user.role === 'instructor'));
     } catch (error) {
       toast.error(error.message || 'Failed to load course data.');
     } finally {
@@ -604,7 +626,7 @@ export default function CourseManagementTab() {
         toast.error(data.message || 'Failed to save section.');
         return;
       }
-      toast.success(isEdit ? 'Section updated.' : 'Section created.');
+      toast.success(data.message || (isEdit ? 'Section updated.' : 'Section created.'));
       setModalOpen(false);
       setEditingSection(null);
       fetchData();
@@ -661,6 +683,7 @@ export default function CourseManagementTab() {
       time: section.time,
       room: section.room,
       instructor: section.instructor,
+      instructorUser: section.instructorUser?._id || section.instructorUser || '',
       maxSlots: section.maxSlots,
     });
     setModalOpen(true);
@@ -678,22 +701,11 @@ export default function CourseManagementTab() {
   return (
     <>
       <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Course and section management</h1>
-            <p className="text-sm font-medium text-slate-500 mt-1">
-              Manage section offerings. Room and instructor conflicts are validated on save.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              className="p-2 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+        <PortalPageHeader
+          title="Course and section management"
+          description="Manage section offerings. Room and instructor conflicts are validated on save."
+          actions={<>
+            <PortalRefreshButton onRefresh={fetchData} />
             <button
               onClick={() => setSubjectModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-md transition-colors shadow-sm cursor-pointer"
@@ -706,8 +718,8 @@ export default function CourseManagementTab() {
             >
               <Plus className="w-4 h-4" /> Add Section
             </button>
-          </div>
-        </div>
+          </>}
+        />
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-4">
@@ -768,24 +780,21 @@ export default function CourseManagementTab() {
                     onClick={() => setExpandedSubjectId(isExpanded ? null : sub.id)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center shrink-0">
-                        <GraduationCap className="w-4 h-4 text-indigo-600" />
-                      </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-[10px] font-extrabold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">{sub.code}</span>
-                          <span className="text-[10px] text-slate-400 font-extrabold">{sub.units} units</span>
+                          <span className="font-mono text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">{sub.code}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{sub.units} units</span>
                           <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">
                             {PROGRAMS.find((p) => p.id === sub.programId)?.label || sub.programId}
                           </span>
                         </div>
-                        <h4 className="text-sm font-extrabold text-slate-800 leading-snug mt-0.5">{sub.name}</h4>
+                        <h4 className="text-sm font-semibold text-slate-800 leading-snug mt-0.5">{sub.name}</h4>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <div className="text-xs font-extrabold text-slate-900">{liveSections.length} sections</div>
+                        <div className="text-xs font-semibold text-slate-900">{liveSections.length} sections</div>
                         <div className="text-[10px] text-slate-400 font-medium">{totalEnrolled} enrolled</div>
                       </div>
                       {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -800,7 +809,7 @@ export default function CourseManagementTab() {
                           No sections created yet for this subject.{' '}
                           <button
                             onClick={() => { setEditingSection({ subjectId: sub.id }); setModalOpen(true); }}
-                            className="text-indigo-600 font-extrabold cursor-pointer hover:text-indigo-700"
+                            className="text-indigo-600 font-semibold cursor-pointer hover:text-indigo-700"
                           >
                             Add one →
                           </button>
@@ -809,12 +818,12 @@ export default function CourseManagementTab() {
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="border-b border-slate-100 bg-slate-50/60">
-                              <th className="text-left p-3 font-extrabold text-slate-400 uppercase tracking-wider">Section</th>
-                              <th className="text-left p-3 font-extrabold text-slate-400 uppercase tracking-wider">Schedule</th>
-                              <th className="text-left p-3 font-extrabold text-slate-400 uppercase tracking-wider">Room</th>
-                              <th className="text-left p-3 font-extrabold text-slate-400 uppercase tracking-wider">Instructor</th>
-                              <th className="text-center p-3 font-extrabold text-slate-400 uppercase tracking-wider">Slots</th>
-                              <th className="text-right p-3 font-extrabold text-slate-400 uppercase tracking-wider">Actions</th>
+                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Section</th>
+                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Schedule</th>
+                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Room</th>
+                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Instructor</th>
+                              <th className="text-center p-3 font-semibold text-slate-500 uppercase tracking-wider">Slots</th>
+                              <th className="text-right p-3 font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
@@ -826,7 +835,27 @@ export default function CourseManagementTab() {
                                   <td className="p-3 font-mono font-bold text-slate-800">{sec.sectionCode}</td>
                                   <td className="p-3 text-slate-600 font-mono">{sec.days} · {sec.time}</td>
                                   <td className="p-3 text-slate-500">{sec.room || '—'}</td>
-                                  <td className="p-3 text-slate-500">{sec.instructor || '—'}</td>
+                                  <td className="p-3">
+                                    <div className="flex flex-col items-start gap-1">
+                                      <span className="text-slate-600">{sec.instructor || 'TBA'}</span>
+                                      {sec.instructorUser ? (
+                                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                                          Portal linked
+                                        </span>
+                                      ) : sec.instructor ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => openEdit(sec)}
+                                          className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 hover:bg-amber-100"
+                                          title="Link this legacy name to an instructor account"
+                                        >
+                                          Account required
+                                        </button>
+                                      ) : (
+                                        <span className="text-[9px] font-semibold text-slate-400">Unassigned</span>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="p-3">
                                     <div className="flex flex-col items-center gap-1">
                                       <span className={`font-extrabold ${remaining === 0 ? 'text-rose-600' : 'text-slate-800'}`}>
@@ -843,16 +872,20 @@ export default function CourseManagementTab() {
                                   <td className="p-3">
                                     <div className="flex items-center justify-end gap-1">
                                       <button
+                                        type="button"
                                         onClick={() => openEdit(sec)}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                                        title="Edit"
+                                        title="Edit section"
+                                        aria-label={`Edit section ${sec.sectionCode}`}
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
+                                        type="button"
                                         onClick={() => handleDeleteSection(sec)}
                                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                        title="Delete"
+                                        title="Delete section"
+                                        aria-label={`Delete section ${sec.sectionCode}`}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -879,6 +912,7 @@ export default function CourseManagementTab() {
         onSave={handleSaveSection}
         subjects={subjects}
         allSections={sections}
+        instructors={instructors}
         initialData={editingSection}
       />
       <SubjectFormModal

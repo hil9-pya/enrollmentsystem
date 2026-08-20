@@ -10,12 +10,17 @@ import Settings from './Settings.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 import { ensureReceiptNumber, markPaymentReceived } from './paymentReceipt.js';
+import { syncOfficialEnrollment } from './services/academicFoundationService.js';
+import { getResolvedEnrolledSchedule } from './services/schedulerService.js';
+import { generateApplicantToken } from './studentAccessMiddleware.js';
+import { runWithOptionalTransaction } from './services/transactionService.js';
+import AcademicTerm from './models/AcademicTerm.js';
+import CourseMembership from './models/CourseMembership.js';
+import PaymentQueueCounter from './models/PaymentQueueCounter.js';
 import {
-  sendAdmissionApprovedEmail,
-  sendAdmissionRejectedEmail,
-  sendApplicationSubmittedEmail,
   sendVerificationOtpEmail,
 } from './services/emailService.js';
+import { enqueueBackgroundJob } from './services/backgroundJobService.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,10 +36,6 @@ function hashEmailOtp(studentId, otp) {
   return crypto.createHmac('sha256', secret).update(`${studentId}:${otp}`).digest('hex');
 }
 
-function logEmailFailure(kind, student, error) {
-  console.error(`${kind} email failed for ${student._id}:`, error.message);
-}
-
 function getPaymentAmounts(student, paymentPlan) {
   const total = Math.max(0, Number(student.totalTuition) || 0);
   const plan = paymentPlan === 'downpayment' && total > DOWNPAYMENT_AMOUNT
@@ -44,8 +45,23 @@ function getPaymentAmounts(student, paymentPlan) {
   return { plan, amountPaid, remainingBalance: Math.max(0, total - amountPaid) };
 }
 
+function getManilaQueueDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function queueActor(req) {
+  return req.user?.username || req.user?.email || 'Accounting Office';
+}
+
 // Generates the next sequential id for a given prefix (e.g. STU-YYYY- or APP-YYYY-)
-export async function generateNextId(prefixBase) {
+export async function generateNextId(prefixBase, session = null) {
   const year = new Date().getFullYear();
   const prefix = `${prefixBase}${year}-`;
 
@@ -54,7 +70,7 @@ export async function generateNextId(prefixBase) {
       { _id: { $regex: `^${prefix}` } },
       { studentId: { $regex: `^${prefix}` } }
     ]
-  }).select('_id studentId').lean();
+  }).select('_id studentId').session(session).lean();
 
   let maxSeq = 0;
   for (const doc of existing) {
@@ -67,7 +83,7 @@ export async function generateNextId(prefixBase) {
 
   const existingUsers = await User.find({
     username: { $regex: `^${prefix}` }
-  }).select('username').lean();
+  }).select('username').session(session).lean();
 
   for (const doc of existingUsers) {
     if (doc.username && doc.username.startsWith(prefix)) {
@@ -109,7 +125,7 @@ const getStudents = asyncHandler(async (req, res) => {
 // @desc    List all deleted students
 // @route   GET /api/admin/students/deleted
 const getDeletedStudents = asyncHandler(async (req, res) => {
-  const students = await Student.find({ isDeleted: true }).sort({ _id: 1 });
+  const students = await Student.find({ isDeleted: true }).sort({ archivedAt: -1, updatedAt: -1, _id: 1 });
   res.json(students);
 });
 
@@ -119,6 +135,14 @@ const softDeleteStudent = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
   student.isDeleted = true;
+  student.archivedAt = new Date();
+  student.archivedReason = String(req.body?.reason || 'Manually archived by administrator').trim();
+  student.archivedBy = req.user?.username || req.user?.email || 'Administrator';
+  student.auditLogs.push({
+    action: student.archivedReason,
+    user: student.archivedBy,
+    date: student.archivedAt,
+  });
   await student.save();
   res.json({ message: 'Student moved to trash', id: student._id });
 });
@@ -129,6 +153,9 @@ const restoreStudent = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
   student.isDeleted = false;
+  student.archivedAt = null;
+  student.archivedReason = '';
+  student.archivedBy = '';
   await student.save();
   res.json({ message: 'Student restored', id: student._id });
 });
@@ -178,7 +205,7 @@ const createDraft = asyncHandler(async (req, res) => {
     _id: id,
     status: 'registration',
   });
-  res.status(201).json(student);
+  res.status(201).json({ ...student.toJSON(), accessToken: generateApplicantToken(student._id) });
 });
 
 // @desc    Applicant Gateway login
@@ -204,7 +231,7 @@ const applicantLogin = asyncHandler(async (req, res) => {
     throw new Error('Invalid email or password');
   }
 
-  res.json(student);
+  res.json({ ...student.toJSON(), accessToken: generateApplicantToken(student._id) });
 });
 
 // @desc    Check whether an applicant email can be used
@@ -274,7 +301,7 @@ const registerStudent = asyncHandler(async (req, res) => {
     await student.save();
   }
 
-  res.status(201).json(student);
+  res.status(201).json({ ...student.toJSON(), accessToken: generateApplicantToken(student._id) });
 });
 
 // @desc    Send email ownership verification OTP
@@ -395,8 +422,6 @@ const updateStudent = asyncHandler(async (req, res) => {
     'subjectChangeRequest',
     'applicantPassword',
     'paymentMethod',
-    'status',
-    'paymentStatus',
     // Transferee-specific fields
     'previousSchool',
     'previousProgram',
@@ -404,6 +429,7 @@ const updateStudent = asyncHandler(async (req, res) => {
     'reasonForTransfer',
     'unitsEarned',
   ];
+  if (req.user?.role === 'admin') allowedFields.push('status', 'paymentStatus');
 
   // Helper: strip characters used in NoSQL injection attacks ($ and leading dots)
   const sanitizeString = (val, maxLen = 300) => {
@@ -566,11 +592,9 @@ const submitDocuments = asyncHandler(async (req, res) => {
   student.admissionNotes = ''; // Clear notes on resubmission
   await student.save();
   if (student.emailVerified && student.email) {
-    try {
-      await sendApplicationSubmittedEmail(student);
-    } catch (error) {
-      logEmailFailure('Application confirmation', student, error);
-    }
+    await enqueueBackgroundJob('application_submitted_email', student.toJSON(), {
+      deduplicationKey: `application-submitted:${student._id}:${student.updatedAt.toISOString()}`,
+    });
   }
   res.json(student);
 });
@@ -629,6 +653,31 @@ const removeDocument = asyncHandler(async (req, res) => {
   student.documents = student.documents.filter((d) => d.typeId !== typeId);
   await student.save();
   res.json(student);
+});
+
+const getDocumentFile = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  const document = student.documents.find((item) => item.typeId === req.params.typeId);
+  if (!document) {
+    res.status(404);
+    throw new Error('Document not found.');
+  }
+
+  const safeFileName = path.basename(document.fileName);
+  if (safeFileName !== document.fileName) {
+    res.status(400);
+    throw new Error('Invalid document path.');
+  }
+  const filePath = path.join(UPLOADS_DIR, safeFileName);
+  if (!fs.existsSync(filePath)) {
+    res.status(404);
+    throw new Error('Uploaded file is missing.');
+  }
+
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.originalName || safeFileName)}"`);
+  res.sendFile(filePath);
 });
 
 // @desc    Select degree program & academic term
@@ -764,6 +813,7 @@ const setSubjects = asyncHandler(async (req, res) => {
         && selection.sectionId !== `${selection.subjectId}-a`
     );
   }
+  student.scheduleStatus = 'draft';
 
   const selectedSubjectIds = student.selectedSubjects.map((selection) => selection.subjectId);
   const { tuitionBreakdown, totalTuition } = computeTuition(selectedSubjectIds);
@@ -843,7 +893,8 @@ const approveAdmission = asyncHandler(async (req, res) => {
       password: 'NCST2026!', // Default password for demo
       firstName: student.firstName,
       lastName: student.lastName,
-      role: 'student'
+      role: 'student',
+      studentProfile: student._id,
     });
   }
 
@@ -871,11 +922,9 @@ const approveAdmission = asyncHandler(async (req, res) => {
 
   await student.save();
   if (student.emailVerified && student.email) {
-    try {
-      await sendAdmissionApprovedEmail(student);
-    } catch (error) {
-      logEmailFailure('Admission approval', student, error);
-    }
+    await enqueueBackgroundJob('admission_approved_email', student.toJSON(), {
+      deduplicationKey: `admission-approved:${student._id}`,
+    });
   }
   res.json(student);
 });
@@ -903,11 +952,9 @@ const rejectAdmission = asyncHandler(async (req, res) => {
 
   await student.save();
   if (student.emailVerified && student.email) {
-    try {
-      await sendAdmissionRejectedEmail(student);
-    } catch (error) {
-      logEmailFailure('Admission action-required', student, error);
-    }
+    await enqueueBackgroundJob('admission_rejected_email', student.toJSON(), {
+      deduplicationKey: `admission-rejected:${student._id}:${student.updatedAt.toISOString()}`,
+    });
   }
   res.json(student);
 });
@@ -949,6 +996,15 @@ const confirmPayment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: Student is not pending payment.');
   }
 
+  if (
+    student.paymentMethod === 'cash'
+    && student.walkInQueue
+    && !['called', 'serving'].includes(student.walkInQueue.status)
+  ) {
+    res.status(400);
+    throw new Error('Call and serve the walk-in ticket before confirming payment.');
+  }
+
   const amounts = getPaymentAmounts(student, student.paymentPlan);
   student.amountPaid = amounts.amountPaid;
   student.remainingBalance = amounts.remainingBalance;
@@ -957,6 +1013,142 @@ const confirmPayment = asyncHandler(async (req, res) => {
     student.status = 'payment_confirmed';
   }
   markPaymentReceived(student);
+  if (student.paymentMethod === 'cash' && student.walkInQueue) {
+    student.walkInQueue.status = 'completed';
+    student.walkInQueue.completedAt = new Date();
+    student.walkInQueue.updatedBy = queueActor(req);
+    student.auditLogs.push({
+      action: `Completed Walk-in Ticket (${student.walkInQueue.ticketNumber})`,
+      user: queueActor(req),
+      date: new Date(),
+    });
+  }
+
+  await student.save();
+  res.json(student);
+});
+
+// @desc    Student: request today's walk-in cashier ticket
+// @route   POST /api/students/:id/walk-in-queue
+const joinWalkInQueue = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+
+  if (student.status !== 'payment_pending') {
+    res.status(400);
+    throw new Error('Student is not cleared for payment.');
+  }
+  if (student.paymentMethod !== 'cash') {
+    res.status(400);
+    throw new Error('Walk-in queue is available only for cashier payments.');
+  }
+
+  const queueDate = getManilaQueueDate();
+  if (
+    student.walkInQueue?.queueDate === queueDate
+    && ['waiting', 'called', 'serving', 'skipped'].includes(student.walkInQueue.status)
+  ) {
+    return res.json(student);
+  }
+
+  const counter = await PaymentQueueCounter.findByIdAndUpdate(
+    queueDate,
+    { $inc: { sequence: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  const sequence = counter.sequence;
+  const amounts = getPaymentAmounts(student, req.body.paymentPlan);
+
+  student.paymentPlan = amounts.plan;
+  student.amountPaid = amounts.amountPaid;
+  student.remainingBalance = amounts.remainingBalance;
+  student.paymentStatus = 'queued';
+  student.walkInQueue = {
+    ticketNumber: `PAY-${String(sequence).padStart(3, '0')}`,
+    queueDate,
+    sequence,
+    status: 'waiting',
+    joinedAt: new Date(),
+  };
+  student.auditLogs.push({
+    action: `Joined Walk-in Payment Queue (${student.walkInQueue.ticketNumber})`,
+    user: 'Student Portal',
+    date: new Date(),
+  });
+
+  await student.save();
+  res.status(201).json(student);
+});
+
+// @desc    Accounting: call oldest waiting walk-in ticket
+// @route   POST /api/admin/students/walk-in-queue/next
+const callNextWalkInQueue = asyncHandler(async (req, res) => {
+  const now = new Date();
+  const student = await Student.findOneAndUpdate(
+    {
+      status: 'payment_pending',
+      paymentMethod: 'cash',
+      'walkInQueue.queueDate': getManilaQueueDate(now),
+      'walkInQueue.status': 'waiting',
+      isDeleted: { $ne: true },
+    },
+    {
+      $set: {
+        'walkInQueue.status': 'called',
+        'walkInQueue.calledAt': now,
+        'walkInQueue.counterNumber': req.body.counterNumber || null,
+        'walkInQueue.updatedBy': queueActor(req),
+      },
+    },
+    { new: true, sort: { 'walkInQueue.sequence': 1 } }
+  );
+
+  if (!student) {
+    res.status(404);
+    throw new Error('No waiting walk-in tickets.');
+  }
+  res.json(student);
+});
+
+// @desc    Accounting: update one walk-in ticket lifecycle
+// @route   POST /api/admin/students/:id/walk-in-queue/:action
+const updateWalkInQueue = asyncHandler(async (req, res) => {
+  const student = await findStudentOr404(res, req.params.id);
+  if (!student) return;
+  if (student.paymentMethod !== 'cash' || !student.walkInQueue) {
+    res.status(400);
+    throw new Error('Student has no walk-in payment ticket.');
+  }
+
+  const transitions = {
+    call: { from: ['waiting', 'skipped'], to: 'called' },
+    'repeat-call': { from: ['called'], to: 'called' },
+    serve: { from: ['called'], to: 'serving' },
+    skip: { from: ['waiting', 'called'], to: 'skipped' },
+    recall: { from: ['skipped'], to: 'called' },
+  };
+  const transition = transitions[req.params.action];
+  if (!transition || !transition.from.includes(student.walkInQueue.status)) {
+    res.status(400);
+    throw new Error(`Cannot ${req.params.action} ticket from ${student.walkInQueue.status} status.`);
+  }
+
+  const now = new Date();
+  student.walkInQueue.status = transition.to;
+  student.walkInQueue.updatedBy = queueActor(req);
+  if (transition.to === 'called') {
+    const previousCallTime = student.walkInQueue.calledAt
+      ? new Date(student.walkInQueue.calledAt).getTime()
+      : 0;
+    student.walkInQueue.calledAt = new Date(Math.max(now.getTime(), previousCallTime + 1));
+    student.walkInQueue.counterNumber = req.body.counterNumber || student.walkInQueue.counterNumber;
+  }
+  if (transition.to === 'serving') student.walkInQueue.servedAt = now;
+  student.auditLogs.push({
+    action: `${req.params.action === 'repeat-call' ? 'Repeated Call for' : transition.to === 'called' ? 'Called' : transition.to === 'serving' ? 'Serving' : 'Skipped'} Walk-in Ticket (${student.walkInQueue.ticketNumber})`,
+    user: queueActor(req),
+    date: now,
+  });
 
   await student.save();
   res.json(student);
@@ -989,34 +1181,61 @@ const validateEnrollment = asyncHandler(async (req, res) => {
     throw new Error('Invalid action: Student must be payment_confirmed or already enrolled.');
   }
 
-  // Fetch settings to know what the active term is
-  let settings = await Settings.findOne();
-  if (!settings) settings = { activeTerm: '1st Semester' };
-
-  student.status = 'enrolled';
-  student.enrolledAt = student.enrolledAt || new Date();
-  student.scheduleGenerated = true;
-  student.registrationFormGenerated = true;
-  student.receiptGenerated = true;
-  ensureReceiptNumber(student);
-  
-  // Track term for auto-archiving logic
-  student.missedSemesters = 0;
-  student.lastEnrolledTerm = settings.activeTerm;
-
-  // Generate STU- ID now that they are officially enrolled
-  if (!student.studentId) {
-    student.studentId = await generateNextId('STU-');
-    
-    // Update the existing User account's username from APP- to STU-
-    await User.updateOne(
-      { username: student._id }, // Find by the APP- ID
-      { $set: { username: student.studentId } } // Update to STU- ID
-    );
+  if (!student.selectedSubjects || student.selectedSubjects.length === 0) {
+    res.status(400);
+    throw new Error('Invalid action: Student has no finalized class schedule.');
+  }
+  const resolvedSchedule = await getResolvedEnrolledSchedule(student.selectedSubjects);
+  if (resolvedSchedule.length !== student.selectedSubjects.length) {
+    res.status(409);
+    throw new Error('Invalid action: One or more selected sections no longer exist. Resolve the schedule first.');
   }
 
-  await student.save();
-  res.json(student);
+  const enrolledStudent = await runWithOptionalTransaction(async (session) => {
+    const current = await Student.findById(student._id).session(session);
+    if (!current) throw new Error('Student not found.');
+    if (!['payment_confirmed', 'enrolled'].includes(current.status)) {
+      const error = new Error('Student status changed before validation. Refresh and try again.');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const settings = await Settings.findOne().session(session);
+    const activeTerm = settings?.activeTerm || '1st Semester 2026-2027';
+    const account = await User.findOne({
+      role: 'student',
+      $or: [
+        { studentProfile: current._id },
+        { username: { $in: [current.studentId, current._id].filter(Boolean) } },
+      ],
+    }).session(session);
+
+    if (!current.studentId) current.studentId = await generateNextId('STU-', session);
+    current.enrolledAt = current.enrolledAt || new Date();
+    current.scheduleGenerated = true;
+    current.scheduleStatus = 'finalized';
+    current.registrationFormGenerated = true;
+    current.receiptGenerated = true;
+    current.missedSemesters = 0;
+    current.lastEnrolledTerm = activeTerm;
+    ensureReceiptNumber(current);
+
+    await syncOfficialEnrollment(current, activeTerm, {
+      actor: req.user,
+      session,
+      studentUserId: account?._id || null,
+    });
+    if (account && account.username !== current.studentId) {
+      account.username = current.studentId;
+    }
+    if (account && account.studentProfile !== current._id) account.studentProfile = current._id;
+    if (account?.isModified()) await account.save({ session });
+    current.status = 'enrolled';
+    await current.save({ session });
+    return current;
+  });
+
+  res.json(enrolledStudent);
 });
 
 // @desc    Admin: Resolve a student's hold
@@ -1093,21 +1312,34 @@ const rolloverStudent = asyncHandler(async (req, res) => {
     throw new Error('Only fully enrolled students can be rolled over to the next semester.');
   }
 
-  // Archive current subjects to academic record
-  if (student.selectedSubjects && student.selectedSubjects.length > 0) {
-    const newRecords = student.selectedSubjects.map(s => ({
-      subjectId: s.subjectId,
-      grade: 2.0, // Default passing grade
-      term: student.academicTerm || 'previous_term'
-    }));
-    student.academicRecord = [...(student.academicRecord || []), ...newRecords];
+  const settings = await Settings.findOne();
+  if (!settings?.activeTerm || settings.activeTerm === student.academicTerm) {
+    res.status(409);
+    throw new Error('A new academic term must be activated before re-enrollment.');
+  }
+
+  const previousTerm = await AcademicTerm.findOne({ name: student.academicTerm });
+  if (previousTerm) {
+    const unfinishedMembership = await CourseMembership.exists({
+      student: student._id,
+      term: previousTerm._id,
+      status: 'enrolled',
+    });
+    if (unfinishedMembership) {
+      res.status(409);
+      throw new Error('Previous-term classes must have published final grades or recorded drop/withdrawal statuses before re-enrollment.');
+    }
   }
 
   // Reset enrollment state
   student.selectedSubjects = [];
+  student.scheduleStatus = 'draft';
   student.tuitionBreakdown = [];
   student.totalTuition = 0;
-  student.academicTerm = ''; // Force them to pick next term
+  student.academicTerm = settings.activeTerm;
+  student.scheduleGenerated = false;
+  student.registrationFormGenerated = false;
+  student.receiptGenerated = false;
   
   // Transition status
   student.status = 'advising_pending';
@@ -1170,6 +1402,8 @@ const createPaymongoCheckoutSession = asyncHandler(async (req, res) => {
           cancel_url: `http://localhost:5173/?portal=student`
         }
       }
+    }, {
+      headers: { Authorization: req.headers.authorization },
     });
 
     res.status(200).json(response.data.data.attributes);
@@ -1232,6 +1466,7 @@ export {
   submitDocuments,
   uploadDocument,
   removeDocument,
+  getDocumentFile,
   selectProgram,
   setSubjects,
   processPayment,
@@ -1239,6 +1474,9 @@ export {
   rejectAdmission,
   approveAdvising,
   confirmPayment,
+  joinWalkInQueue,
+  callNextWalkInQueue,
+  updateWalkInQueue,
   validateEnrollment,
   proceedToPayment,
   rejectAdvising,

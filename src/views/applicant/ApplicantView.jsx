@@ -8,7 +8,6 @@ import RegistrationStep from '../student/steps/RegistrationStep';
 import DocumentUploadStep from '../student/steps/DocumentUploadStep';
 import AcceptanceLetterStep from './steps/AcceptanceLetterStep';
 import PortalShell from '../../components/PortalShell';
-import Badge from '../../components/Badge';
 
 export const APPLICANT_STEPS = [
   { key: 'type', label: 'Enrollment Type' },
@@ -225,7 +224,7 @@ export default function ApplicantView() {
   }
 
   const sidebar = (
-      <aside className="w-68 shrink-0 border-r border-slate-200 bg-white flex flex-col shadow-sm">
+      <aside className="flex w-68 shrink-0 flex-col border-r border-slate-200 bg-white">
         <div className="p-5 flex flex-1 items-center overflow-y-auto">
           <StepIndicator
             currentStep={effectiveStep}
@@ -237,24 +236,21 @@ export default function ApplicantView() {
         </div>
 
         {hasStudentInfo && (
-          <div className="p-5 border-t border-slate-100 bg-slate-50/30">
-            <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-premium">
-              <Badge tone={getStatusRank(student?.status) >= 2 ? 'success' : 'info'}>
-                {getStatusRank(student?.status) >= 2 ? 'Approved' : 'Active applicant'}
-              </Badge>
-              <p className="text-xs font-bold text-univ-navy mt-2 leading-none">
+          <div className="border-t border-slate-200 bg-white p-4">
+            <div className="px-1">
+              <p className="text-sm font-semibold text-univ-navy leading-none">
                 {student.firstName} {student.lastName}
               </p>
-              <p className="font-mono text-[9px] text-slate-400 mt-1.5">{student.id}</p>
+              <p className="mt-1.5 font-mono text-xs text-slate-500">{student.id}</p>
             </div>
             <button
               onClick={() => {
                 setActiveStudent(null);
                 window.location.href = '/';
               }}
-              className="mt-3 w-full py-2 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold text-slate-500 hover:text-rose-600 transition-all rounded-lg text-center cursor-pointer uppercase tracking-wider"
+              className="mt-3 w-full rounded-lg border border-slate-200 py-1.5 text-center text-xs font-semibold text-slate-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
             >
-              Exit Portal
+              Exit portal
             </button>
           </div>
         )}

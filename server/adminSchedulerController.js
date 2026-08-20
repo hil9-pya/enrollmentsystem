@@ -1,6 +1,8 @@
 import asyncHandler from 'express-async-handler';
 import Section from './models/Section.js';
 import Subject from './models/Subject.js';
+import CourseOffering from './models/CourseOffering.js';
+import User from './User.js';
 import { SUBJECTS_CATALOG, addSubjectToCache } from './subjectsCatalog.js';
 import { validateSectionConflict } from './services/schedulerService.js';
 
@@ -35,7 +37,10 @@ export const listSections = asyncHandler(async (req, res) => {
   const filter = {};
   if (req.query.subjectId) filter.subjectId = req.query.subjectId;
 
-  const sections = await Section.find(filter).sort({ subjectId: 1, sectionCode: 1 }).lean();
+  const sections = await Section.find(filter)
+    .populate('instructorUser', 'username firstName lastName email')
+    .sort({ subjectId: 1, sectionCode: 1 })
+    .lean();
 
   // Enrich with subject info from static catalog
   const enriched = sections.map((sec) => {
@@ -57,7 +62,7 @@ export const listSections = asyncHandler(async (req, res) => {
 // Create a new section with room/instructor conflict validation
 // ---------------------------------------------------------------------------
 export const createSection = asyncHandler(async (req, res) => {
-  const { subjectId, sectionCode, days, time, room, instructor, maxSlots } = req.body;
+  const { subjectId, sectionCode, days, time, room, instructor, instructorUser, maxSlots } = req.body;
 
   if (!subjectId || !sectionCode || !days || !time) {
     return res.status(400).json({
@@ -78,8 +83,25 @@ export const createSection = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: sectionCodeError });
   }
 
+  let assignedInstructor = null;
+  if (instructorUser) {
+    assignedInstructor = await User.findOne({ _id: instructorUser, role: 'instructor' });
+    if (!assignedInstructor) {
+      return res.status(400).json({ success: false, message: 'Assigned user must be an instructor account.' });
+    }
+  } else if (String(instructor || '').trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Select an instructor account instead of entering an instructor name.',
+    });
+  }
+
+  const instructorName = assignedInstructor
+    ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
+    : '';
+
   // Check for room/instructor conflicts
-  const { valid, error } = await validateSectionConflict({ subjectId, sectionCode: normalizedSectionCode, days, time, room, instructor });
+  const { valid, error } = await validateSectionConflict({ subjectId, sectionCode: normalizedSectionCode, days, time, room, instructor: instructorName });
   if (!valid) {
     return res.status(409).json({ success: false, message: error });
   }
@@ -99,7 +121,8 @@ export const createSection = asyncHandler(async (req, res) => {
     days,
     time,
     room: room || '',
-    instructor: instructor || '',
+    instructor: instructorName,
+    instructorUser: assignedInstructor?._id || null,
     maxSlots: maxSlots || 40,
     enrolledCount: 0,
   });
@@ -117,7 +140,29 @@ export const updateSection = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Section not found.' });
   }
 
-  const { days, time, room, instructor, maxSlots, isActive } = req.body;
+  const { days, time, room, instructor, instructorUser, maxSlots, isActive } = req.body;
+
+  let assignedInstructor;
+  if (instructorUser !== undefined) {
+    assignedInstructor = instructorUser
+      ? await User.findOne({ _id: instructorUser, role: 'instructor' })
+      : null;
+    if (instructorUser && !assignedInstructor) {
+      return res.status(400).json({ success: false, message: 'Assigned user must be an instructor account.' });
+    }
+    if (!instructorUser && String(instructor || '').trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Select an instructor account instead of entering an instructor name.',
+      });
+    }
+  }
+
+  const instructorName = instructorUser !== undefined
+    ? assignedInstructor
+      ? `${assignedInstructor.firstName || ''} ${assignedInstructor.lastName || ''}`.trim()
+      : ''
+    : String(section.instructor || '').trim();
 
   // Validate room/instructor conflicts (exclude self)
   const sectionData = {
@@ -126,7 +171,7 @@ export const updateSection = asyncHandler(async (req, res) => {
     days: days ?? section.days,
     time: time ?? section.time,
     room: room ?? section.room,
-    instructor: instructor ?? section.instructor,
+    instructor: instructorName,
   };
 
   const { valid, error } = await validateSectionConflict(sectionData, req.params.id);
@@ -137,12 +182,40 @@ export const updateSection = asyncHandler(async (req, res) => {
   if (days !== undefined) section.days = days;
   if (time !== undefined) section.time = time;
   if (room !== undefined) section.room = room;
-  if (instructor !== undefined) section.instructor = instructor;
+  section.instructor = instructorName;
+  if (instructorUser !== undefined) {
+    section.instructorUser = assignedInstructor?._id || null;
+    if (assignedInstructor && instructor === undefined) {
+      section.instructor = `${assignedInstructor.firstName} ${assignedInstructor.lastName}`;
+    }
+  }
   if (maxSlots !== undefined) section.maxSlots = maxSlots;
   if (isActive !== undefined) section.isActive = isActive;
 
   await section.save();
-  res.json({ success: true, message: 'Section updated.', data: section });
+
+  let updatedOfferings = 0;
+  if (instructorUser !== undefined) {
+    const result = await CourseOffering.updateMany(
+      { section: section._id, status: { $ne: 'archived' } },
+      {
+        $set: {
+          instructor: assignedInstructor?._id || null,
+          instructorName: instructorName || 'TBA',
+        },
+      }
+    );
+    updatedOfferings = result.modifiedCount || 0;
+  }
+
+  res.json({
+    success: true,
+    message: updatedOfferings > 0
+      ? `Section updated. ${updatedOfferings} official offering${updatedOfferings === 1 ? '' : 's'} synchronized.`
+      : 'Section updated.',
+    data: section,
+    updatedOfferings,
+  });
 });
 
 // ---------------------------------------------------------------------------

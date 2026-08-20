@@ -35,6 +35,38 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@keyframes lms-notification-ring {
+  0%, 100% { transform: rotate(0deg); }
+  22% { transform: rotate(12deg); }
+  45% { transform: rotate(-10deg); }
+  68% { transform: rotate(6deg); }
+  84% { transform: rotate(-3deg); }
+}
+
+@keyframes lms-notification-badge {
+  0% { opacity: 0.65; transform: scale(0.82); }
+  55% { opacity: 1; transform: scale(1.16); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes lms-notification-menu {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lms-notification-ring {
+  animation: lms-notification-ring 420ms ease-out;
+  transform-origin: 50% 15%;
+}
+
+.lms-notification-badge {
+  animation: lms-notification-badge 360ms ease-out;
+}
+
+.lms-notification-menu {
+  animation: lms-notification-menu 140ms ease-out;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-univ-indigo);
   outline-offset: 2px;
@@ -48,27 +80,6 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-/* Premium Form Input Base Styles */
-@layer base {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="date"],
-  select,
-  textarea {
-    @apply block w-full bg-slate-100 border-0 border-b-2 border-transparent focus:ring-0 focus:border-univ-blue rounded-t-xl transition-all duration-300 text-sm px-4 py-3 hover:bg-slate-200/50 focus:bg-slate-50;
-  }
-}
-
-/* Retain utility class just in case */
-@layer components {
-  .input-premium {
-    @apply block w-full bg-slate-100 border-0 border-b-2 border-transparent focus:ring-0 focus:border-univ-blue rounded-t-xl transition-all duration-300 text-sm px-4 py-3 hover:bg-slate-200/50 focus:bg-slate-50;
   }
 }
 

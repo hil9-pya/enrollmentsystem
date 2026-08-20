@@ -2,31 +2,45 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import {
-  Users, FileCheck, DollarSign, Search, Trash2,
+  Users, FileCheck, DollarSign, Trash2,
   CheckCircle, Sliders, RotateCcw, BarChart2,
   Edit3, X, Save, Download, AlertTriangle,
   BookOpen, CreditCard, GraduationCap, TrendingUp, Activity,
   Unlock, Calendar, Bell, Plus, Loader2, FileText,
   Building2, ArrowRight,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
 import { toast } from 'react-hot-toast';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import { useConfirm } from '../../context/ConfirmationContext';
 import CourseManagementTab from './CourseManagementTab';
+import IntegrityAuditTab from './IntegrityAuditTab';
 import AdminSidebar from './AdminSidebar';
 import PortalShell from '../../components/PortalShell';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import PortalPageHeader from '../../components/PortalPageHeader';
+import Modal from '../../components/Modal';
+import SearchInput from '../../components/SearchInput';
+import MiniStat from '../../components/MiniStat';
 
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 const ROLE_TONES = {
   admin: 'neutral',
+  instructor: 'info',
   admission: 'info',
   adviser: 'info',
   accounting: 'success',
   registrar: 'warning',
 };
+const STAFF_ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'instructor', label: 'Instructor' },
+  { value: 'admission', label: 'Admission Office' },
+  { value: 'adviser', label: 'Academic Adviser' },
+  { value: 'accounting', label: 'Accounting Office' },
+  { value: 'registrar', label: 'Registrar Office' },
+];
 
 const authFetch = (url, options = {}) => {
   const token = localStorage.getItem('token');
@@ -61,48 +75,40 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
   }, [visibleStudents]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Administration overview</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Monitor enrollment operations, student activity, and system performance.
-          </p>
-        </div>
-        <PortalRefreshButton />
-      </div>
+    <div className="h-full w-full space-y-6 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
+      <PortalPageHeader
+        title="Administration overview"
+        description="Monitor enrollment operations, student activity, and system status."
+        actions={<PortalRefreshButton />}
+      />
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MetricCard
+        <MiniStat
           title="Total Enrolled" value={metrics.totalEnrolled}
-          icon={<GraduationCap className="w-5 h-5" />} gradient="from-indigo-500 to-indigo-600"
-          sub={`${metrics.totalEnrolled > 0 ? '+' : ''}${metrics.totalEnrolled} this term`}
+          icon={<GraduationCap className="w-4 h-4" />} colorClass="text-univ-blue"
           onClick={() => { setActiveTab('students'); setStatusFilter('enrolled'); setProgramFilter(''); setPaymentFilter(''); }}
         />
-        <MetricCard
+        <MiniStat
           title="Pending Validation" value={metrics.pendingValidation}
-          icon={<FileCheck className="w-5 h-5" />} gradient="from-amber-400 to-amber-500"
-          sub="Awaiting final check"
+          icon={<FileCheck className="w-4 h-4" />} colorClass="text-amber-600"
           onClick={() => { setActiveTab('applicants'); setStatusFilter('validation_pending'); setProgramFilter(''); setPaymentFilter(''); }}
         />
-        <MetricCard
+        <MiniStat
           title="Active Processing" value={metrics.activeProcessing}
-          icon={<Activity className="w-5 h-5" />} gradient="from-blue-500 to-blue-600"
-          sub="In pipeline"
+          icon={<Activity className="w-4 h-4" />} colorClass="text-univ-blue"
           onClick={() => { setActiveTab('applicants'); setStatusFilter('processing_all'); setProgramFilter(''); setPaymentFilter(''); }}
         />
-        <MetricCard
+        <MiniStat
           title="Total Revenue" value={`₱${metrics.revenue.toLocaleString('en-US', { minimumFractionDigits: 0 })}`}
-          icon={<DollarSign className="w-5 h-5" />} gradient="from-emerald-500 to-emerald-600"
-          sub="From paid tuitions"
+          icon={<DollarSign className="w-4 h-4" />} colorClass="text-emerald-600"
           onClick={() => { setActiveTab('students'); setStatusFilter(''); setProgramFilter(''); setPaymentFilter('paid'); }}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Enrollment by Program */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+        <div className="lg:col-span-2 bg-white p-5 rounded-lg border border-slate-200">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Enrollments by Program</h2>
@@ -126,33 +132,22 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
         </div>
 
         {/* Pipeline Status */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm flex flex-col">
+        <div className="bg-white p-5 rounded-lg border border-slate-200 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Pipeline Status</h2>
               <p className="text-xs text-slate-400 mt-0.5">Enrollment workflow distribution</p>
             </div>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie data={metrics.statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={72} paddingAngle={4} dataKey="value"
-                  onClick={(data) => { if (!data?.name) return; setActiveTab(data.name === 'Enrolled' ? 'students' : 'applicants'); setProgramFilter(''); setPaymentFilter(''); if (data.name === 'Enrolled') setStatusFilter('enrolled'); else if (data.name === 'Processing') setStatusFilter('processing_all'); else setStatusFilter('validation_pending'); }}>
-                  {metrics.statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-2 border-t border-slate-50 pt-4">
+          <div className="divide-y divide-slate-100 border-t border-slate-200">
             {metrics.statusData.map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
+              <button key={i} type="button" onClick={() => { setActiveTab(item.name === 'Enrolled' ? 'students' : 'applicants'); setProgramFilter(''); setPaymentFilter(''); setStatusFilter(item.name === 'Enrolled' ? 'enrolled' : item.name === 'Processing' ? 'processing_all' : 'validation_pending'); }} className="flex w-full items-center justify-between px-1 py-4 text-sm transition-colors hover:bg-slate-50">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                   <span className="text-slate-600 font-medium">{item.name}</span>
                 </div>
                 <span className="font-bold text-slate-900">{item.value}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -160,7 +155,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
 
       {/* Monthly trend */}
       {monthlyData.length > 1 && (
-        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+        <div className="bg-white p-5 rounded-lg border border-slate-200">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Registration Trend</h2>
@@ -171,17 +166,11 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={monthlyData}>
-                <defs>
-                  <linearGradient id="gradFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }} />
-                <Area type="monotone" dataKey="count" stroke="#4f46e5" strokeWidth={2} fill="url(#gradFill)" />
+                <Area type="monotone" dataKey="count" stroke="#27469b" strokeWidth={2} fill="none" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -189,7 +178,7 @@ function AnalyticsTab({ metrics, visibleStudents, setActiveTab, setStatusFilter,
       )}
 
       {/* Recent Enrollees */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">Recently Enrolled</h2>
           <button onClick={() => { setActiveTab('students'); setStatusFilter('enrolled'); }} className="text-xs text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1 cursor-pointer">
@@ -254,21 +243,8 @@ function StudentEditModal({ student, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-100 rounded-md flex items-center justify-center">
-              <Edit3 className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Edit Student Record</h3>
-              <p className="text-[10px] text-slate-400 font-mono">{student.id}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all cursor-pointer"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+    <Modal isOpen onClose={onClose} title={`Edit student record — ${student.id}`} maxWidth="max-w-2xl">
+        <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">First Name</label>
@@ -361,15 +337,14 @@ function StudentEditModal({ student, onClose, onSave }) {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <button onClick={onClose} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
+        <div className="flex items-center justify-end gap-3 pt-4 mt-5 border-t border-slate-200">
+          <button type="button" onClick={onClose} className="px-5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors cursor-pointer">Cancel</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             Save Changes
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -423,7 +398,7 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="h-full w-full space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
       {editingStudent && (
         <StudentEditModal
           student={editingStudent}
@@ -441,29 +416,24 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text" placeholder="Search by name, email or student ID…"
-            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
-          />
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 lg:grid-cols-[minmax(18rem,2fr)_minmax(30rem,3fr)]">
+        <div className="w-full">
+          <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search by name, email or student ID…" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
           {[
             { value: statusFilter, onChange: setStatusFilter, options: [['', 'All Statuses'], ['processing_all', 'All Processing'], ['registration', 'Registration'], ['documents_submitted', 'Docs Submitted'], ['documents_approved', 'Docs Approved'], ['advising_pending', 'Advising Pending'], ['advising_approved', 'Advising Approved'], ['payment_pending', 'Payment Pending'], ['payment_confirmed', 'Payment Confirmed'], ['validation_pending', 'Validation Pending'], ['enrolled', 'Enrolled']] },
             { value: paymentFilter, onChange: setPaymentFilter, options: [['', 'All Payments'], ['unpaid', 'Unpaid'], ['processing', 'Processing'], ['paid', 'Paid']] },
             { value: programFilter, onChange: setProgramFilter, options: [['', 'All Programs'], ...PROGRAMS.map(p => [p.id, p.id.toUpperCase()])] },
           ].map((sel, i) => (
             <select key={i} value={sel.value} onChange={e => sel.onChange(e.target.value)}
-              className="border border-slate-200 text-xs font-semibold rounded-md px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-all">
+              className="w-full min-w-0 border border-slate-200 text-xs font-semibold rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:border-slate-300 transition-colors">
               {sel.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </select>
           ))}
           {(statusFilter || programFilter || paymentFilter || searchQuery) && (
             <button onClick={() => { setStatusFilter(''); setProgramFilter(''); setPaymentFilter(''); setSearchQuery(''); }}
-              className="px-3 py-2 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-md transition-all cursor-pointer flex items-center gap-1.5">
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 cursor-pointer sm:col-span-3">
               <X className="w-3 h-3" /> Clear
             </button>
           )}
@@ -553,12 +523,12 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
                     </div>
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button onClick={() => setEditingStudent(stud)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit student record">
+                    <button type="button" onClick={() => setEditingStudent(stud)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit student record" aria-label={`Edit ${stud.firstName} ${stud.lastName}`}>
                       <Edit3 className="w-4 h-4" />
                     </button>
                   </td>
                   <td className="px-5 py-4 text-center">
-                    <button onClick={() => onTrash(stud.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Move to trash">
+                    <button type="button" onClick={() => onTrash(stud.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Move to trash" aria-label={`Move ${stud.firstName} ${stud.lastName} to trash`}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
@@ -594,6 +564,11 @@ function TrashTab() {
   const { confirm } = useConfirm();
   const [trashedStudents, setTrashedStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [programFilter, setProgramFilter] = useState('');
+  const [termFilter, setTermFilter] = useState('');
+  const [reasonFilter, setReasonFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
 
   const loadTrashed = useCallback(async () => {
     try {
@@ -607,12 +582,71 @@ function TrashTab() {
 
   useEffect(() => { loadTrashed(); }, [loadTrashed]);
 
-  const handleRestore = async (id) => {
+  const archiveReason = useCallback((student) => {
+    if (student.archivedReason) return student.archivedReason;
+    const auditEntry = [...(student.auditLogs || [])]
+      .reverse()
+      .find((entry) => /archiv|trash|delete/i.test(entry.action || ''));
+    return auditEntry?.action || 'Reason not recorded';
+  }, []);
+
+  const archiveDate = useCallback((student) => student.archivedAt || student.updatedAt || student.createdAt, []);
+
+  const termOptions = useMemo(() => [...new Set(
+    trashedStudents.map((student) => student.lastEnrolledTerm || student.academicTerm).filter(Boolean)
+  )].sort().reverse(), [trashedStudents]);
+
+  const filteredStudents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return trashedStudents
+      .filter((student) => {
+        const term = student.lastEnrolledTerm || student.academicTerm || '';
+        const reason = archiveReason(student);
+        const reasonKind = /inactive|missing|consecutive semester/i.test(reason)
+          ? 'inactive'
+          : /manual|administrator|trash/i.test(reason)
+            ? 'manual'
+            : 'legacy';
+        const searchable = [
+          student.id,
+          student.studentId,
+          student.firstName,
+          student.lastName,
+          student.email,
+          student.schoolEmail,
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        return (!query || searchable.includes(query))
+          && (!programFilter || student.programId === programFilter)
+          && (!termFilter || term === termFilter)
+          && (!reasonFilter || reasonKind === reasonFilter);
+      })
+      .sort((a, b) => {
+        if (sortOrder === 'oldest') return new Date(archiveDate(a) || 0) - new Date(archiveDate(b) || 0);
+        if (sortOrder === 'name') {
+          return `${a.lastName || ''} ${a.firstName || ''}`.localeCompare(`${b.lastName || ''} ${b.firstName || ''}`);
+        }
+        if (sortOrder === 'studentId') return String(a.studentId || a.id || '').localeCompare(String(b.studentId || b.id || ''));
+        return new Date(archiveDate(b) || 0) - new Date(archiveDate(a) || 0);
+      });
+  }, [archiveDate, archiveReason, programFilter, reasonFilter, searchQuery, sortOrder, termFilter, trashedStudents]);
+
+  const handleRestore = async (student) => {
+    const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.studentId || student.id;
+    const ok = await confirm({
+      title: 'Restore Student',
+      message: `Restore ${name}? Their account and student record will become active again. Class membership is not changed automatically.`,
+      confirmText: 'Restore Student',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!ok) return;
     try {
-      await authFetch(`/api/admin/students/${id}/restore`, { method: 'POST' });
+      const res = await authFetch(`/api/admin/students/${student.id}/restore`, { method: 'POST' });
+      await safeJson(res);
       toast.success('Student restored');
       loadTrashed();
-    } catch { toast.error('Failed to restore'); }
+    } catch (error) { toast.error(error.message || 'Failed to restore'); }
   };
   const handlePermanentDelete = async (id) => {
     const ok = await confirm({
@@ -631,43 +665,82 @@ function TrashTab() {
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="h-full w-full space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Archived students</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
-          Restore deleted student records or remove them permanently.
+          Search, review, restore, or permanently remove archived records.
         </p>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-5 py-4 flex items-center gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
         <div>
-          <p className="text-sm font-bold text-amber-900">Archived Students</p>
-          <p className="text-xs text-amber-700 mt-0.5">For students with inactive or did not enroll for the past 2 sems. You can restore them or permanently delete them from the database.</p>
+          <p className="text-sm font-bold text-amber-900">Archived student records</p>
+          <p className="text-xs text-amber-700 mt-0.5">Restoring reactivates the record only. Permanent deletion cannot be undone.</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[700px]">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_220px_180px_190px]">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search name, email, or student ID…"
+            />
+            <select value={programFilter} onChange={(event) => setProgramFilter(event.target.value)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">All programs</option>
+              {PROGRAMS.map((program) => <option key={program.id} value={program.id}>{program.id.toUpperCase()}</option>)}
+            </select>
+            <select value={termFilter} onChange={(event) => setTermFilter(event.target.value)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">All last enrolled terms</option>
+              {termOptions.map((term) => <option key={term} value={term}>{term}</option>)}
+            </select>
+            <select value={reasonFilter} onChange={(event) => setReasonFilter(event.target.value)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">All archive reasons</option>
+              <option value="inactive">Inactive students</option>
+              <option value="manual">Manually archived</option>
+              <option value="legacy">Reason not recorded</option>
+            </select>
+            <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="newest">Newest archived first</option>
+              <option value="oldest">Oldest archived first</option>
+              <option value="name">Name A–Z</option>
+              <option value="studentId">Student ID A–Z</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>{filteredStudents.length} of {trashedStudents.length} archived students</span>
+            {(searchQuery || programFilter || termFilter || reasonFilter) && (
+              <button type="button" onClick={() => { setSearchQuery(''); setProgramFilter(''); setTermFilter(''); setReasonFilter(''); }} className="font-semibold text-indigo-600 hover:text-indigo-700">
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
+          <table className="w-full text-left text-xs min-w-[980px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
                 <th className="px-5 py-3.5">Student</th>
                 <th className="px-5 py-3.5">Program</th>
-                <th className="px-5 py-3.5">Last Status</th>
-                <th className="px-5 py-3.5">Payment</th>
-                <th className="px-5 py-3.5 text-center">Restore</th>
-                <th className="px-5 py-3.5 text-center">Delete Permanently</th>
+                <th className="px-5 py-3.5">Last enrolled term</th>
+                <th className="px-5 py-3.5">Archived</th>
+                <th className="px-5 py-3.5">Last status</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {trashedStudents.length === 0 ? (
-                <tr><td colSpan={6} className="py-16 text-center text-slate-400">Trash bin is empty.</td></tr>
-              ) : trashedStudents.map((stud) => {
+              {filteredStudents.length === 0 ? (
+                <tr><td colSpan={6} className="py-16 text-center text-slate-400">{trashedStudents.length ? 'No archived students match these filters.' : 'No archived students.'}</td></tr>
+              ) : filteredStudents.map((stud) => {
+                const archivedOn = archiveDate(stud);
                 return (
-                  <tr key={stud.id} className="hover:bg-slate-50/40 transition-colors opacity-75">
+                  <tr key={stud.id} className="hover:bg-slate-50/40 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-md bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs">
@@ -680,27 +753,28 @@ function TrashTab() {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-slate-500 font-medium">{stud.programId?.toUpperCase() || '—'}</td>
+                    <td className="px-5 py-4 text-slate-600">{stud.lastEnrolledTerm || stud.academicTerm || 'Not recorded'}</td>
+                    <td className="px-5 py-4">
+                      <p className="font-medium text-slate-700">{archivedOn ? new Date(archivedOn).toLocaleDateString() : 'Date not recorded'}</p>
+                      <p className="mt-1 max-w-[240px] text-[10px] leading-4 text-slate-500">{archiveReason(stud)}</p>
+                    </td>
                     <td className="px-5 py-4"><StatusBadge status={stud.status} /></td>
                     <td className="px-5 py-4">
-                      <Badge tone={['paid', 'partial'].includes(stud.paymentStatus) ? 'success' : 'neutral'}>
-                        {stud.paymentStatus === 'partial' ? 'Downpayment Confirmed' : stud.paymentStatus === 'paid' ? 'Fully Paid' : stud.paymentStatus || 'Unpaid'}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <button onClick={() => handleRestore(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-md text-xs font-bold transition-all cursor-pointer">
+                      <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => handleRestore(stud)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-bold transition-colors cursor-pointer">
                         <RotateCcw className="w-3.5 h-3.5" /> Restore
                       </button>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <button onClick={() => handlePermanentDelete(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-xs font-bold transition-all cursor-pointer">
-                        <Trash2 className="w-3.5 h-3.5" /> Delete Forever
+                      <button onClick={() => handlePermanentDelete(stud.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-md text-xs font-bold transition-colors cursor-pointer">
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
                       </button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
@@ -716,6 +790,8 @@ function StaffTab() {
   const [editingUser, setEditingUser] = useState(null);
   const [form, setForm] = useState({ username: '', email: '', firstName: '', lastName: '', role: 'admission', password: '' });
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   const loadUsers = useCallback(async () => {
     try {
@@ -727,6 +803,21 @@ function StaffTab() {
   }, []);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  const filteredUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return users.filter((user) => {
+      const matchesRole = !roleFilter || user.role === roleFilter;
+      const searchable = [
+        user.firstName,
+        user.lastName,
+        `${user.firstName || ''} ${user.lastName || ''}`,
+        user.username,
+        user.email,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return matchesRole && (!query || searchable.includes(query));
+    });
+  }, [roleFilter, searchQuery, users]);
 
   const handleSubmit = async () => {
     if (!form.email || !form.username || !form.role) { toast.error('Please fill in all required fields'); return; }
@@ -771,10 +862,10 @@ function StaffTab() {
     } catch (err) { toast.error(err.message || 'Failed to delete'); }
   };
 
-  const roleIcons = { admin: Building2, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
+  const roleIcons = { admin: Building2, instructor: GraduationCap, admission: BookOpen, adviser: GraduationCap, accounting: CreditCard, registrar: FileText };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
+    <div className="h-full w-full space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Staff accounts</h1>
@@ -812,6 +903,7 @@ function StaffTab() {
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="admin">Admin (Superuser)</option>
+                <option value="instructor">Instructor</option>
                 <option value="admission">Admission Office</option>
                 <option value="adviser">Academic Adviser</option>
                 <option value="accounting">Accounting Office</option>
@@ -838,6 +930,39 @@ function StaffTab() {
         </div>
       )}
 
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search name, username, or email…"
+          />
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            aria-label="Filter staff accounts by role"
+            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All roles</option>
+            {STAFF_ROLE_OPTIONS.map((role) => (
+              <option key={role.value} value={role.value}>{role.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span>{filteredUsers.length} of {users.length} staff accounts</span>
+          {(searchQuery || roleFilter) && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setRoleFilter(''); }}
+              className="font-semibold text-indigo-600 hover:text-indigo-700"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Users Table */}
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
@@ -854,9 +979,9 @@ function StaffTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {users.length === 0 ? (
-                <tr><td colSpan={5} className="py-16 text-center text-slate-400">No staff accounts found.</td></tr>
-              ) : users.map(user => {
+              {filteredUsers.length === 0 ? (
+                <tr><td colSpan={5} className="py-16 text-center text-slate-400">{users.length ? 'No staff accounts match these filters.' : 'No staff accounts found.'}</td></tr>
+              ) : filteredUsers.map(user => {
                 const RoleIcon = roleIcons[user.role] || Users;
                 return (
                   <tr key={user._id} className="hover:bg-slate-50/60 transition-colors">
@@ -881,10 +1006,10 @@ function StaffTab() {
                     <td className="px-5 py-4 text-slate-500">{user.email}</td>
                     <td className="px-5 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit account">
+                        <button type="button" onClick={() => handleEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-all cursor-pointer" title="Edit account" aria-label={`Edit ${user.username} account`}>
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Delete account">
+                        <button type="button" onClick={() => handleDelete(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer" title="Delete account" aria-label={`Delete ${user.username} account`}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -902,6 +1027,7 @@ function StaffTab() {
 
 // ─── Settings Tab ───────────────────────────────────────────────────────────────
 function SettingsTab() {
+  const { confirm } = useConfirm();
   const [settings, setSettings] = useState({ activeTerm: '', enrollmentOpen: true, systemMaintenance: false, announcement: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -929,7 +1055,14 @@ function SettingsTab() {
   };
 
   const handleAdvanceSemester = async () => {
-    if (!window.confirm('Are you sure you want to advance to the next semester? This will update the system term and automatically archive inactive students.')) return;
+    const isConfirmed = await confirm({
+      title: 'Advance academic term?',
+      message: 'This changes the active term and archives students who have not enrolled for two consecutive semesters. Review the active term before continuing.',
+      confirmText: 'Advance Term',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     
     setSaving(true);
     try {
@@ -946,11 +1079,11 @@ function SettingsTab() {
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>;
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-200 p-4 sm:p-5 lg:p-6 h-full overflow-y-auto bg-slate-50">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">System configuration</h1>
-        <p className="text-sm font-medium text-slate-500 mt-1">Configure global enrollment settings and system parameters.</p>
-      </div>
+    <div className="h-full w-full space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
+      <PortalPageHeader
+        title="System configuration"
+        description="Configure the active term, enrollment access, maintenance state, and applicant announcements."
+      />
 
       <div className="max-w-3xl space-y-5">
       {/* Term Settings */}
@@ -966,22 +1099,28 @@ function SettingsTab() {
         </div>
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Active Academic Term</label>
-          <select value={settings.activeTerm} onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
-            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
-            <option value="1st Semester">1st Semester</option>
-            <option value="2nd Semester">2nd Semester</option>
-          </select>
-          <div className="mt-4 pt-4 border-t border-slate-100">
+          <input
+            value={settings.activeTerm}
+            onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
+            placeholder="1st Semester 2026-2027"
+            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
+          />
+          <p className="text-[10px] text-slate-500 mt-2">Use format: 1st Semester 2026-2027. Saving activates matching academic-term record.</p>
+          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+              <div>
+                <p className="text-xs font-semibold text-amber-900">Term advancement changes student records</p>
+                <p className="mt-1 text-xs leading-5 text-amber-800">Inactive students may be archived. This action requires confirmation.</p>
+              </div>
+            </div>
             <button
               onClick={handleAdvanceSemester}
               disabled={saving}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+              className="mt-3 rounded-md border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 shadow-sm transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Advance Academic Term & Archive Inactive Students
             </button>
-            <p className="text-[10px] text-slate-500 mt-2">
-              Warning: This will change the active term and automatically archive students who have not enrolled for 2 consecutive semesters.
-            </p>
           </div>
         </div>
       </div>
@@ -998,15 +1137,15 @@ function SettingsTab() {
           </div>
         </div>
         {[
-          { key: 'enrollmentOpen', label: 'Enrollment Open', desc: 'Allow new applicants to begin the enrollment process', color: 'indigo', icon: Unlock },
-          { key: 'systemMaintenance', label: 'Maintenance Mode', desc: 'Show a maintenance message to all users', color: 'amber', icon: AlertTriangle },
+          { key: 'enrollmentOpen', label: 'Enrollment Open', desc: 'Allow new applicants to begin the enrollment process', iconClass: 'bg-indigo-50 text-indigo-600', icon: Unlock },
+          { key: 'systemMaintenance', label: 'Maintenance Mode', desc: 'Show a maintenance message to all users', iconClass: 'bg-amber-50 text-amber-600', icon: AlertTriangle },
         ].map(toggle => {
           const Icon = toggle.icon;
           return (
             <div key={toggle.key} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-${toggle.color}-50`}>
-                  <Icon className={`w-3.5 h-3.5 text-${toggle.color}-600`} />
+                <div className={`flex h-7 w-7 items-center justify-center rounded-md ${toggle.iconClass}`}>
+                  <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-900">{toggle.label}</p>
@@ -1014,7 +1153,11 @@ function SettingsTab() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSettings(p => ({ ...p, [toggle.key]: !p[toggle.key] }))}
+                role="switch"
+                aria-checked={settings[toggle.key]}
+                aria-label={toggle.label}
                 className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer flex-shrink-0 ${settings[toggle.key] ? 'bg-indigo-600' : 'bg-slate-200'}`}>
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${settings[toggle.key] ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
@@ -1049,31 +1192,6 @@ function SettingsTab() {
         Save Settings
       </button>
       </div>
-    </div>
-  );
-}
-
-// ─── Metric Card ───────────────────────────────────────────────────────────────
-function MetricCard({ title, value, icon, gradient, sub, onClick }) {
-  const iconTone = gradient.includes('amber')
-    ? 'text-amber-600 bg-amber-50'
-    : gradient.includes('blue')
-      ? 'text-blue-600 bg-blue-50'
-      : gradient.includes('emerald')
-        ? 'text-emerald-600 bg-emerald-50'
-        : 'text-univ-indigo bg-indigo-50';
-
-  return (
-    <div onClick={onClick}
-      className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col justify-between gap-3 cursor-pointer hover:border-slate-300 hover:shadow transition-all">
-      <div className="flex items-start justify-between">
-        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">{title}</p>
-        <div className={`p-1.5 rounded-md shrink-0 ${iconTone}`}>
-          {icon}
-        </div>
-      </div>
-      <p className="text-2xl font-extrabold text-slate-900 leading-none mt-1">{value}</p>
-      <p className="text-[10px] text-slate-400 font-medium">{sub}</p>
     </div>
   );
 }
@@ -1171,6 +1289,7 @@ export default function DashboardView() {
           {activeTab === 'staff' && <StaffTab />}
           {activeTab === 'settings' && <SettingsTab />}
           {activeTab === 'courses' && <CourseManagementTab />}
+          {activeTab === 'integrity' && <IntegrityAuditTab />}
       </main>
     </PortalShell>
   );

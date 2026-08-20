@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, FileWarning, FileText, GraduationCap } from 'lucide-react';
+import { FileWarning, FileText, GraduationCap } from 'lucide-react';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { toast } from 'react-hot-toast';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import SearchInput from '../../components/SearchInput';
 
 export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const { dispatch } = useEnrollment();
@@ -124,28 +125,19 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
     <div className="h-full flex overflow-hidden bg-slate-50">
       
       {/* Left Pane: Inbox Queue */}
-      <div className="w-full sm:w-[350px] shrink-0 border-r border-slate-200 bg-white flex flex-col h-full z-10 shadow-sm relative">
+      <div className={`${selectedStudent ? 'hidden sm:flex' : 'flex'} h-full w-full shrink-0 flex-col border-r border-slate-200 bg-white sm:w-[350px]`}>
         <div className="p-4 border-b border-slate-100 bg-white space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-extrabold text-slate-900 tracking-wide">Evaluation Queue</h2>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{filter} records</p>
+              <h2 className="text-sm font-semibold text-slate-900">Evaluation queue</h2>
+              <p className="mt-0.5 text-xs text-slate-500 capitalize">{filter} records</p>
             </div>
             <PortalRefreshButton className="px-2.5" />
           </div>
           
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text" 
-              placeholder="Search student..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-9 pr-3 text-xs font-medium focus:outline-none focus:border-univ-indigo focus:ring-1 focus:ring-univ-indigo transition-all"
-            />
-          </div>
+          <SearchInput value={searchQuery} onChange={setSearchQuery} placeholder="Search students…" />
 
-          <div className="flex border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm mt-2">
+          <div className="flex border-b border-slate-200 bg-white mt-2" role="tablist" aria-label="Evaluation status">
             {[
               { id: 'pending', label: 'Pending' },
               { id: 'approved', label: 'Approved' },
@@ -153,11 +145,14 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
             ].map(f => (
               <button
                 key={f.id}
+                type="button"
+                role="tab"
+                aria-selected={filter === f.id}
                 onClick={() => { onNavigate(f.id); }}
-                className={`flex-1 text-[10px] font-bold px-2 py-1.5 transition-colors cursor-pointer border-r last:border-r-0 border-slate-200/60 ${
+                className={`flex-1 border-b-2 px-2 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                   filter === f.id
-                    ? 'bg-slate-100 text-slate-900 shadow-inner'
-                    : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'border-univ-blue text-univ-blue'
+                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-900'
                 }`}
               >
                 {f.label}
@@ -180,9 +175,6 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                   onClick={() => setSelectedStudentId(student.id)}
                   className={`w-full text-left p-4 transition-colors hover:bg-slate-50 ${selectedStudentId === student.id ? 'bg-indigo-50/50 relative' : ''}`}
                 >
-                  {selectedStudentId === student.id && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-univ-indigo"></div>
-                  )}
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="font-bold text-slate-900 text-sm truncate pr-2">
                       {student.firstName} {student.lastName}
@@ -206,12 +198,13 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
       </div>
 
       {/* Right Pane: Detailed View */}
-      <div className={`flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden ${selectedStudent ? 'block' : 'hidden sm:flex'}`}>
+      <div className={`min-w-0 flex-1 flex-col h-full bg-slate-50 relative overflow-hidden ${selectedStudent ? 'flex' : 'hidden sm:flex'}`}>
         {selectedStudent ? (
           <>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <div className="max-w-3xl mx-auto">
-                <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <button type="button" onClick={() => setSelectedStudentId(null)} className="mb-3 text-sm font-semibold text-univ-blue sm:hidden">← Back to queue</button>
+                <div className="bg-white p-5 rounded-lg border border-slate-200 mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div>
                     <h1 className="mb-1 text-xl font-semibold text-slate-900">
                       {selectedStudent.firstName} {selectedStudent.lastName}
@@ -227,19 +220,19 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
 
                 {/* Change Request Alert from Student */}
                 {selectedStudent.subjectChangeRequest && (
-                  <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 mb-6 shadow-sm">
-                    <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm mb-2">
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-2 text-amber-900 font-semibold text-sm mb-2">
                       <FileWarning className="w-5 h-5 text-amber-600 shrink-0" />
                       <span>Student Request for Change:</span>
                     </div>
-                    <p className="text-xs font-semibold text-amber-900 bg-white/90 p-3 rounded-lg border border-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
+                    <p className="text-sm text-amber-900 whitespace-pre-wrap leading-relaxed">
                       "{selectedStudent.subjectChangeRequest}"
                     </p>
                   </div>
                 )}
                 
                 {selectedStudent.status === 'advising_pending' && (selectedStudent.enrollmentType === 'transfer' || selectedStudent.enrollmentType === 'returning' || selectedStudent.enrollmentType === 'continuing') && (
-                  <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">
+                  <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
                     <div className="border-b border-slate-200 bg-slate-50/80 p-4">
                       <h3 className="text-sm font-bold text-slate-900">Step 1: Credited Subjects</h3>
                       <p className="text-xs text-slate-500">Check off the subjects this student has already passed.</p>
@@ -269,7 +262,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                   </div>
                 )}
 
-                <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden mb-8">
+                <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
                   <div className="border-b border-slate-200 bg-slate-50/80 p-4">
                     <h3 className="text-sm font-bold text-slate-900">{selectedStudent.status === 'advising_pending' ? 'Step 2: Assign Eligible Subjects' : 'Assigned Subjects'}</h3>
                   </div>
@@ -346,7 +339,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
             
             {/* Sticky Action Footer */}
             {selectedStudent.status === 'advising_pending' && (
-              <div className="border-t border-slate-200 bg-white p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.03)] z-20 shrink-0">
+              <div className="border-t border-slate-200 bg-white p-4 z-20 shrink-0">
                 <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                   <p className="text-xs font-semibold text-slate-500 hidden sm:block">
                     Ensure all subjects are properly credited before approving.
@@ -367,12 +360,10 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
             )}
           </>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-5 border border-slate-200 shadow-sm">
-              <FileText className="w-8 h-8 text-slate-300" />
-            </div>
-            <p className="font-bold text-slate-500">No student selected</p>
-            <p className="text-sm font-medium text-slate-400 mt-1">Select a student from the evaluation queue</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-500 bg-slate-50 p-6 text-center">
+            <FileText className="mb-3 h-6 w-6 text-slate-400" aria-hidden="true" />
+            <p className="font-semibold text-slate-700">No student selected</p>
+            <p className="text-sm mt-1">Select a student from the evaluation queue.</p>
           </div>
         )}
       </div>

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, X, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, FileText, ExternalLink, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { useConfirm } from '../../context/ConfirmationContext';
 import { REQUIRED_DOCUMENTS, PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
+import Modal from '../../components/Modal';
+import { authFetch } from '../../utils/authFetch.js';
 
 export default function ApplicantDetails({ studentId, onBack }) {
   const { getStudentById, dispatch } = useEnrollment();
@@ -85,9 +87,27 @@ export default function ApplicantDetails({ studentId, onBack }) {
     return doc ? doc.label : typeId;
   }
 
-  function getDocumentUrl(doc) {
-    if (!doc?.fileName) return null;
-    return `/uploads/${encodeURIComponent(doc.fileName)}`;
+  async function previewDocument(doc) {
+    if (!doc?.fileName) return;
+    try {
+      const response = await authFetch(
+        `/api/students/${encodeURIComponent(student.id)}/documents/${encodeURIComponent(doc.typeId)}/file`
+      );
+      if (!response.ok) throw new Error('Document could not be loaded.');
+      const blob = await response.blob();
+      setPreviewDoc({
+        url: URL.createObjectURL(blob),
+        name: doc.originalName || doc.fileName,
+        isPdf: blob.type === 'application/pdf' || String(doc.fileName).toLowerCase().endsWith('.pdf'),
+      });
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
+
+  function closePreview() {
+    if (previewDoc?.url) URL.revokeObjectURL(previewDoc.url);
+    setPreviewDoc(null);
   }
 
   function formatDate(dateStr) {
@@ -219,7 +239,6 @@ export default function ApplicantDetails({ studentId, onBack }) {
                   </tr>
                 ) : (
                   student.documents.map((doc) => {
-                    const documentUrl = getDocumentUrl(doc);
                     const displayName = doc.originalName || doc.fileName;
 
                     return (
@@ -231,10 +250,10 @@ export default function ApplicantDetails({ studentId, onBack }) {
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
-                          {documentUrl ? (
+                          {doc.fileName ? (
                             <button
                               type="button"
-                              onClick={() => setPreviewDoc({ url: documentUrl, name: displayName })}
+                              onClick={() => previewDocument(doc)}
                               className="inline-flex max-w-xs items-center gap-1.5 font-mono text-xs font-bold text-univ-indigo hover:text-univ-blue hover:underline cursor-pointer bg-transparent border-none text-left"
                               title={`Preview ${displayName}`}
                             >
@@ -316,36 +335,21 @@ export default function ApplicantDetails({ studentId, onBack }) {
       </div>
 
       {previewDoc && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 md:p-10">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
-            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div>
-                <h3 className="text-sm font-bold text-univ-navy">{previewDoc.name}</h3>
-                <p className="text-[10px] text-slate-400 font-mono mt-0.5">Document Preview</p>
-              </div>
-              <div className="flex items-center gap-3">
+        <Modal isOpen onClose={closePreview} title={previewDoc.name} maxWidth="max-w-5xl">
+              <div className="mb-3 flex justify-end">
                 <a
                   href={previewDoc.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Open in New Tab
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  Open in new tab
                 </a>
-                <button
-                  type="button"
-                  onClick={() => setPreviewDoc(null)}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 transition-all cursor-pointer bg-white"
-                  title="Close preview"
-                >
-                  <X className="h-4.5 w-4.5" />
-                </button>
               </div>
-            </div>
             
-            <div className="flex-1 bg-slate-100 p-4 flex items-center justify-center overflow-auto">
-              {previewDoc.url.toLowerCase().split('?')[0].endsWith('.pdf') ? (
+            <div className="h-[65vh] bg-slate-100 p-4 flex items-center justify-center overflow-auto rounded-md">
+              {previewDoc.isPdf ? (
                 <iframe
                   src={previewDoc.url}
                   title={previewDoc.name}
@@ -359,8 +363,7 @@ export default function ApplicantDetails({ studentId, onBack }) {
                 />
               )}
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

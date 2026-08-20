@@ -55,10 +55,10 @@ export default function PaymentVerification({ studentId, onBack }) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-lg font-extrabold text-univ-navy">
+            <h2 className="text-lg font-semibold text-univ-navy">
               {student.firstName} {student.lastName}
             </h2>
-            <div className="flex items-center gap-3 mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="flex items-center gap-3 mt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               <span className="font-mono text-slate-400">{student.studentId || student.id}</span>
               <span>&bull;</span>
               <span>{program?.name || 'No program selected'}</span>
@@ -150,24 +150,24 @@ export default function PaymentVerification({ studentId, onBack }) {
                 <div className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Method</p>
-                      <p className="text-sm font-extrabold text-univ-navy mt-1 capitalize">{student.paymentMethod || '—'}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Payment Method</p>
+                      <p className="text-sm font-semibold text-univ-navy mt-1 capitalize">{student.paymentMethod || '—'}</p>
                     </div>
                     {student.paymentReference && (
                       <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Reference Code</p>
-                        <p className="text-sm font-extrabold text-univ-navy mt-1 font-mono">{student.paymentReference}</p>
+                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Reference Code</p>
+                        <p className="text-sm font-semibold text-univ-navy mt-1 font-mono">{student.paymentReference}</p>
                       </div>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payment Received</p>
-                      <p className="text-sm font-extrabold text-univ-navy mt-1">{formatPeso(student.amountPaid || student.totalTuition)}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Payment Received</p>
+                      <p className="text-sm font-bold text-univ-navy mt-1">{formatPeso(student.amountPaid || student.totalTuition)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Remaining Balance</p>
-                      <p className="text-sm font-extrabold text-univ-navy mt-1">{formatPeso(student.remainingBalance)}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Remaining Balance</p>
+                      <p className="text-sm font-bold text-univ-navy mt-1">{formatPeso(student.remainingBalance)}</p>
                     </div>
                   </div>
                   

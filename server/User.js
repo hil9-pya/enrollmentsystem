@@ -29,8 +29,13 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student', 'admission', 'adviser', 'accounting', 'registrar', 'admin'],
+    enum: ['student', 'instructor', 'admission', 'adviser', 'accounting', 'registrar', 'admin'],
     default: 'student',
+  },
+  studentProfile: {
+    type: String,
+    ref: 'Student',
+    default: null,
   },
   createdAt: {
     type: Date,

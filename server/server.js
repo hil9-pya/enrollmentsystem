@@ -5,25 +5,29 @@ import dotenv from 'dotenv';
 
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { notFound, errorHandler } from './errorMiddleware.js';
 
 // Route imports
 import authRoutes from './authRoutes.js';
-import courseRoutes from './courses.js';
-import enrollmentRoutes from './enrollmentRoutes.js';
 import studentsRoutes from './studentsRoutes.js';
 import adminRoutes from './adminRoutes.js';
 import userRoutes from './userRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
 import schedulerRoutes from './schedulerRoutes.js';
 import paymongoRoutes from './paymongoRoutes.js';
+import academicRoutes from './academicRoutes.js';
+import lmsRoutes from './lmsRoutes.js';
 import { seedStudents, seedUsers } from './seed.js';
 import { startCleanupTask } from './cron.js';
 import { initCatalog } from './subjectsCatalog.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import Settings from './Settings.js';
+import {
+  backfillOfficialEnrollments,
+  ensureAcademicTerm,
+  repairLegacyEnrolledStudentTerms,
+} from './services/academicFoundationService.js';
+import { startBackgroundJobWorker } from './services/backgroundJobService.js';
+import { repairStoredAcademicTermLabel } from './academicTermUtils.js';
 
 let mongoServerInstance = null;
 
@@ -87,9 +91,26 @@ const startServer = async () => {
     await seedUsers();
     await seedStudents();
     await initCatalog();
+    const currentSettings = await Settings.findOne();
+    const storedTerm = currentSettings?.activeTerm || '1st Semester 2026-2027';
+    const activeTerm = repairStoredAcademicTermLabel(storedTerm);
+    if (currentSettings && activeTerm !== storedTerm) {
+      await Settings.updateOne({ _id: currentSettings._id }, { $set: { activeTerm } });
+      console.warn(`Repaired legacy academic term "${storedTerm}" to "${activeTerm}".`);
+    }
+    const repairedStudentTerms = await repairLegacyEnrolledStudentTerms(activeTerm);
+    if (repairedStudentTerms > 0) {
+      console.warn(`Repaired ${repairedStudentTerms} legacy enrolled-student term field(s).`);
+    }
+    await ensureAcademicTerm(activeTerm, { activate: true });
+    const academicBackfill = await backfillOfficialEnrollments();
+    if (academicBackfill.failed.length > 0) {
+      console.warn('Academic membership backfill skipped invalid records:', academicBackfill.failed);
+    }
 
     // Start background tasks
     startCleanupTask();
+    startBackgroundJobWorker();
 
     // --- Security Best Practice: Check for Insecure Secrets ---
     const insecureSecrets = [
@@ -134,9 +155,6 @@ const startServer = async () => {
     });
     app.use('/api', apiLimiter);
 
-    // Serve uploaded document files (resumes, IDs, etc.)
-    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
     // API Routes
     app.get('/api/health', async (req, res) => {
       try {
@@ -160,14 +178,14 @@ const startServer = async () => {
       }
     });
     app.use('/api/auth', authRoutes);
-    app.use('/api/courses', courseRoutes);
-    app.use('/api/enrollments', enrollmentRoutes);
     app.use('/api/students', studentsRoutes);
     app.use('/api/admin/students', adminRoutes);
     app.use('/api/admin/users', userRoutes);
     app.use('/api/settings', settingsRoutes);
     app.use('/api/scheduler', schedulerRoutes);
     app.use('/api/paymongo', paymongoRoutes);
+    app.use('/api/academic', academicRoutes);
+    app.use('/api/lms', lmsRoutes);
 
     // Error Handling Middleware
     app.use(notFound);

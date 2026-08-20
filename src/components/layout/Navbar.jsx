@@ -86,12 +86,23 @@ export default function Navbar({ onNavigate }) {
             </div>
             
             <div className="flex items-center gap-3 pl-6 border-l transition-colors duration-300 border-white/20">
+              <button
+                type="button"
+                onClick={() => onNavigate('lms')}
+                className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-colors cursor-pointer ${
+                  isScrolled
+                    ? 'border border-slate-300 bg-white text-univ-navy hover:border-univ-blue hover:text-univ-blue'
+                    : 'border border-white/40 text-white hover:bg-white/10'
+                }`}
+              >
+                LMS
+              </button>
               <button 
                 onClick={() => onNavigate('gateway')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors cursor-pointer ${
                   isScrolled
-                    ? 'bg-univ-blue text-white hover:bg-blue-700 shadow-sm hover:shadow'
-                    : 'bg-white text-univ-navy hover:bg-slate-50 shadow-lg shadow-black/10'
+                    ? 'bg-univ-blue text-white hover:bg-blue-700'
+                    : 'bg-white text-univ-navy hover:bg-slate-50'
                 }`}
               >
                 <LogIn className="w-4 h-4" />
@@ -132,9 +143,22 @@ export default function Navbar({ onNavigate }) {
             </button>
           ))}
           <div className="pt-4 mt-2 border-t border-slate-100 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                onNavigate('lms');
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-univ-navy hover:border-univ-blue hover:text-univ-blue"
+            >
+              Learning Management System
+            </button>
             <button 
-              onClick={() => onNavigate('gateway')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-univ-blue text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors cursor-pointer"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                onNavigate('gateway');
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-univ-blue text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <LogIn className="w-4 h-4" />
               Access Portal

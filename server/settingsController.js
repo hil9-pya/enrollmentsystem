@@ -1,6 +1,8 @@
 import asyncHandler from 'express-async-handler';
 import Settings from './Settings.js';
 import mongoose from 'mongoose';
+import { ensureAcademicTerm } from './services/academicFoundationService.js';
+import { nextAcademicTermLabel, parseAcademicTermLabel } from './academicTermUtils.js';
 
 // @desc    Get settings
 // @route   GET /api/settings
@@ -20,12 +22,22 @@ const updateSettings = asyncHandler(async (req, res) => {
     settings = new Settings();
   }
   
-  settings.activeTerm = req.body.activeTerm !== undefined ? req.body.activeTerm : settings.activeTerm;
+  let requestedTerm = settings.activeTerm;
+  if (req.body.activeTerm !== undefined) {
+    try {
+      requestedTerm = parseAcademicTermLabel(req.body.activeTerm).name;
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+  const activeTermChanged = requestedTerm !== settings.activeTerm;
+  settings.activeTerm = requestedTerm;
   settings.enrollmentOpen = req.body.enrollmentOpen !== undefined ? req.body.enrollmentOpen : settings.enrollmentOpen;
   settings.systemMaintenance = req.body.systemMaintenance !== undefined ? req.body.systemMaintenance : settings.systemMaintenance;
   settings.announcement = req.body.announcement !== undefined ? req.body.announcement : settings.announcement;
 
   const updatedSettings = await settings.save();
+  if (activeTermChanged) await ensureAcademicTerm(updatedSettings.activeTerm, { activate: true });
   res.json(updatedSettings);
 });
 
@@ -35,11 +47,12 @@ const advanceSemester = asyncHandler(async (req, res) => {
   let settings = await Settings.findOne();
   if (!settings) settings = new Settings();
 
-  const oldTerm = settings.activeTerm || '1st Semester';
-  const newTerm = oldTerm === '1st Semester' ? '2nd Semester' : '1st Semester';
+  const oldTerm = settings.activeTerm || '1st Semester 2026-2027';
+  const newTerm = nextAcademicTermLabel(oldTerm);
   
   settings.activeTerm = newTerm;
   await settings.save();
+  await ensureAcademicTerm(newTerm, { activate: true });
 
   // Process all students
   const Student = mongoose.model('Student');
@@ -61,12 +74,16 @@ const advanceSemester = asyncHandler(async (req, res) => {
       updateDoc = { $set: { missedSemesters: newMissed } };
       
       if (newMissed >= 2) {
+        const archivedAt = new Date();
         updateDoc.$set.isDeleted = true;
+        updateDoc.$set.archivedAt = archivedAt;
+        updateDoc.$set.archivedReason = 'Inactive for 2 consecutive semesters';
+        updateDoc.$set.archivedBy = 'System Admin';
         updateDoc.$push = {
           auditLogs: {
             action: 'Auto-archived due to missing 2 consecutive semesters',
             user: 'System Admin',
-            date: new Date()
+            date: archivedAt
           }
         };
       }

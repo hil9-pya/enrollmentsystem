@@ -4,6 +4,7 @@ import AdviserSidebar from './AdviserSidebar';
 import AdviserDashboard from './AdviserDashboard';
 import AdvisingQueue from './AdvisingQueue';
 import PortalShell from '../../components/PortalShell';
+import StaffUnavailablePanel from '../../components/StaffUnavailablePanel';
 
 export default function AdviserView() {
   const { state } = useEnrollment();
@@ -36,12 +37,7 @@ export default function AdviserView() {
         return <AdvisingQueue students={students} initialFilter="rejected" onNavigate={handleTabChange} key="rejected" />;
       
       case 'settings':
-        return (
-          <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-semibold text-univ-navy">Settings</h1>
-            <p className="text-slate-500 font-medium mt-2">Adviser settings are currently managed by the System Admin.</p>
-          </div>
-        );
+        return <StaffUnavailablePanel title="Adviser settings" description="System administrators manage adviser configuration." />;
 
       default:
         return <AdviserDashboard students={students} onNavigate={handleTabChange} />;

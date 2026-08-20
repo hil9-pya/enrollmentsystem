@@ -5,6 +5,7 @@ import DashboardOverview from './DashboardOverview';
 import ApplicantManagement from './ApplicantManagement';
 import ApplicantDetails from './ApplicantDetails';
 import PortalShell from '../../components/PortalShell';
+import StaffUnavailablePanel from '../../components/StaffUnavailablePanel';
 
 export default function AdmissionView() {
   const { state } = useEnrollment();
@@ -58,12 +59,7 @@ export default function AdmissionView() {
         return <ApplicantManagement students={validStudents} initialFilter="documents_submitted" onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="verification" />;
       
       case 'settings':
-        return (
-          <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-semibold text-univ-navy">Settings</h1>
-            <p className="text-slate-500 font-medium mt-2">Admission settings are currently managed by the System Admin.</p>
-          </div>
-        );
+        return <StaffUnavailablePanel title="Admission settings" description="System administrators manage admission configuration." />;
 
       default:
         return <DashboardOverview students={validStudents} onNavigate={handleTabChange} />;

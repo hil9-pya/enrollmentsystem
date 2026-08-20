@@ -2,17 +2,13 @@ import React, { createContext, useState, useEffect, useContext, useCallback, use
 import { toast } from 'react-hot-toast';
 import { SUBJECTS } from '../data/mockData.js';
 import { useAuth } from './AuthContext';
+import { authFetch } from '../utils/authFetch.js';
 
 const EnrollmentContext = createContext(null);
-const authFetch = (url, options = {}) => {
-  const token = localStorage.getItem('token');
-  const headers = { ...options.headers };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return fetch(url, { ...options, headers });
-};
-
+const matchesStudentIdentifier = (student, identifier) => (
+  Boolean(identifier)
+  && (student?.id === identifier || student?.studentId === identifier)
+);
 const safeJson = async (res) => {
   if (!res.ok) {
     let errorMsg = `Server error (Status ${res.status})`;
@@ -37,7 +33,7 @@ export function EnrollmentProvider({ children }) {
   const [currentStudentId, setCurrentStudentId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeStudentId, setActiveStudentId] = useState(() => {
-    return localStorage.getItem('student_active_id') || 'STU-2026-0006';
+    return localStorage.getItem('student_active_id') || null;
   });
 
   const setActiveStudent = useCallback((id) => {
@@ -52,7 +48,7 @@ export function EnrollmentProvider({ children }) {
   const refreshActiveStudent = useCallback(async (studentId = activeStudentId) => {
     if (!studentId) return null;
 
-    const res = await fetch(`/api/students/${studentId}`, { cache: 'no-store' });
+    const res = await authFetch(`/api/students/${studentId}`, { cache: 'no-store' });
     const data = await safeJson(res);
     if (data?.id) {
       setStudents((prev) => {
@@ -71,8 +67,8 @@ export function EnrollmentProvider({ children }) {
     const res = await authFetch('/api/admin/students', { cache: 'no-store' });
     const data = await safeJson(res);
     setStudents((prev) => {
-      const active = prev.find((student) => student.id === activeStudentId);
-      if (active && !data.some((student) => student.id === activeStudentId)) {
+      const active = prev.find((student) => matchesStudentIdentifier(student, activeStudentId));
+      if (active && !data.some((student) => matchesStudentIdentifier(student, activeStudentId))) {
         return [...data, active];
       }
       return data;
@@ -93,7 +89,7 @@ export function EnrollmentProvider({ children }) {
       }
 
       if (!token || user?.role === 'student') {
-        setStudents((prev) => prev.filter(s => s.id === activeStudentId));
+        setStudents((prev) => prev.filter((student) => matchesStudentIdentifier(student, activeStudentId)));
         setIsLoading(false);
         return;
       }
@@ -105,8 +101,8 @@ export function EnrollmentProvider({ children }) {
         }
         const data = await safeJson(res);
         setStudents((prev) => {
-          const active = prev.find((s) => s.id === activeStudentId);
-          if (active && !data.some((s) => s.id === activeStudentId)) {
+          const active = prev.find((student) => matchesStudentIdentifier(student, activeStudentId));
+          if (active && !data.some((student) => matchesStudentIdentifier(student, activeStudentId))) {
             return [...data, active];
           }
           return data;
@@ -287,6 +283,33 @@ export function EnrollmentProvider({ children }) {
         });
         updatedStudent = await safeJson(res);
       } 
+
+      else if (type === 'JOIN_WALK_IN_QUEUE') {
+        const res = await authFetch(`/api/students/${activeStudentId}/walk-in-queue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentPlan: payload.paymentPlan }),
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'CALL_NEXT_WALK_IN') {
+        const res = await authFetch('/api/admin/students/walk-in-queue/next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ counterNumber: payload?.counterNumber || null }),
+        });
+        updatedStudent = await safeJson(res);
+      }
+
+      else if (type === 'UPDATE_WALK_IN_QUEUE') {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/walk-in-queue/${payload.action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ counterNumber: payload.counterNumber || null }),
+        });
+        updatedStudent = await safeJson(res);
+      }
       
       else if (type === 'VERIFY_PAYMONGO_PAYMENT') {
         const res = await authFetch(`/api/students/${activeStudentId}/verify-paymongo-payment?session_id=${payload.sessionId}`, {

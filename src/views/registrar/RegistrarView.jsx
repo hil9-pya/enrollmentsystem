@@ -3,7 +3,9 @@ import { useEnrollment } from '../../context/EnrollmentContext';
 import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
 import EnrollmentValidation from './EnrollmentValidation';
+import GradeReviewQueue from './GradeReviewQueue';
 import PortalShell from '../../components/PortalShell';
+import StaffUnavailablePanel from '../../components/StaffUnavailablePanel';
 
 export default function RegistrarView() {
   const { state } = useEnrollment();
@@ -49,28 +51,22 @@ export default function RegistrarView() {
       
       case 'enrolled':
         return <RegistrarDashboard students={students} initialFilter="enrolled" showOverview={false} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="enrolled" />;
+
+      case 'grades':
+        return <GradeReviewQueue />;
       
       case 'export':
-        return (
-          <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-semibold text-univ-navy">Export records</h1>
-            <p className="text-slate-500 font-medium mt-2">Export functionality is available from the Data Grid.</p>
-            <button 
+        return <StaffUnavailablePanel title="Export records" description="Export tools are available from the records table." action={(
+            <button
               onClick={() => handleTabChange('records')}
-              className="mt-4 rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"
+              className="rounded-lg bg-univ-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 cursor-pointer"
             >
-              Open data grid
+              Open records
             </button>
-          </div>
-        );
+          )} />;
 
       case 'settings':
-        return (
-          <div className="p-8 flex flex-col items-center justify-center h-full">
-            <h1 className="text-xl font-semibold text-univ-navy">Settings</h1>
-            <p className="text-slate-500 font-medium mt-2">Registrar settings are currently managed by the System Admin.</p>
-          </div>
-        );
+        return <StaffUnavailablePanel title="Registrar settings" description="System administrators manage registrar configuration." />;
 
       default:
         return <RegistrarDashboard students={students} initialFilter="all" showOverview={true} onViewDetails={handleViewDetails} onNavigate={handleTabChange} key="default" />;
