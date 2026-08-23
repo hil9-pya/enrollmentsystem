@@ -27,6 +27,12 @@ function toLocalDateTime(value) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
+function getCurrentLocalDateTime() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+}
+
 function splitDateTime(value) {
   const localValue = value || '';
   const [date = '', time = ''] = localValue.split('T');
@@ -112,7 +118,7 @@ function AttemptHistory({ submission, token }) {
   );
 }
 
-export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEnabled, token }) {
+export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEnabled, refreshKey, token }) {
   const { confirm } = useConfirm();
   const [assignments, setAssignments] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -123,15 +129,17 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
   const [isEditing, setIsEditing] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState('');
-  const [assignmentDraft, setAssignmentDraft] = useState({ title: '', instructions: '', dueAt: '', points: 100, allowLateSubmissions: false });
+  const [assignmentDraft, setAssignmentDraft] = useState(() => ({ title: '', instructions: '', dueAt: getCurrentLocalDateTime(), points: 100, allowLateSubmissions: false }));
   const [submissionDraft, setSubmissionDraft] = useState({ text: '', file: null });
   const [editDraft, setEditDraft] = useState({ title: '', instructions: '', dueAt: '', points: 100, allowLateSubmissions: false });
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
-  const loadAssignments = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
+  const loadAssignments = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError('');
+    }
     try {
       const response = await fetch(`/api/lms/offerings/${offeringId}/assignments`, { headers, cache: 'no-store' });
       const payload = await response.json();
@@ -139,13 +147,13 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
       setAssignments(payload.data || []);
       setSelected((current) => current ? (payload.data || []).find((item) => item._id === current._id) || null : null);
     } catch (requestError) {
-      setError(requestError.message);
+      if (!silent) setError(requestError.message);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [headers, offeringId]);
 
-  useEffect(() => { loadAssignments(); }, [loadAssignments]);
+  useEffect(() => { loadAssignments({ silent: refreshKey > 0 }); }, [loadAssignments, refreshKey]);
 
   const openAssignment = async (assignment) => {
     setSelected(assignment);
@@ -190,7 +198,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to create assignment.');
       setAssignments((current) => [...current, payload.data].sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt)));
-      setAssignmentDraft({ title: '', instructions: '', dueAt: '', points: 100, allowLateSubmissions: false });
+      setAssignmentDraft({ title: '', instructions: '', dueAt: getCurrentLocalDateTime(), points: 100, allowLateSubmissions: false });
       setShowCreateForm(false);
       toast.success('Assignment published.');
     } catch (requestError) {

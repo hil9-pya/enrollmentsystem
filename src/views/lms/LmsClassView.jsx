@@ -39,6 +39,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
@@ -56,9 +57,11 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const canWrite = isEnabled && termIsWritable;
   const canEdit = canManage && canWrite;
 
-  const loadClass = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
+  const loadClass = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError('');
+    }
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const requests = [
@@ -79,14 +82,29 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
       setMaterials(payloads[2].data || []);
       setCourseAssignments(payloads[3].data || []);
       setRoster(payloads[4]?.data || []);
+      setError('');
+      setContentRefreshKey((current) => current + 1);
     } catch (requestError) {
-      setError(requestError.message);
+      if (!silent) setError(requestError.message);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [offeringId, role, token]);
 
-  useEffect(() => { loadClass(); }, [loadClass]);
+  useEffect(() => {
+    loadClass();
+    const refresh = () => {
+      if (document.visibilityState === 'visible') loadClass({ silent: true });
+    };
+    const interval = window.setInterval(refresh, 15_000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [loadClass]);
 
   const visibleTabs = useMemo(() => (
     canManage ? [...tabs, { id: 'gradebook', label: 'Gradebook' }, { id: 'roster', label: 'Roster' }] : tabs
@@ -340,6 +358,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
           canManage={canManage}
           canEdit={canEdit}
           isEnabled={canWrite}
+          refreshKey={contentRefreshKey}
           token={token}
         />
       )}

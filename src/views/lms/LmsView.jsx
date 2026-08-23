@@ -74,6 +74,7 @@ export default function LmsView({ onBack, onSignOut }) {
   const [searchLoading, setSearchLoading] = useState(false);
   const hasLoadedNotificationsRef = useRef(false);
   const unreadCountRef = useRef(0);
+  const notificationMenuRef = useRef(null);
 
   const loadClasses = useCallback(async () => {
     if (!allowedRoles.has(user?.role)) return;
@@ -142,9 +143,28 @@ export default function LmsView({ onBack, onSignOut }) {
 
   useEffect(() => {
     loadNotifications();
-    const interval = window.setInterval(loadNotifications, 30_000);
-    return () => window.clearInterval(interval);
+    const refreshOnFocus = () => loadNotifications();
+    const refreshOnVisible = () => {
+      if (document.visibilityState === 'visible') loadNotifications();
+    };
+    const interval = window.setInterval(loadNotifications, 10_000);
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
   }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!showNotificationMenu) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!notificationMenuRef.current?.contains(event.target)) setShowNotificationMenu(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [showNotificationMenu]);
 
   useEffect(() => {
     unreadCountRef.current = unreadCount;
@@ -275,7 +295,7 @@ export default function LmsView({ onBack, onSignOut }) {
         </div>
         <div className="flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
           <button type="button" onClick={() => setShowMobileSearch((current) => !current)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 sm:hidden" aria-label="Search LMS"><Search className="h-4 w-4" /></button>
-          <div className="relative">
+          <div ref={notificationMenuRef} className="relative">
             <button type="button" onClick={() => setShowNotificationMenu((current) => !current)} className="relative rounded-md p-2 text-slate-500 hover:bg-slate-100" aria-label={`${unreadCount} unread notifications`} aria-expanded={showNotificationMenu}><Bell key={`notification-bell-${notificationMotionKey}`} className={`h-4 w-4 ${notificationMotionKey > 0 ? 'lms-notification-ring' : ''}`} />{unreadCount > 0 && <span key={`notification-badge-${notificationMotionKey}`} className={`absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-univ-blue px-1 text-center text-[10px] font-bold leading-4 text-white ${notificationMotionKey > 0 ? 'lms-notification-badge' : ''}`}>{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>
             {showNotificationMenu && <div className="lms-notification-menu absolute right-0 top-full mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"><div className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><div><p className="text-sm font-semibold text-slate-900">Notifications</p><p className="mt-0.5 text-xs text-slate-500">{unreadCount} unread</p></div><button type="button" onClick={() => setShowNotificationMenu(false)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100" aria-label="Close notifications"><X className="h-4 w-4" /></button></div>{notificationsLoading ? <div className="p-6 text-center text-sm text-slate-500">Loading...</div> : notificationsError ? <div className="p-4 text-sm text-rose-700">{notificationsError}</div> : notifications.length === 0 ? <div className="p-6 text-center text-sm text-slate-500">No notifications.</div> : <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto">{notifications.slice(0, 5).map((notification) => <button key={notification._id} type="button" onClick={() => openNotification(notification)} className={`w-full px-4 py-3 text-left hover:bg-slate-50 ${notification.readAt ? '' : 'bg-blue-50/60'}`}><span className={`block text-sm ${notification.readAt ? 'font-medium text-slate-700' : 'font-semibold text-slate-900'}`}>{notification.title}</span>{notification.message && <span className="mt-1 line-clamp-2 block text-xs text-slate-500">{notification.message}</span>}</button>)}</div>}<button type="button" onClick={() => { setShowNotificationMenu(false); changeView('notifications'); }} className="w-full border-t border-slate-200 px-4 py-3 text-center text-xs font-semibold text-univ-blue hover:bg-slate-50">View all notifications</button></div>}
           </div>

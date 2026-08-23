@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EnrollmentProvider, useEnrollment } from './context/EnrollmentContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConfirmationProvider, useConfirm } from './context/ConfirmationContext';
@@ -23,29 +23,53 @@ import { LogOut } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { clearApplicantAccess } from './utils/authFetch.js';
 
+const PORTAL_VIEWS = new Set([
+  'gateway',
+  'applicant',
+  'student',
+  'staff',
+  'admin',
+  'lms',
+  'paymongo-checkout',
+  'payment-success',
+]);
+
+function readPortalFromUrl() {
+  const portal = new URLSearchParams(window.location.search).get('portal');
+  return PORTAL_VIEWS.has(portal) ? portal : 'landing';
+}
+
+function buildPortalUrl(view, tab) {
+  if (view === 'landing') return '/';
+  const params = new URLSearchParams({ portal: view });
+  if (tab) params.set('tab', tab);
+  return `/?${params.toString()}`;
+}
+
 function AppContent() {
   const { user, logout, isLoading } = useAuth();
   const { confirm } = useConfirm();
   const { state: { activeStudentId } } = useEnrollment();
   const [isApplicantVerified, setIsApplicantVerified] = useState(false);
   
-  // Custom routing state
-  const [viewMode, setViewMode] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const portal = params.get('portal');
-    if (
-      portal === 'gateway' ||
-      portal === 'applicant' ||
-      portal === 'student' ||
-      portal === 'staff' ||
-      portal === 'admin' ||
-      portal === 'lms' ||
-      portal === 'paymongo-checkout' ||
-      portal === 'payment-success'
-    ) return portal;
-    return 'landing'; // Default to landing page
-  });
+  const [viewMode, setViewMode] = useState(readPortalFromUrl);
   const gatewayTab = new URLSearchParams(window.location.search).get('tab') || 'applicant';
+
+  const navigateTo = (view, { tab, replace = false } = {}) => {
+    const nextView = PORTAL_VIEWS.has(view) ? view : 'landing';
+    const nextUrl = buildPortalUrl(nextView, tab);
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', nextUrl);
+    setViewMode(nextView);
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsApplicantVerified(false);
+      setViewMode(readPortalFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -57,7 +81,7 @@ function AppContent() {
     });
     if (isConfirmed) {
       logout();
-      setViewMode('gateway');
+      navigateTo('gateway', { tab: user?.role === 'student' ? 'student' : 'staff' });
     }
   };
 
@@ -85,10 +109,7 @@ function AppContent() {
     if (!user) {
       return (
         <LmsLoginView
-          onBack={() => {
-            window.history.pushState({}, '', '/?portal=gateway');
-            setViewMode('gateway');
-          }}
+          onBack={() => navigateTo('gateway')}
         />
       );
     }
@@ -96,9 +117,8 @@ function AppContent() {
     return (
       <LmsView
         onBack={() => {
-          const destination = user.role === 'student' ? 'student' : user.role === 'admin' ? 'admin' : 'instructor';
-          window.history.pushState({}, '', `/?portal=${destination}`);
-          setViewMode(destination);
+          const destination = user.role === 'student' ? 'student' : user.role === 'admin' ? 'admin' : 'staff';
+          navigateTo(destination);
         }}
         onSignOut={async () => {
           const isConfirmed = await confirm({
@@ -110,8 +130,7 @@ function AppContent() {
           });
           if (isConfirmed) {
             logout();
-            window.history.pushState({}, '', '/?portal=lms');
-            setViewMode('lms');
+            navigateTo('lms');
           }
         }}
       />
@@ -133,8 +152,7 @@ function AppContent() {
           </div>
           <button 
             onClick={() => {
-              window.history.pushState({}, '', '/');
-              setViewMode('gateway');
+              navigateTo('gateway');
               setIsApplicantVerified(false);
               clearApplicantAccess();
             }} 
@@ -222,19 +240,24 @@ function AppContent() {
       <GatewayView 
         initialView={viewMode === 'gateway' ? gatewayTab : viewMode}
         onLogin={(signedInUser) => {
-          setViewMode(signedInUser?.role === 'student' ? 'student' : signedInUser?.role || 'admin');
+          const destination = signedInUser?.role === 'student'
+            ? 'student'
+            : signedInUser?.role === 'admin'
+              ? 'admin'
+              : 'staff';
+          navigateTo(destination);
         }}
         onVerified={() => {
           setIsApplicantVerified(true);
-          setViewMode('applicant');
+          navigateTo('applicant');
         }} 
-        onBack={() => setViewMode('landing')}
+        onBack={() => navigateTo('landing')}
       />
     );
   }
 
   // 5. Default Public Landing Page
-  return <LandingView onNavigate={(view) => setViewMode(view)} />;
+  return <LandingView onNavigate={navigateTo} />;
 }
 
 export default function App() {
