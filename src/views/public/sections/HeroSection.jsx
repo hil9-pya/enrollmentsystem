@@ -7,9 +7,10 @@ export default function HeroSection({ onNavigate }) {
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
-          src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
+          src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=60&fm=webp" 
           alt="NCST Campus" 
           className="w-full h-full object-cover opacity-60"
+          fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-univ-navy-dark via-univ-navy/80 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-univ-navy-dark via-transparent to-transparent"></div>
