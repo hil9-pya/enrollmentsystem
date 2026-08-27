@@ -129,6 +129,7 @@ function AppContent() {
       message: 'Are you sure you want to sign out?',
       confirmText: 'Sign Out',
       cancelText: 'Cancel',
+      animate: false,
       type: 'warning'
     });
     if (isConfirmed) {
@@ -183,6 +184,7 @@ function AppContent() {
             message: 'Are you sure you want to sign out of NCST LMS?',
             confirmText: 'Sign Out',
             cancelText: 'Cancel',
+            animate: false,
             type: 'warning'
           });
           if (isConfirmed) {

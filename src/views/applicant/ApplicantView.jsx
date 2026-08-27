@@ -274,7 +274,9 @@ export default function ApplicantView() {
               </p>
             </div>
           )}
-          {renderStep()}
+          <div key={effectiveStep} className="ui-content-enter">
+            {renderStep()}
+          </div>
         </div>
       </main>
     </PortalShell>

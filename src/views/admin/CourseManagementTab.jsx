@@ -21,12 +21,24 @@ const PROGRAMS = [
 const DAYS_OPTIONS = ['MWF', 'TTH', 'MTWTHF', 'M', 'T', 'W', 'TH', 'F', 'S', 'TTHF'];
 const ROOM_CODE_LENGTH = 4;
 const ROOM_CODE_PATTERN = /^[12][1-3](?:0[1-9]|10)$/;
-const SECTION_CODE_PATTERN = /^(CS|BA|NU)-[1-3]1[MAE][1-4]$/;
-const PROGRAM_CODE_BY_ID = { bscs: 'CS', bsba: 'BA', bsn: 'NU' };
-const YEAR_ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd' };
+const SECTION_CODE_PATTERN = /^(CS|BA|NU|GE)-([1-4])([12])([MAE])([1-9])$/;
+const PROGRAM_CODE_BY_ID = { bscs: 'CS', bsba: 'BA', bsn: 'NU', elective: 'GE' };
+const SUBJECT_CODE_PATTERN = /^(CS|BA|NU|GE) \d{3}$/;
+const YEAR_ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
 
 function sanitizeRoomCode(value = '') {
   return value.replace(/\D/g, '').slice(0, ROOM_CODE_LENGTH);
+}
+
+function formatSubjectCode(value = '') {
+  const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const letters = compact.replace(/[^A-Z]/g, '').slice(0, 2);
+  const digits = compact.replace(/\D/g, '').slice(0, 3);
+  return `${letters}${digits ? ` ${digits}` : ''}`;
+}
+
+function sanitizeSubjectId(value = '') {
+  return value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
 }
 
 function formatSectionCode(value = '') {
@@ -37,25 +49,24 @@ function formatSectionCode(value = '') {
 
 function getSectionCodeError(sectionCode, subject) {
   if (!sectionCode) return 'Enter a section code.';
-  if (sectionCode.length > 4 && sectionCode[4] !== '1') {
-    return 'This subject is for 1st semester only.';
-  }
-  if (!SECTION_CODE_PATTERN.test(sectionCode)) {
-    return 'Use CS-11M1: program, year 1-3, semester 1, M/A/E, section 1-4.';
-  }
-  if (!subject || subject.programId === 'elective') return '';
+  const match = sectionCode.match(SECTION_CODE_PATTERN);
+  if (!match) return 'Use CS-11M1: program, year 1-4, semester 1-2, M/A/E, section 1-9.';
+  if (!subject) return '';
 
   const expectedProgram = PROGRAM_CODE_BY_ID[subject.programId];
-  if (sectionCode.slice(0, 2) !== expectedProgram) {
+  if (match[1] !== expectedProgram) {
     return `Section code must use ${expectedProgram} for this subject.`;
   }
-  if (Number(sectionCode[3]) !== subject.yearLevel) {
+  if (subject.yearLevel != null && Number(match[2]) !== Number(subject.yearLevel)) {
     return `Selected subject is for ${YEAR_ORDINALS[subject.yearLevel]} year only.`;
+  }
+  if (subject.semester != null && Number(match[3]) !== Number(subject.semester)) {
+    return `Selected subject is for semester ${subject.semester} only.`;
   }
   return '';
 }
 
-function SubjectFormModal({ isOpen, onClose, onSave }) {
+function SubjectFormModal({ isOpen, onClose, onSave, subjects, initialData }) {
   const [form, setForm] = useState({
     id: '',
     code: '',
@@ -65,52 +76,119 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
     fee: 4500,
     yearLevel: 1,
     semester: 1,
+    prerequisites: [],
+    isActive: true,
   });
   const [saving, setSaving] = useState(false);
+  const [prerequisiteQuery, setPrerequisiteQuery] = useState('');
+
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setForm({ id: '', code: '', name: '', units: 3, programId: '', fee: 4500, yearLevel: 1, semester: 1 });
+      setPrerequisiteQuery('');
+      setForm(initialData ? {
+        id: initialData.id,
+        code: initialData.code,
+        name: initialData.name,
+        units: initialData.units,
+        programId: initialData.programId,
+        fee: initialData.fee,
+        yearLevel: initialData.yearLevel ?? 1,
+        semester: initialData.semester ?? 1,
+        prerequisites: initialData.prerequisites || [],
+        isActive: initialData.isActive !== false,
+      } : {
+        id: '', code: '', name: '', units: 3, programId: '', fee: 4500,
+        yearLevel: 1, semester: 1, prerequisites: [], isActive: true,
+      });
     }
-  }, [isOpen]);
+  }, [initialData, isOpen]);
+
+  const prerequisiteOptions = useMemo(() => (subjects || []).filter((subject) => (
+    subject.id !== form.id
+    && (subject.isActive !== false || form.prerequisites.includes(subject.id))
+  )), [form.id, form.prerequisites, subjects]);
+
+  const filteredPrerequisiteOptions = useMemo(() => {
+    const query = prerequisiteQuery.trim().toLowerCase();
+    if (!query) return prerequisiteOptions;
+    return prerequisiteOptions.filter((subject) => (
+      subject.code?.toLowerCase().includes(query)
+      || subject.name?.toLowerCase().includes(query)
+    ));
+  }, [prerequisiteOptions, prerequisiteQuery]);
+
+  const togglePrerequisite = (subjectId) => {
+    updateField(
+      'prerequisites',
+      form.prerequisites.includes(subjectId)
+        ? form.prerequisites.filter((id) => id !== subjectId)
+        : [...form.prerequisites, subjectId],
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const code = String(form.code || '').trim().toUpperCase();
+    const expectedCode = PROGRAM_CODE_BY_ID[form.programId];
+    if (!SUBJECT_CODE_PATTERN.test(code)) {
+      toast.error('Code must use this format: CS 401.');
+      return;
+    }
+    if (expectedCode && !code.startsWith(`${expectedCode} `)) {
+      toast.error(`Code must start with ${expectedCode} for the selected program.`);
+      return;
+    }
     setSaving(true);
-    await onSave(form);
-    setSaving(false);
+    try {
+      await onSave({
+        ...form,
+        id: sanitizeSubjectId(form.id),
+        code,
+        units: Number(form.units),
+        fee: Number(form.fee),
+        yearLevel: form.programId === 'elective' ? null : Number(form.yearLevel),
+        semester: form.programId === 'elective' ? null : Number(form.semester),
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add new subject" maxWidth="max-w-lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={initialData ? 'Edit subject' : 'Add new subject'} maxWidth="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">ID (Unique) *</label>
-              <input type="text" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value.toLowerCase().replace(/\s+/g, '') })} required placeholder="e.g. cs401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <label htmlFor="subject-id" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">ID (Unique) *</label>
+              <input id="subject-id" name="id" type="text" value={form.id} onChange={(e) => updateField('id', sanitizeSubjectId(e.target.value))} required disabled={!!initialData} pattern="[a-z0-9-]+" maxLength={32} autoCapitalize="none" spellCheck="false" title="Use lowercase letters, numbers, and hyphens only." placeholder="e.g. cs401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500" />
             </div>
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Code *</label>
-              <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required placeholder="e.g. CS 401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <label htmlFor="subject-code" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Code *</label>
+              <input id="subject-code" name="code" type="text" value={form.code} onChange={(e) => updateField('code', formatSubjectCode(e.target.value))} required pattern={SUBJECT_CODE_PATTERN.source} maxLength={6} spellCheck="false" title="Use a course code such as CS 401." placeholder="e.g. CS 401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <p className="mt-1 text-[11px] text-slate-500">Use two letters and three numbers; prefix must match the program.</p>
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Name *</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Advanced AI" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            <label htmlFor="subject-name" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Name *</label>
+            <input id="subject-name" name="name" type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} required placeholder="e.g. Advanced AI" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Program *</label>
-              <select value={form.programId} onChange={(e) => setForm({ ...form, programId: e.target.value })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              <label htmlFor="subject-program" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Program *</label>
+              <select id="subject-program" name="programId" value={form.programId} onChange={(e) => updateField('programId', e.target.value)} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                 <option value="">Select program...</option>
                 {PROGRAMS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Units *</label>
-              <input type="number" value={form.units} onChange={(e) => setForm({ ...form, units: parseInt(e.target.value) || 3 })} required min={1} className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              <label htmlFor="subject-units" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Units *</label>
+              <input id="subject-units" name="units" type="number" value={form.units} onChange={(e) => { const digits = e.target.value.replace(/\D/g, '').slice(0, 2); const normalized = digits.replace(/^0+(?=\d)/, ''); updateField('units', normalized && Number(normalized) > 30 ? '30' : normalized); }} required min={1} max={30} step={1} inputMode="numeric" title="Enter a whole number from 1 to 30." className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
             </div>
           </div>
 
@@ -118,8 +196,8 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
           {form.programId && form.programId !== 'elective' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Year Level *</label>
-                <select value={form.yearLevel} onChange={(e) => setForm({ ...form, yearLevel: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <label htmlFor="subject-year-level" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Year Level *</label>
+                <select id="subject-year-level" name="yearLevel" value={form.yearLevel} onChange={(e) => updateField('yearLevel', e.target.value)} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                   <option value="">Select year...</option>
                   <option value={1}>1st Year</option>
                   <option value={2}>2nd Year</option>
@@ -128,8 +206,8 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Semester *</label>
-                <select value={form.semester} onChange={(e) => setForm({ ...form, semester: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <label htmlFor="subject-semester" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Semester *</label>
+                <select id="subject-semester" name="semester" value={form.semester} onChange={(e) => updateField('semester', e.target.value)} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                   <option value="">Select semester...</option>
                   <option value={1}>1st Semester</option>
                   <option value={2}>2nd Semester</option>
@@ -139,9 +217,68 @@ function SubjectFormModal({ isOpen, onClose, onSave }) {
           )}
 
           <div>
-            <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Fee (₱) *</label>
-            <input type="number" value={form.fee} onChange={(e) => setForm({ ...form, fee: parseInt(e.target.value) || 0 })} required min={0} placeholder="e.g. 4500" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+            <label htmlFor="subject-fee" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Fee (₱) *</label>
+            <input id="subject-fee" name="fee" type="number" value={form.fee} onChange={(e) => updateField('fee', e.target.value)} required min={0} step="0.01" inputMode="decimal" placeholder="e.g. 4500" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <span id="subject-prerequisites-label" className="text-xs font-semibold text-slate-700">Prerequisites</span>
+              <span className="text-[11px] text-slate-500" aria-live="polite">
+                {form.prerequisites.length} selected
+              </span>
+            </div>
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white focus-within:border-univ-blue focus-within:ring-1 focus-within:ring-univ-blue">
+              <div className="relative border-b border-slate-200 bg-slate-50">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <input
+                  id="subject-prerequisites"
+                  type="search"
+                  value={prerequisiteQuery}
+                  onChange={(event) => setPrerequisiteQuery(event.target.value)}
+                  aria-labelledby="subject-prerequisites-label"
+                  aria-describedby="subject-prerequisites-help"
+                  placeholder="Search subject code or name"
+                  className="w-full bg-transparent py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-slate-400"
+                />
+              </div>
+              <div role="group" aria-labelledby="subject-prerequisites-label" className="max-h-40 overflow-y-auto p-1">
+                {filteredPrerequisiteOptions.length === 0 ? (
+                  <p className="px-3 py-5 text-center text-xs text-slate-500">
+                    {prerequisiteOptions.length === 0 ? 'No available subjects.' : 'No matching subjects.'}
+                  </p>
+                ) : filteredPrerequisiteOptions.map((subject) => {
+                  const isSelected = form.prerequisites.includes(subject.id);
+                  return (
+                    <label key={subject.id} className={`flex cursor-pointer items-start gap-3 rounded-md px-3 py-2 hover:bg-slate-50 ${isSelected ? 'bg-blue-50/70' : ''}`}>
+                      <input
+                        type="checkbox"
+                        name="prerequisites"
+                        value={subject.id}
+                        checked={isSelected}
+                        onChange={() => togglePrerequisite(subject.id)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-univ-blue"
+                      />
+                      <span className="min-w-0 text-sm leading-5 text-slate-700">
+                        <span className="font-mono text-xs font-semibold text-univ-navy">{subject.code}</span>
+                        <span className="mx-1.5 text-slate-300">—</span>
+                        <span>{subject.name}</span>
+                        {subject.isActive === false && <span className="ml-2 text-xs text-slate-400">Inactive</span>}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <p id="subject-prerequisites-help" className="mt-1.5 text-[11px] text-slate-500">Select every subject students must complete first.</p>
+          </div>
+
+          {initialData && (
+            <label htmlFor="subject-active" className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <input id="subject-active" name="isActive" type="checkbox" checked={form.isActive} onChange={(e) => updateField('isActive', e.target.checked)} className="accent-univ-blue" />
+              Active in current curriculum
+            </label>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
             <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50">Cancel</button>
@@ -558,6 +695,7 @@ export default function CourseManagementTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
+  const [editingSubject, setEditingSubject] = useState(null);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -638,7 +776,7 @@ export default function CourseManagementTab() {
   const handleDeleteSection = async (section) => {
     const ok = await confirm({
       title: 'Delete Section',
-      message: `Delete section "${section.sectionCode}"? This cannot be undone. Students currently enrolled in this section will not be automatically removed.`,
+      message: `Delete section "${section.sectionCode}"? This is allowed only when no students or official offerings use it.`,
       confirmText: 'Delete',
       type: 'danger',
     });
@@ -660,14 +798,42 @@ export default function CourseManagementTab() {
 
   const handleSaveSubject = async (form) => {
     try {
-      const res = await authFetch('/api/scheduler/admin/subjects', { method: 'POST', body: JSON.stringify(form) });
+      const isEdit = !!editingSubject?.id;
+      const url = isEdit
+        ? `/api/scheduler/admin/subjects/${editingSubject.id}`
+        : '/api/scheduler/admin/subjects';
+      const res = await authFetch(url, { method: isEdit ? 'PUT' : 'POST', body: JSON.stringify(form) });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        toast.error(data.message || 'Failed to create subject.');
+        toast.error(data.message || 'Failed to save subject.');
         return;
       }
-      toast.success('Subject created and added to catalog.');
+      toast.success(data.message || (isEdit ? 'Subject updated.' : 'Subject created.'));
       setSubjectModalOpen(false);
+      setEditingSubject(null);
+      fetchData();
+    } catch {
+      toast.error('Network error.');
+    }
+  };
+
+  const handleArchiveSubject = async (subject) => {
+    const ok = await confirm({
+      title: 'Archive Subject',
+      message: `Archive "${subject.code} — ${subject.name}"? It will no longer appear in enrollment or advising.`,
+      confirmText: 'Archive',
+      type: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      const res = await authFetch(`/api/scheduler/admin/subjects/${subject.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.message || 'Failed to archive subject.');
+        return;
+      }
+      toast.success('Subject archived.');
       fetchData();
     } catch {
       toast.error('Network error.');
@@ -707,7 +873,7 @@ export default function CourseManagementTab() {
           actions={<>
             <PortalRefreshButton onRefresh={fetchData} />
             <button
-              onClick={() => setSubjectModalOpen(true)}
+              onClick={() => { setEditingSubject(null); setSubjectModalOpen(true); }}
               className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-md transition-colors shadow-sm cursor-pointer"
             >
               <BookOpen className="w-4 h-4" /> Add Subject
@@ -787,12 +953,35 @@ export default function CourseManagementTab() {
                           <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">
                             {PROGRAMS.find((p) => p.id === sub.programId)?.label || sub.programId}
                           </span>
+                          {sub.isActive === false && <span className="text-[10px] font-semibold text-amber-700">Archived</span>}
                         </div>
                         <h4 className="text-sm font-semibold text-slate-800 leading-snug mt-0.5">{sub.name}</h4>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); setEditingSubject(sub); setSubjectModalOpen(true); }}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+                          aria-label={`Edit ${sub.code}`}
+                          title="Edit subject"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        {sub.isActive !== false && (
+                          <button
+                            type="button"
+                            onClick={(event) => { event.stopPropagation(); handleArchiveSubject(sub); }}
+                            className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                            aria-label={`Archive ${sub.code}`}
+                            title="Archive subject"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                       <div className="text-right">
                         <div className="text-xs font-semibold text-slate-900">{liveSections.length} sections</div>
                         <div className="text-[10px] text-slate-400 font-medium">{totalEnrolled} enrolled</div>
@@ -807,12 +996,14 @@ export default function CourseManagementTab() {
                       {liveSections.length === 0 ? (
                         <div className="text-center py-6 text-xs text-slate-400 font-medium">
                           No sections created yet for this subject.{' '}
-                          <button
-                            onClick={() => { setEditingSection({ subjectId: sub.id }); setModalOpen(true); }}
-                            className="text-indigo-600 font-semibold cursor-pointer hover:text-indigo-700"
-                          >
-                            Add one →
-                          </button>
+                          {sub.isActive !== false && (
+                            <button
+                              onClick={() => { setEditingSection({ subjectId: sub.id }); setModalOpen(true); }}
+                              className="text-indigo-600 font-semibold cursor-pointer hover:text-indigo-700"
+                            >
+                              Add one →
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <table className="w-full text-xs">
@@ -910,15 +1101,17 @@ export default function CourseManagementTab() {
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditingSection(null); }}
         onSave={handleSaveSection}
-        subjects={subjects}
+        subjects={subjects.filter((subject) => subject.isActive !== false)}
         allSections={sections}
         instructors={instructors}
         initialData={editingSection}
       />
       <SubjectFormModal
         isOpen={subjectModalOpen}
-        onClose={() => setSubjectModalOpen(false)}
+        onClose={() => { setSubjectModalOpen(false); setEditingSubject(null); }}
         onSave={handleSaveSubject}
+        subjects={subjects}
+        initialData={editingSubject}
       />
     </>
   );

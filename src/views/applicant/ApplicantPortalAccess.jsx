@@ -35,7 +35,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
       
       const data = await res.json();
       storeApplicantAccess(data);
-      setActiveStudent(data.id);
+      setActiveStudent(data.id, data);
       onVerified();
     } catch (err) {
       console.error(err);
@@ -53,7 +53,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
         storeApplicantAccess(data);
         localStorage.removeItem(`applicant_completed_steps_${data._id}`);
         localStorage.removeItem(`applicant_current_step_${data._id}`);
-        setActiveStudent(data._id);
+        setActiveStudent(data._id, data);
         onVerified();
       }
     } catch (err) {

@@ -90,13 +90,13 @@ export default function PortalShell({
         <div className="fixed inset-0 z-[70] lg:hidden" role="dialog" aria-modal="true" aria-label={`${portalTitle} navigation`}>
           <button
             type="button"
-            className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]"
+            className="ui-drawer-backdrop absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]"
             onClick={() => setIsMenuOpen(false)}
             aria-label="Close navigation"
           />
           <div
             ref={drawerRef}
-            className="relative flex h-full w-[min(85vw,20rem)] flex-col border-r border-slate-200 bg-white shadow-lg"
+            className="ui-drawer-panel relative flex h-full w-[min(85vw,20rem)] flex-col border-r border-slate-200 bg-white shadow-lg"
           >
             <button
               type="button"

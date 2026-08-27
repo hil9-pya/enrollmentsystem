@@ -11,7 +11,12 @@ import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import { getRequiredOnlineDocumentIds } from './documentRequirements.js';
 import { ensureReceiptNumber, markPaymentReceived } from './paymentReceipt.js';
 import { syncOfficialEnrollment } from './services/academicFoundationService.js';
-import { getResolvedEnrolledSchedule } from './services/schedulerService.js';
+import {
+  getCurriculumSubjects,
+  getPassedSubjectIds,
+  getResolvedEnrolledSchedule,
+  getSemesterNumber,
+} from './services/schedulerService.js';
 import { generateApplicantToken } from './studentAccessMiddleware.js';
 import { runWithOptionalTransaction } from './services/transactionService.js';
 import AcademicTerm from './models/AcademicTerm.js';
@@ -703,31 +708,22 @@ const selectProgram = asyncHandler(async (req, res) => {
   student.programId = programId;
   student.academicTerm = academicTerm;
 
-  const prefix = programId === 'bscs' ? 'cs' : programId === 'bsba' ? 'ba' : 'nu';
+  const semesterNumber = getSemesterNumber(academicTerm);
   let eligibleSubjectIds = [];
 
   if (student.enrollmentType === 'new') {
-    eligibleSubjectIds = SUBJECTS_CATALOG
-      .filter(sub => sub.id.startsWith(prefix) && sub.yearLevel === 1)
-      .map(sub => sub.id);
     student.yearLevel = 1;
+    eligibleSubjectIds = getCurriculumSubjects(programId, student.yearLevel, semesterNumber)
+      .map((subject) => subject.id);
   } else if (student.enrollmentType === 'continuing') {
-    const completed = student.academicRecord
-      ? student.academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId)
-      : [];
+    const completed = getPassedSubjectIds(student.academicRecord);
     eligibleSubjectIds = SUBJECTS_CATALOG
-      .filter(sub => sub.id.startsWith(prefix))
-      .filter(sub => !completed.includes(sub.id))
-      .filter(sub => sub.prerequisites.every(prereq => completed.includes(prereq)))
-      .map(sub => sub.id);
-    
-    if (eligibleSubjectIds.length > 0) {
-      const maxYear = Math.max(...eligibleSubjectIds.map(id => {
-        const sub = SUBJECTS_CATALOG.find(s => s.id === id);
-        return sub ? sub.yearLevel : 1;
-      }));
-      student.yearLevel = maxYear;
-    }
+      .filter((subject) => subject.isActive !== false)
+      .filter((subject) => subject.programId === programId || subject.programId === 'elective')
+      .filter((subject) => subject.semester == null || Number(subject.semester) === semesterNumber)
+      .filter((subject) => !completed.includes(subject.id))
+      .filter((subject) => (subject.prerequisites || []).every((prerequisite) => completed.includes(prerequisite)))
+      .map((subject) => subject.id);
   } else {
     // Transfer or Returning: No auto-enrollment. Adviser must evaluate.
     eligibleSubjectIds = [];
@@ -763,9 +759,14 @@ const setSubjects = asyncHandler(async (req, res) => {
   if (!student) return;
 
   const inputSubjects = Array.isArray(req.body.subjects) ? req.body.subjects : [];
-  const subjectIds = inputSubjects.length > 0 
+  const subjectIds = inputSubjects.length > 0
     ? inputSubjects.map(s => s.subjectId)
     : (Array.isArray(req.body.subjectIds) ? req.body.subjectIds : []);
+
+  if (new Set(subjectIds).size !== subjectIds.length) {
+    res.status(400);
+    throw new Error('Duplicate subjects are not allowed in a study plan.');
+  }
 
   if (['advising_approved', 'payment_pending', 'validation_pending', 'enrolled'].includes(student.status)) {
     res.status(400);
@@ -773,26 +774,61 @@ const setSubjects = asyncHandler(async (req, res) => {
   }
 
   if (req.body.academicRecord !== undefined) {
-    student.academicRecord = Array.isArray(req.body.academicRecord) ? req.body.academicRecord : [];
+    const academicRecord = Array.isArray(req.body.academicRecord) ? req.body.academicRecord : [];
+    const recordIds = academicRecord.map((record) => record.subjectId);
+    const invalidRecord = academicRecord.some((record) => (
+      !SUBJECTS_CATALOG.some((subject) => subject.id === record.subjectId)
+      || !Number.isFinite(Number(record.grade))
+      || Number(record.grade) < 1
+      || Number(record.grade) > 5
+      || !String(record.term || '').trim()
+    ));
+    if (invalidRecord || new Set(recordIds).size !== recordIds.length) {
+      res.status(400);
+      throw new Error('Academic record contains an invalid or duplicate subject result.');
+    }
+    student.academicRecord = academicRecord;
   }
   if (req.body.yearLevel !== undefined) {
     student.yearLevel = Number(req.body.yearLevel);
   }
 
   // Prerequisite validation
-  const passedSubjectIds = student.academicRecord
-    ? student.academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId)
-    : [];
+  const passedSubjectIds = getPassedSubjectIds(student.academicRecord);
+  const semesterNumber = getSemesterNumber(student.academicTerm);
+  let approvedUnits = 0;
 
   for (const subjectId of subjectIds) {
     const sub = SUBJECTS_CATALOG.find(s => s.id === subjectId);
-    if (sub && sub.prerequisites && sub.prerequisites.length > 0) {
+    if (!sub || sub.isActive === false) {
+      res.status(400);
+      throw new Error(`Subject '${subjectId}' is not active in the curriculum.`);
+    }
+    if (sub.programId !== student.programId && sub.programId !== 'elective') {
+      res.status(400);
+      throw new Error(`${sub.code} does not belong to the student's degree program.`);
+    }
+    if (sub.semester != null && Number(sub.semester) !== semesterNumber) {
+      res.status(400);
+      throw new Error(`${sub.code} is not offered for the student's selected semester.`);
+    }
+    if (passedSubjectIds.includes(subjectId)) {
+      res.status(400);
+      throw new Error(`${sub.code} is already completed.`);
+    }
+    if (sub.prerequisites && sub.prerequisites.length > 0) {
       const hasAllPrereqs = sub.prerequisites.every(prereq => passedSubjectIds.includes(prereq));
       if (!hasAllPrereqs) {
         res.status(400);
         throw new Error(`Prerequisites not met for ${sub.name}. Requires: ${sub.prerequisites.join(', ')}`);
       }
     }
+    approvedUnits += Number(sub.units) || 0;
+  }
+
+  if (approvedUnits > 21) {
+    res.status(400);
+    throw new Error(`Approved study plan totals ${approvedUnits} units. Maximum allowed is 21.`);
   }
 
   const hasExplicitSections = inputSubjects.length > 0
@@ -976,6 +1012,11 @@ const rejectAdvising = asyncHandler(async (req, res) => {
 const approveAdvising = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
+
+  if (student.enrollmentType !== 'new' && (!student.approvedSubjectIds || student.approvedSubjectIds.length === 0)) {
+    res.status(400);
+    throw new Error('Assign at least one eligible subject before approving advising.');
+  }
 
   student.adviserNotes = req.body.notes || '';
   student.status = 'advising_approved';

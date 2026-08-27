@@ -32,7 +32,7 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
               {index < steps.length - 1 && (
                 <span
                   aria-hidden="true"
-                  className={`absolute left-[13px] top-7 bottom-0 w-px ${isCompleted ? 'bg-univ-blue/60' : 'bg-slate-200'}`}
+                  className={`absolute left-[13px] top-7 bottom-0 w-px transition-colors duration-200 ${isCompleted ? 'bg-univ-blue/60' : 'bg-slate-200'}`}
                 />
               )}
               <button
@@ -50,7 +50,7 @@ export default function StepIndicator({ currentStep, completedSteps = [], onStep
                 title={canOpen ? `Open ${step.label}` : `${step.label} is not available yet`}
               >
                 <span
-                  className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={`ui-step-node relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${isCurrent ? 'ui-step-node-current' : ''} ${
                     isFinalConfirmation
                       ? 'border-emerald-600 bg-emerald-600 text-white'
                       : showCompletedMarker

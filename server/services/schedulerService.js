@@ -80,10 +80,99 @@ const MAX_UNITS = 21; // absolute ceiling — adviser permit needed above 18
 export function getCurriculumSubjects(programId, yearLevel, semesterNum) {
   return SUBJECTS_CATALOG.filter(
     (s) =>
+      s.isActive !== false &&
       (s.programId === programId || s.programId === 'elective') &&
       (s.programId === 'elective' || s.yearLevel === yearLevel) &&
       (s.programId === 'elective' || s.semester === semesterNum)
   );
+}
+
+export function getSemesterNumber(label) {
+  const value = String(label || '').trim();
+  if (/^2(?:nd|s)?\b/i.test(value) || /\b2nd Semester\b/i.test(value)) return 2;
+  return 1;
+}
+
+export function getPassedSubjectIds(academicRecord = []) {
+  return academicRecord
+    .filter((record) => record?.grade !== null
+      && record?.grade !== ''
+      && Number.isFinite(Number(record.grade))
+      && Number(record.grade) >= 1
+      && Number(record.grade) <= 3)
+    .map((record) => record.subjectId)
+    .filter(Boolean);
+}
+
+export function validateStudentSubjectEligibility(student, subjectId) {
+  const subject = SUBJECTS_CATALOG.find((entry) => entry.id === subjectId && entry.isActive !== false);
+  if (!subject) return { valid: false, error: 'Subject is not active in the curriculum.' };
+
+  if (subject.programId !== 'elective' && subject.programId !== student.programId) {
+    return { valid: false, error: `${subject.code} does not belong to your degree program.` };
+  }
+
+  const semester = getSemesterNumber(student.academicTerm);
+  if (subject.semester != null && Number(subject.semester) !== semester) {
+    return { valid: false, error: `${subject.code} is not offered for your selected semester.` };
+  }
+
+  const passedSubjectIds = getPassedSubjectIds(student.academicRecord);
+  if (passedSubjectIds.includes(subject.id)) {
+    return { valid: false, error: `${subject.code} is already completed.` };
+  }
+
+  const missingPrerequisites = (subject.prerequisites || [])
+    .filter((prerequisiteId) => !passedSubjectIds.includes(prerequisiteId));
+  if (missingPrerequisites.length > 0) {
+    const requiredCodes = missingPrerequisites.map((prerequisiteId) => (
+      SUBJECTS_CATALOG.find((entry) => entry.id === prerequisiteId)?.code || prerequisiteId
+    ));
+    return {
+      valid: false,
+      error: `Prerequisites not met for ${subject.code}. Requires: ${requiredCodes.join(', ')}.`,
+    };
+  }
+
+  const adviserApprovalRequired = ['continuing', 'transfer', 'returning'].includes(student.enrollmentType);
+  const approvedSubjectIds = Array.isArray(student.approvedSubjectIds) ? student.approvedSubjectIds : [];
+  if ((adviserApprovalRequired || approvedSubjectIds.length > 0) && !approvedSubjectIds.includes(subject.id)) {
+    return { valid: false, error: `${subject.code} is not included in your approved study plan.` };
+  }
+
+  if (student.enrollmentType === 'new' && subject.programId !== 'elective'
+      && Number(subject.yearLevel) !== Number(student.yearLevel || 1)) {
+    return { valid: false, error: `${subject.code} is outside your current year-level curriculum.` };
+  }
+
+  return { valid: true, subject };
+}
+
+export function getStudyPlanSubjectsForStudent(student) {
+  const approvedSubjectIds = Array.isArray(student.approvedSubjectIds) ? student.approvedSubjectIds : [];
+  if (student.enrollmentType === 'new') {
+    const curriculum = getCurriculumSubjects(
+      student.programId,
+      Number(student.yearLevel || 1),
+      getSemesterNumber(student.academicTerm)
+    );
+    return approvedSubjectIds.length > 0
+      ? curriculum.filter((subject) => approvedSubjectIds.includes(subject.id))
+      : curriculum;
+  }
+
+  const semester = getSemesterNumber(student.academicTerm);
+  return SUBJECTS_CATALOG.filter((subject) => (
+    subject.isActive !== false
+    && approvedSubjectIds.includes(subject.id)
+    && (subject.programId === student.programId || subject.programId === 'elective')
+    && (subject.semester == null || Number(subject.semester) === semester)
+  ));
+}
+
+export function getEligibleSubjectsForStudent(student) {
+  const candidateSubjects = getStudyPlanSubjectsForStudent(student);
+  return candidateSubjects.filter((subject) => validateStudentSubjectEligibility(student, subject.id).valid);
 }
 
 /**

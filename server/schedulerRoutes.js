@@ -16,6 +16,8 @@ import {
   deleteSection,
   listSubjectsForAdmin,
   createSubject,
+  updateSubject,
+  archiveSubject,
 } from './adminSchedulerController.js';
 
 const router = express.Router();
@@ -24,6 +26,9 @@ const router = express.Router();
 const adminRoles = ['admin', 'registrar', 'admission'];
 router.get('/admin/subjects', protect, authorize(...adminRoles), listSubjectsForAdmin);
 router.post('/admin/subjects', protect, authorize(...adminRoles), createSubject);
+router.put('/admin/subjects/:id', protect, authorize(...adminRoles), updateSubject);
+router.delete('/admin/subjects/:id', protect, authorize(...adminRoles), archiveSubject);
+router.get('/staff/subjects', protect, authorize(...adminRoles, 'adviser'), listSubjectsForAdmin);
 router.get('/admin/sections', protect, authorize(...adminRoles), listSections);
 router.post('/admin/sections', protect, authorize(...adminRoles), createSection);
 router.put('/admin/sections/:id', protect, authorize(...adminRoles), updateSection);
