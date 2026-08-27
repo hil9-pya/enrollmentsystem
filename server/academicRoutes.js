@@ -19,6 +19,7 @@ import {
   repairMembershipReservation,
   repairPublishedGradeStatus,
   repairDeterministicIntegrityIssues,
+  getTermClosingQueue,
 } from './academicController.js';
 
 const router = express.Router();
@@ -37,6 +38,7 @@ router.put('/offerings/:id/instructor', authorize('registrar', 'admin'), assignO
 router.put('/offerings/:id/section', authorize('admin'), linkOfferingSection);
 
 router.get('/grades', authorize('registrar', 'admin'), listSubmittedGrades);
+router.get('/term-closing', authorize('registrar', 'admin'), getTermClosingQueue);
 router.post('/memberships/:id/grade/submit', authorize('instructor', 'admin'), submitFinalGrade);
 router.post('/memberships/:id/grade/review', authorize('registrar', 'admin'), reviewFinalGrade);
 router.post('/memberships/:id/grade/publish', authorize('registrar', 'admin'), publishFinalGrade);

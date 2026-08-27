@@ -4,6 +4,7 @@ import RegistrarSidebar from './RegistrarSidebar';
 import RegistrarDashboard from './RegistrarDashboard';
 import EnrollmentValidation from './EnrollmentValidation';
 import GradeReviewQueue from './GradeReviewQueue';
+import TermClosingQueue from './TermClosingQueue';
 import PortalShell from '../../components/PortalShell';
 import StaffUnavailablePanel from '../../components/StaffUnavailablePanel';
 
@@ -54,6 +55,9 @@ export default function RegistrarView() {
 
       case 'grades':
         return <GradeReviewQueue />;
+
+      case 'term-closing':
+        return <TermClosingQueue onNavigate={handleTabChange} />;
       
       case 'export':
         return <StaffUnavailablePanel title="Export records" description="Export tools are available from the records table." action={(

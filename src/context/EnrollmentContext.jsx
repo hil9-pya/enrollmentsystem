@@ -421,7 +421,7 @@ export function EnrollmentProvider({ children }) {
       }
 
       else if (type === 'ROLLOVER_STUDENT') {
-        const res = await authFetch(`/api/students/${payload.studentId}/rollover`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/rollover`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);

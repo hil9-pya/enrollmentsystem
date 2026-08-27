@@ -19,9 +19,11 @@ import {
 } from './services/schedulerService.js';
 import { generateApplicantToken } from './studentAccessMiddleware.js';
 import { runWithOptionalTransaction } from './services/transactionService.js';
-import AcademicTerm from './models/AcademicTerm.js';
-import CourseMembership from './models/CourseMembership.js';
 import PaymentQueueCounter from './models/PaymentQueueCounter.js';
+import {
+  batchRolloverToActiveTerm,
+  rolloverStudentToActiveTerm,
+} from './services/continuingRolloverService.js';
 import {
   sendVerificationOtpEmail,
 } from './services/emailService.js';
@@ -284,6 +286,11 @@ const registerStudent = asyncHandler(async (req, res) => {
     return;
   }
 
+  if (req.body.enrollmentType === 'continuing') {
+    res.status(400).json({ error: 'Continuing students must sign in with their existing student account.' });
+    return;
+  }
+
   const id = await generateNextId('APP-');
 
 
@@ -296,12 +303,7 @@ const registerStudent = asyncHandler(async (req, res) => {
     status: 'registration',
   });
 
-  // FAST-TRACK logic: continuing students do not need document review
-  if (req.body.enrollmentType === 'continuing') {
-    student.enrollmentType = req.body.enrollmentType;
-    student.status = 'advising_pending';
-    await student.save();
-  } else if (req.body.enrollmentType) {
+  if (req.body.enrollmentType) {
     student.enrollmentType = req.body.enrollmentType;
     await student.save();
   }
@@ -1345,55 +1347,20 @@ const setReturning = asyncHandler(async (req, res) => {
 // @desc    Rollover an enrolled student to the next semester (Continuing)
 // @route   POST /api/students/:id/rollover
 const rolloverStudent = asyncHandler(async (req, res) => {
-  const student = await findStudentOr404(res, req.params.id);
-  if (!student) return;
-
-  if (student.status !== 'enrolled') {
-    res.status(400);
-    throw new Error('Only fully enrolled students can be rolled over to the next semester.');
-  }
-
-  const settings = await Settings.findOne();
-  if (!settings?.activeTerm || settings.activeTerm === student.academicTerm) {
-    res.status(409);
-    throw new Error('A new academic term must be activated before re-enrollment.');
-  }
-
-  const previousTerm = await AcademicTerm.findOne({ name: student.academicTerm });
-  if (previousTerm) {
-    const unfinishedMembership = await CourseMembership.exists({
-      student: student._id,
-      term: previousTerm._id,
-      status: 'enrolled',
-    });
-    if (unfinishedMembership) {
-      res.status(409);
-      throw new Error('Previous-term classes must have published final grades or recorded drop/withdrawal statuses before re-enrollment.');
-    }
-  }
-
-  // Reset enrollment state
-  student.selectedSubjects = [];
-  student.scheduleStatus = 'draft';
-  student.tuitionBreakdown = [];
-  student.totalTuition = 0;
-  student.academicTerm = settings.activeTerm;
-  student.scheduleGenerated = false;
-  student.registrationFormGenerated = false;
-  student.receiptGenerated = false;
-  
-  // Transition status
-  student.status = 'advising_pending';
-  student.enrollmentType = 'continuing';
-
-  student.auditLogs.push({
-    action: `Rolled over to Continuing Student`,
-    user: req.user ? req.user.username : 'System Admin',
-    date: new Date()
+  const actor = req.user?.username || req.user?.email || 'System Admin';
+  const student = await rolloverStudentToActiveTerm(req.params.id, {
+    expectedActiveTerm: req.body?.expectedActiveTerm || null,
+    actor,
   });
-
-  await student.save();
   res.json(student);
+});
+
+const batchRolloverStudents = asyncHandler(async (req, res) => {
+  const actor = req.user?.username || req.user?.email || 'System Admin';
+  res.json(await batchRolloverToActiveTerm(req.body.studentIds, {
+    expectedActiveTerm: req.body.expectedActiveTerm,
+    actor,
+  }));
 });
 
 // @desc    Initiate Paymongo Checkout Session for online tuition payment
@@ -1524,6 +1491,7 @@ export {
   resolveHold,
   setReturning,
   rolloverStudent,
+  batchRolloverStudents,
   getDeletedStudents,
   softDeleteStudent,
   restoreStudent,
