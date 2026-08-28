@@ -27,12 +27,72 @@ html, body, #root {
   height: 100%;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: #f4f6fb; /* Use tinted background globally */
   color: var(--color-slate-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+:root {
+  --motion-fast: 140ms;
+  --motion-standard: 180ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:where(button, a, input, select, textarea) {
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--motion-ease);
+}
+
+:where(button, a) {
+  transition-property: color, background-color, border-color, opacity;
+}
+
+:where(input, select, textarea) {
+  transition-property: color, background-color, border-color, box-shadow;
+}
+
+@keyframes ui-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ui-drawer-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes ui-step-current {
+  from { opacity: 0.72; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.ui-drawer-backdrop,
+.ui-content-enter,
+.ui-feedback-enter {
+  animation: ui-fade-in var(--motion-fast) var(--motion-ease);
+}
+
+.ui-drawer-panel {
+  animation: ui-drawer-in-left var(--motion-standard) var(--motion-ease);
+}
+
+.ui-step-node {
+  transition: background-color var(--motion-standard) var(--motion-ease),
+    border-color var(--motion-standard) var(--motion-ease),
+    color var(--motion-standard) var(--motion-ease),
+    box-shadow var(--motion-standard) var(--motion-ease);
+}
+
+.ui-step-node-current {
+  animation: ui-step-current var(--motion-standard) var(--motion-ease);
 }
 
 @keyframes lms-notification-ring {

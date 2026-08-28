@@ -1,13 +1,39 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg', zIndex = 'z-50' }) {
+export default function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg', zIndex = 'z-50', animate = true }) {
   const overlayRef = useRef(null);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
+  const [isMounted, setIsMounted] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    let animationFrame;
+    let exitTimer;
+
+    if (!animate) {
+      setIsMounted(isOpen);
+      setIsVisible(isOpen);
+      return undefined;
+    }
+
+    if (isOpen) {
+      setIsMounted(true);
+      animationFrame = window.requestAnimationFrame(() => setIsVisible(true));
+    } else {
+      setIsVisible(false);
+      exitTimer = window.setTimeout(() => setIsMounted(false), 200);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.clearTimeout(exitTimer);
+    };
+  }, [animate, isOpen]);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -70,13 +96,14 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   return (
     <div
       ref={overlayRef}
-      className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-slate-950/50 p-4`}
+      className={`fixed inset-0 ${zIndex} flex items-center justify-center bg-slate-950/50 p-4 ${animate ? 'transition-opacity duration-[160ms] ease-out' : ''} ${isVisible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      aria-hidden={!isVisible}
     >
       <div
         ref={dialogRef}
@@ -84,7 +111,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`flex max-h-[85vh] w-full ${maxWidth} flex-col rounded-lg border border-slate-200 bg-white shadow-lg`}
+        className={`flex max-h-[85vh] w-full ${maxWidth} flex-col rounded-lg border border-slate-200 bg-white shadow-lg ${animate ? 'transition-opacity duration-200 ease-out' : ''} ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h2 id={titleId} className="text-base font-semibold text-slate-900">{title}</h2>

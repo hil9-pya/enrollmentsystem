@@ -4,12 +4,21 @@ import { SUBJECTS, PROGRAMS } from '../../../data/mockData';
 import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import Badge from '../../../components/Badge';
 
+const YEAR_ORDINALS = { 1: '1ST', 2: '2ND', 3: '3RD', 4: '4TH' };
+const SEMESTER_ORDINALS = { 1: '1ST', 2: '2ND' };
+
 export default function CourseEvaluationStep({ onNext, onBack }) {
   const { getActiveStudent, dispatch } = useEnrollment();
   const student = getActiveStudent();
 
   const program = PROGRAMS.find((p) => p.id === student?.programId);
-  const programSubjects = SUBJECTS.filter((s) => s.programId === student?.programId);
+  const activeSemester = /^(2s|2nd|2\b)/i.test(String(student?.academicTerm || '')) ? 2 : 1;
+  const currentYearLevel = Number(student?.yearLevel || 1);
+  const programSubjects = SUBJECTS.filter((subject) => (
+    subject.programId === student?.programId
+    && Number(subject.yearLevel || 1) === currentYearLevel
+    && Number(subject.semester) === activeSemester
+  ));
 
   const groupedSubjects = programSubjects.reduce((acc, sub) => {
     const yl = sub.yearLevel || 1;
@@ -146,7 +155,9 @@ export default function CourseEvaluationStep({ onNext, onBack }) {
  
         {/* Program Subject Matrix */}
         <div>
-          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Core Program Requirements</h3>
+          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">
+            {YEAR_ORDINALS[currentYearLevel] || `${currentYearLevel}TH`} Year, {SEMESTER_ORDINALS[activeSemester] || `${activeSemester}TH`} Semester Study Plan
+          </h3>
           <div className="overflow-x-auto border border-slate-200 rounded-xl">
             <table className="w-full text-left text-xs border-collapse">
               <thead>

@@ -3,21 +3,14 @@ import Student from './Student.js';
 import Section from './models/Section.js';
 import { computeTuition, SUBJECTS_CATALOG } from './subjectsCatalog.js';
 import {
-  getCurriculumSubjects,
   enrichSubjectWithLiveSections,
+  getStudyPlanSubjectsForStudent,
+  getPassedSubjectIds,
   getResolvedEnrolledSchedule,
   validateAddSection,
+  validateStudentSubjectEligibility,
 } from './services/schedulerService.js';
 import { getOfficialEnrollmentSchedule } from './services/officialScheduleService.js';
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-function semesterLabel(label) {
-  if (!label) return 1;
-  if (label.includes('2nd') || label.includes('2S') || label === '2') return 2;
-  return 1;
-}
 
 async function getStudent(req, res) {
   const studentId = req.params.studentId || req.body.studentId;
@@ -45,16 +38,8 @@ export const getSchedulerSubjects = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
 
-  const semNum = semesterLabel(student.academicTerm);
-  const passedSubjectIds = (student.academicRecord || [])
-    .filter((r) => r.grade <= 3.0) // passing grade ≤ 3.0 (Filipino grading system)
-    .map((r) => r.subjectId);
-
-  const curriculumSubjects = getCurriculumSubjects(
-    student.programId,
-    student.yearLevel || 1,
-    semNum
-  );
+  const passedSubjectIds = getPassedSubjectIds(student.academicRecord);
+  const curriculumSubjects = getStudyPlanSubjectsForStudent(student);
 
   const enriched = await Promise.all(
     curriculumSubjects.map(async (sub) => {
@@ -109,12 +94,12 @@ export const getSubjectSections = asyncHandler(async (req, res) => {
   if (!student) return;
 
   const { subjectId } = req.params;
-  const subject = SUBJECTS_CATALOG.find((s) => s.id === subjectId);
-  if (!subject) {
-    return res.status(404).json({ success: false, message: 'Subject not found.' });
+  const eligibility = validateStudentSubjectEligibility(student, subjectId);
+  if (!eligibility.valid) {
+    return res.status(403).json({ success: false, message: eligibility.error });
   }
 
-  const enriched = await enrichSubjectWithLiveSections(subject);
+  const enriched = await enrichSubjectWithLiveSections(eligibility.subject);
   res.json({ success: true, data: enriched.sections || [] });
 });
 
@@ -126,6 +111,10 @@ export const addSchedulerSection = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
 
+  if (student.status !== 'advising_approved') {
+    return res.status(409).json({ success: false, message: 'Subject enrollment is not open for this student.' });
+  }
+
   if (student.scheduleStatus === 'finalized' || student.scheduleGenerated) {
     return res.status(409).json({ success: false, message: 'Finalized schedules are locked. Contact your adviser for changes.' });
   }
@@ -133,6 +122,11 @@ export const addSchedulerSection = asyncHandler(async (req, res) => {
   const { subjectId, sectionId } = req.body;
   if (!subjectId || !sectionId) {
     return res.status(400).json({ success: false, message: 'subjectId and sectionId are required.' });
+  }
+
+  const eligibility = validateStudentSubjectEligibility(student, subjectId);
+  if (!eligibility.valid) {
+    return res.status(403).json({ success: false, message: eligibility.error });
   }
 
   // Compute current units
@@ -203,6 +197,10 @@ export const removeSchedulerSection = asyncHandler(async (req, res) => {
   const student = await getStudent(req, res);
   if (!student) return;
 
+  if (student.status !== 'advising_approved') {
+    return res.status(409).json({ success: false, message: 'Subject enrollment is not open for this student.' });
+  }
+
   if (student.scheduleStatus === 'finalized' || student.scheduleGenerated) {
     return res.status(409).json({ success: false, message: 'Finalized schedules are locked. Contact your adviser for changes.' });
   }
@@ -270,6 +268,10 @@ export const submitSchedule = asyncHandler(async (req, res) => {
     return res.status(409).json({ success: false, message: 'Schedule finalization is already in progress.' });
   }
 
+  if (student.status !== 'advising_approved') {
+    return res.status(409).json({ success: false, message: 'Schedule cannot be finalized before advising approval.' });
+  }
+
   const lockedStudent = await Student.findOneAndUpdate(
     {
       _id: student._id,
@@ -292,11 +294,43 @@ export const submitSchedule = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'No subjects selected. Please add at least one subject.' });
   }
 
+  const plannedSubjects = getStudyPlanSubjectsForStudent(lockedStudent);
+  const requiredSubjectIds = lockedStudent.enrollmentType === 'new'
+    ? plannedSubjects.filter((subject) => subject.programId !== 'elective').map((subject) => subject.id)
+    : (lockedStudent.approvedSubjectIds || []);
+  const selectedSubjectIds = new Set(selected.map((entry) => entry.subjectId));
+  const missingRequiredSubjects = requiredSubjectIds.filter((subjectId) => !selectedSubjectIds.has(subjectId));
+  if (missingRequiredSubjects.length > 0) {
+    await Student.updateOne(
+      { _id: lockedStudent._id, scheduleStatus: 'finalizing' },
+      { $set: { scheduleStatus: 'draft' }, $inc: { __v: 1 } }
+    );
+    const missingCodes = missingRequiredSubjects.map((subjectId) => (
+      SUBJECTS_CATALOG.find((subject) => subject.id === subjectId)?.code || subjectId
+    ));
+    return res.status(409).json({
+      success: false,
+      message: `Complete your approved study plan before finalizing. Missing: ${missingCodes.join(', ')}.`,
+    });
+  }
+
   // Full server-side re-validation from scratch
   let runningUnits = 0;
   const validatedSections = [];
 
   for (const entry of selected) {
+    const eligibility = validateStudentSubjectEligibility(lockedStudent, entry.subjectId);
+    if (!eligibility.valid) {
+      await Student.updateOne(
+        { _id: lockedStudent._id, scheduleStatus: 'finalizing' },
+        { $set: { scheduleStatus: 'draft' }, $inc: { __v: 1 } }
+      );
+      return res.status(409).json({
+        success: false,
+        message: `Schedule validation failed: ${eligibility.error}`,
+      });
+    }
+
     const { valid, error } = await validateAddSection(
       validatedSections,
       entry.subjectId,

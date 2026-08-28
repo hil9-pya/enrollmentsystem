@@ -19,7 +19,6 @@ import {
   selectProgram,
   processPayment,
   proceedToPayment,
-  rolloverStudent,
   createPaymongoCheckoutSession,
   verifyPaymongoPayment,
   joinWalkInQueue,
@@ -77,8 +76,6 @@ router.post('/:id/payment', protectStudentRecord, processPayment);
 router.post('/:id/walk-in-queue', protectStudentRecord, joinWalkInQueue);
 router.post('/:id/paymongo-checkout', protectStudentRecord, createPaymongoCheckoutSession);
 router.get('/:id/verify-paymongo-payment', protectStudentRecord, verifyPaymongoPayment);
-router.post('/:id/rollover', protectStudentRecord, rolloverStudent);
-
 // Surface multer errors (bad file type / too large) as normal JSON errors
 // instead of letting them bubble up as an unhandled exception.
 router.use((err, req, res, next) => {

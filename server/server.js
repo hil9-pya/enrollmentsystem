@@ -28,6 +28,7 @@ import {
 } from './services/academicFoundationService.js';
 import { startBackgroundJobWorker } from './services/backgroundJobService.js';
 import { repairStoredAcademicTermLabel } from './academicTermUtils.js';
+import { seedMemoryDemoAcademicData } from './services/memoryDemoAcademicSeedService.js';
 
 let mongoServerInstance = null;
 
@@ -88,9 +89,18 @@ const startServer = async () => {
     }
 
     // Seed default demo accounts & applicant records on first run.
-    await seedUsers();
-    await seedStudents();
+    await seedUsers({ includeStudentAccounts: !useMemoryDatabase });
+    if (!useMemoryDatabase) await seedStudents();
     await initCatalog();
+    if (useMemoryDatabase) {
+      const demoAcademicData = await seedMemoryDemoAcademicData({ memoryDatabase: true });
+      console.log(
+        `Seeded memory demo data: ${demoAcademicData.applicants} applicants, `
+        + `${demoAcademicData.studentAccounts} approved student accounts, `
+        + `${demoAcademicData.instructors} instructors, `
+        + `${demoAcademicData.sections} sections, ${demoAcademicData.remappedSelections} saved selections remapped.`
+      );
+    }
     const currentSettings = await Settings.findOne();
     const storedTerm = currentSettings?.activeTerm || '1st Semester 2026-2027';
     const activeTerm = repairStoredAcademicTermLabel(storedTerm);

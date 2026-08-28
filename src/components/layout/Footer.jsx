@@ -1,7 +1,34 @@
 import React from 'react';
-import { MapPin, Phone, Mail, ArrowRight, MessageCircle, Share2, Globe, Video } from 'lucide-react';
+import { MapPin, Phone, Mail, ArrowRight } from 'lucide-react';
+
+const NCST_PHONE = '+63 (46) 414-0000';
+const NCST_PHONE_HREF = 'tel:+6346414000';
+const NCST_EMAIL = 'info@ncst.edu.ph';
 
 export default function Footer({ onNavigate }) {
+  const currentYear = new Date().getFullYear();
+
+  const quickLinks = [
+    { label: 'About NCST', section: 'about' },
+    { label: 'Academic Programs', section: 'programs' },
+    { label: 'Admissions', section: 'admissions' },
+    { label: 'Contact Us', section: 'contact' },
+  ];
+
+  const scrollToSection = (section) => {
+    // If we're not on landing, navigate there first then scroll
+    const element = document.getElementById(section);
+    if (element) {
+      const offset = 80;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      window.scrollTo({ top: elementRect - bodyRect - offset, behavior: 'smooth' });
+    } else {
+      // Navigate to landing page — section will be visible there
+      onNavigate('landing');
+    }
+  };
+
   return (
     <footer className="bg-univ-navy text-slate-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
@@ -9,25 +36,21 @@ export default function Footer({ onNavigate }) {
           
           {/* Brand Column */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-white/10 rounded-xl border border-white/10 backdrop-blur-sm">
-                <img src="/logo.png" alt="NCST Logo" className="w-10 h-10 object-contain" />
+            <button
+              onClick={() => onNavigate('landing')}
+              className="flex items-center gap-3 group cursor-pointer"
+              aria-label="Go to NCST homepage"
+            >
+              <div className="p-1.5 bg-white/10 rounded-xl border border-white/10 backdrop-blur-sm group-hover:bg-white/20 transition-colors">
+                <img src="/logo.png" alt="NCST Logo" className="w-10 h-10 object-contain" loading="lazy" />
               </div>
               <div>
                 <h3 className="font-heading font-extrabold text-xl text-white tracking-wide leading-tight">NCST</h3>
-                <p className="text-[9px] font-bold text-univ-gold uppercase tracking-widest">Gateway to Success</p>
               </div>
-            </div>
+            </button>
             <p className="text-sm text-slate-400 leading-relaxed font-medium">
               National College of Science and Technology. Empowering students with quality education, innovative skills, and ethical values for global competitiveness.
             </p>
-            <div className="flex items-center gap-4 pt-2">
-              {[MessageCircle, Share2, Globe, Video].map((Icon, i) => (
-                <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-univ-blue hover:text-white transition-all duration-300 border border-white/10 hover:border-univ-blue">
-                  <Icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -37,12 +60,15 @@ export default function Footer({ onNavigate }) {
               Quick Links
             </h4>
             <ul className="space-y-3.5">
-              {['About NCST', 'Academic Programs', 'Admissions', 'Student Life', 'Career Opportunities'].map((link, i) => (
-                <li key={i}>
-                  <a href="#" className="text-sm font-medium hover:text-univ-gold transition-colors inline-flex items-center gap-2 group">
+              {quickLinks.map((link) => (
+                <li key={link.section}>
+                  <button
+                    onClick={() => scrollToSection(link.section)}
+                    className="text-sm font-medium hover:text-univ-gold transition-colors inline-flex items-center gap-2 group cursor-pointer"
+                  >
                     <ArrowRight className="w-3 h-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
-                    {link}
-                  </a>
+                    {link.label}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -74,10 +100,10 @@ export default function Footer({ onNavigate }) {
                 </button>
               </li>
               <li>
-                <a href="#" className="text-sm font-medium hover:text-univ-blue transition-colors inline-flex items-center gap-2 group">
+                <button onClick={() => onNavigate('lms')} className="text-sm font-medium hover:text-univ-blue transition-colors inline-flex items-center gap-2 group cursor-pointer">
                   <ArrowRight className="w-3 h-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
-                  Alumni Network
-                </a>
+                  Learning Management System
+                </button>
               </li>
             </ul>
           </div>
@@ -90,16 +116,27 @@ export default function Footer({ onNavigate }) {
             </h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-sm font-medium">
-                <MapPin className="w-5 h-5 text-univ-gold shrink-0 mt-0.5" />
-                <span>NCST Campus, Amaia Scapes Ave, General Trias, Cavite, Philippines</span>
+                <MapPin className="w-5 h-5 text-univ-gold shrink-0 mt-0.5" aria-hidden="true" />
+                <a
+                  href="https://maps.google.com/?q=Dasmariñas+Cavite+Philippines"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Dasmariñas, Cavite, Philippines
+                </a>
               </li>
               <li className="flex items-center gap-3 text-sm font-medium">
-                <Phone className="w-5 h-5 text-univ-gold shrink-0" />
-                <span>+63 (46) 414-0000</span>
+                <Phone className="w-5 h-5 text-univ-gold shrink-0" aria-hidden="true" />
+                <a href={NCST_PHONE_HREF} className="hover:text-white transition-colors">
+                  {NCST_PHONE}
+                </a>
               </li>
               <li className="flex items-center gap-3 text-sm font-medium">
-                <Mail className="w-5 h-5 text-univ-gold shrink-0" />
-                <a href="mailto:info@ncst.edu.ph" className="hover:text-white transition-colors">info@ncst.edu.ph</a>
+                <Mail className="w-5 h-5 text-univ-gold shrink-0" aria-hidden="true" />
+                <a href={`mailto:${NCST_EMAIL}`} className="hover:text-white transition-colors">
+                  {NCST_EMAIL}
+                </a>
               </li>
             </ul>
           </div>
@@ -109,12 +146,11 @@ export default function Footer({ onNavigate }) {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs font-medium text-slate-500">
-            &copy; {new Date().getFullYear()} National College of Science and Technology. All rights reserved.
+            &copy; {currentYear} National College of Science and Technology. All rights reserved.
           </p>
           <div className="flex gap-6 text-xs font-medium text-slate-500">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-white transition-colors">Sitemap</a>
+            <span className="text-slate-600">Privacy Policy</span>
+            <span className="text-slate-600">Terms of Service</span>
           </div>
         </div>
       </div>

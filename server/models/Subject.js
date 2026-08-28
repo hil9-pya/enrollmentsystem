@@ -11,6 +11,7 @@ const SubjectSchema = new mongoose.Schema(
     yearLevel: { type: Number, default: null }, // e.g. 1, 2, 3, 4 (null for electives)
     semester: { type: Number, default: null }, // e.g. 1, 2 (null for electives)
     prerequisites: { type: [String], default: [] }, // Array of subject IDs
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

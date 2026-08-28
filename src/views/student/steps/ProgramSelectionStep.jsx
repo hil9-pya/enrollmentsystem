@@ -11,12 +11,12 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
 
   const selectedProgram = PROGRAMS.find((p) => p.id === selectedProgramId);
 
-  const activeTermLabel = settings?.activeTerm || '1st Semester'; // Fallback if settings didn't load
+  const activeTermLabel = settings?.activeTerm || '';
   
   const autoSelected = React.useRef(false);
 
   React.useEffect(() => {
-    if (student && student.programId && student.academicTerm !== activeTermLabel && !autoSelected.current) {
+    if (activeTermLabel && student && student.programId && student.academicTerm !== activeTermLabel && !autoSelected.current) {
       autoSelected.current = true;
       dispatch({
         type: 'SELECT_PROGRAM',
@@ -32,6 +32,7 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
   }, [student, student?.academicTerm, student?.programId, dispatch, activeTermLabel]);  
 
   function handleChange(field, value) {
+    if (!activeTermLabel) return;
     dispatch({
       type: 'SELECT_PROGRAM',
       payload: {
@@ -58,6 +59,7 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
           </label>
           <select
             value={selectedProgramId}
+            disabled={!activeTermLabel}
             onChange={(e) => handleChange('programId', e.target.value)}
             className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-univ-indigo focus:border-transparent outline-none transition-all bg-slate-50/50 focus:bg-white cursor-pointer"
           >
@@ -76,7 +78,7 @@ export default function ProgramSelectionStep({ onNext, onBack }) {
             Active Academic Term
           </label>
           <div className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50/50 text-slate-700 font-medium">
-            {activeTermLabel}
+            {activeTermLabel || 'Loading active term...'}
           </div>
         </div>
       </div>

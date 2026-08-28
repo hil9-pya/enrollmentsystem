@@ -5,6 +5,78 @@
 
 import Subject from './models/Subject.js';
 
+const SECOND_SEMESTER_MORNING_SLOTS = [
+  { day: 'MWF', time: '8:00 AM - 9:00 AM' },
+  { day: 'MWF', time: '9:00 AM - 10:00 AM' },
+  { day: 'TTH', time: '8:00 AM - 9:30 AM' },
+  { day: 'TTH', time: '9:30 AM - 11:00 AM' },
+  { day: 'MWF', time: '10:00 AM - 11:00 AM' },
+  { day: 'TTH', time: '11:00 AM - 12:30 PM' },
+];
+const SECOND_SEMESTER_AFTERNOON_SLOTS = [
+  { day: 'MWF', time: '1:00 PM - 2:00 PM' },
+  { day: 'MWF', time: '2:00 PM - 3:00 PM' },
+  { day: 'TTH', time: '1:00 PM - 2:30 PM' },
+  { day: 'TTH', time: '2:30 PM - 4:00 PM' },
+  { day: 'MWF', time: '3:00 PM - 4:00 PM' },
+  { day: 'TTH', time: '4:00 PM - 5:30 PM' },
+];
+
+function createSecondSemesterSubject({ id, code, name, programId, yearLevel, prerequisites, roomBase, scheduleIndex }) {
+  const prefix = code.split(' ')[0];
+  const morning = SECOND_SEMESTER_MORNING_SLOTS[scheduleIndex % SECOND_SEMESTER_MORNING_SLOTS.length];
+  const afternoon = SECOND_SEMESTER_AFTERNOON_SLOTS[scheduleIndex % SECOND_SEMESTER_AFTERNOON_SLOTS.length];
+  return {
+    id,
+    code,
+    name,
+    units: 3,
+    programId,
+    yearLevel,
+    semester: 2,
+    prerequisites,
+    sections: [
+      {
+        id: `${id}-a`,
+        code: `${prefix}-${yearLevel}2M1`,
+        schedule: { ...morning, room: `Room ${roomBase + (scheduleIndex * 2)}` },
+        instructor: 'TBA',
+        maxSlots: 40,
+        enrolledCount: 0,
+      },
+      {
+        id: `${id}-b`,
+        code: `${prefix}-${yearLevel}2A2`,
+        schedule: { ...afternoon, room: `Room ${roomBase + (scheduleIndex * 2) + 1}` },
+        instructor: 'TBA',
+        maxSlots: 40,
+        enrolledCount: 0,
+      },
+    ],
+    fee: 4500,
+  };
+}
+
+const SECOND_SEMESTER_SUBJECTS = [
+  createSecondSemesterSubject({ id: 'cs103', code: 'CS 103', name: 'Programming 2', programId: 'bscs', yearLevel: 1, prerequisites: ['cs102'], roomBase: 320, scheduleIndex: 0 }),
+  createSecondSemesterSubject({ id: 'cs104', code: 'CS 104', name: 'Discrete Structures', programId: 'bscs', yearLevel: 1, prerequisites: ['cs101'], roomBase: 320, scheduleIndex: 1 }),
+  createSecondSemesterSubject({ id: 'cs203', code: 'CS 203', name: 'Computer Architecture', programId: 'bscs', yearLevel: 2, prerequisites: ['cs201'], roomBase: 320, scheduleIndex: 2 }),
+  createSecondSemesterSubject({ id: 'cs204', code: 'CS 204', name: 'Web Systems and Technologies', programId: 'bscs', yearLevel: 2, prerequisites: ['cs202'], roomBase: 320, scheduleIndex: 3 }),
+  createSecondSemesterSubject({ id: 'cs303', code: 'CS 303', name: 'Operating Systems', programId: 'bscs', yearLevel: 3, prerequisites: ['cs201'], roomBase: 320, scheduleIndex: 4 }),
+  createSecondSemesterSubject({ id: 'cs304', code: 'CS 304', name: 'Software Engineering', programId: 'bscs', yearLevel: 3, prerequisites: ['cs202'], roomBase: 320, scheduleIndex: 5 }),
+  createSecondSemesterSubject({ id: 'ba103', code: 'BA 103', name: 'Business Communication', programId: 'bsba', yearLevel: 1, prerequisites: ['ba101'], roomBase: 420, scheduleIndex: 0 }),
+  createSecondSemesterSubject({ id: 'ba104', code: 'BA 104', name: 'Managerial Accounting', programId: 'bsba', yearLevel: 1, prerequisites: ['ba102'], roomBase: 420, scheduleIndex: 1 }),
+  createSecondSemesterSubject({ id: 'ba203', code: 'BA 203', name: 'Human Resource Management', programId: 'bsba', yearLevel: 2, prerequisites: ['ba101'], roomBase: 420, scheduleIndex: 2 }),
+  createSecondSemesterSubject({ id: 'ba204', code: 'BA 204', name: 'Business Law', programId: 'bsba', yearLevel: 2, prerequisites: ['ba101'], roomBase: 420, scheduleIndex: 3 }),
+  createSecondSemesterSubject({ id: 'ba302', code: 'BA 302', name: 'Operations Management', programId: 'bsba', yearLevel: 3, prerequisites: ['ba201'], roomBase: 420, scheduleIndex: 4 }),
+  createSecondSemesterSubject({ id: 'nu104', code: 'NU 104', name: 'Microbiology and Parasitology', programId: 'bsn', yearLevel: 1, prerequisites: ['nu101'], roomBase: 520, scheduleIndex: 0 }),
+  createSecondSemesterSubject({ id: 'nu105', code: 'NU 105', name: 'Nursing Care Management 1', programId: 'bsn', yearLevel: 1, prerequisites: ['nu102'], roomBase: 520, scheduleIndex: 1 }),
+  createSecondSemesterSubject({ id: 'nu106', code: 'NU 106', name: 'Nutrition and Diet Therapy', programId: 'bsn', yearLevel: 1, prerequisites: ['nu101'], roomBase: 520, scheduleIndex: 2 }),
+  createSecondSemesterSubject({ id: 'nu203', code: 'NU 203', name: 'Maternal and Child Nursing', programId: 'bsn', yearLevel: 2, prerequisites: ['nu202'], roomBase: 520, scheduleIndex: 3 }),
+  createSecondSemesterSubject({ id: 'nu204', code: 'NU 204', name: 'Nursing Informatics', programId: 'bsn', yearLevel: 2, prerequisites: ['nu102'], roomBase: 520, scheduleIndex: 4 }),
+  createSecondSemesterSubject({ id: 'nu302', code: 'NU 302', name: 'Mental Health and Psychiatric Nursing', programId: 'bsn', yearLevel: 3, prerequisites: ['nu202'], roomBase: 520, scheduleIndex: 5 }),
+];
+
 const INITIAL_SUBJECTS_CATALOG = [
   // ── BSCS Subjects ──────────────────────────────────────────────────────
   {
@@ -267,6 +339,9 @@ const INITIAL_SUBJECTS_CATALOG = [
     fee: 4500,
   },
 
+  // ── Second Semester Core Subjects ─────────────────────────────────────
+  ...SECOND_SEMESTER_SUBJECTS,
+
   // ── General Electives Pool ─────────────────────────────────────────────────
   // programId = 'elective' so getCurriculumSubjects includes them for ALL programs
   {
@@ -364,10 +439,16 @@ export let SUBJECTS_CATALOG = [...INITIAL_SUBJECTS_CATALOG];
 
 export async function initCatalog() {
   try {
-    const count = await Subject.countDocuments();
-    if (count === 0) {
-      console.log('Seeding initial subjects catalog to MongoDB...');
-      await Subject.insertMany(INITIAL_SUBJECTS_CATALOG);
+    const seedOperations = INITIAL_SUBJECTS_CATALOG.map(({ sections: _sections, ...subject }) => ({
+      updateOne: {
+        filter: { id: subject.id },
+        update: { $setOnInsert: subject },
+        upsert: true,
+      },
+    }));
+    const seedResult = await Subject.bulkWrite(seedOperations);
+    if (seedResult.upsertedCount > 0) {
+      console.log(`Seeded ${seedResult.upsertedCount} missing subject${seedResult.upsertedCount === 1 ? '' : 's'} into the catalog.`);
     }
     
     // Load from DB into memory with guaranteed id property

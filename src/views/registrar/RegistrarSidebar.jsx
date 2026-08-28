@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ShieldCheck, CheckCircle, Users, Settings, Download, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, CheckCircle, Users, Settings, Download, GraduationCap, CalendarRange } from 'lucide-react';
 import StaffSidebar from '../../components/StaffSidebar';
 
 export default function RegistrarSidebar({ activeTab, onTabChange, pendingCount }) {
@@ -22,6 +22,7 @@ export default function RegistrarSidebar({ activeTab, onTabChange, pendingCount 
       items: [
         { id: 'records', label: 'Student Records', icon: Users },
         { id: 'grades', label: 'Grade Review', icon: GraduationCap },
+        { id: 'term-closing', label: 'Term Closing', icon: CalendarRange },
         { id: 'export', label: 'Export Data', icon: Download },
       ],
     },

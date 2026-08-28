@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { FilePlus, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import Badge from '../../components/Badge';
 import { authFetch, storeApplicantAccess } from '../../utils/authFetch.js';
 
 export default function StudentPortalAccess({ onVerified }) {
@@ -121,29 +120,6 @@ export default function StudentPortalAccess({ onVerified }) {
       setError('Could not connect to the server. Please try again.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleQuickDemo = async (studentId) => {
-    try {
-      const res = await authFetch(`/api/students/${studentId}`);
-      
-      let data = {};
-      try {
-        data = await res.json();
-      } catch {
-        // Fallback
-      }
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Demo student not found');
-      }
-
-      setActiveStudent(data.id);
-      toast.success(`Logged in as Demo: ${data.firstName} ${data.lastName}`);
-      onVerified();
-    } catch {
-      toast.error('Could not connect to the server or demo profile not found.');
     }
   };
 
@@ -282,24 +258,6 @@ export default function StudentPortalAccess({ onVerified }) {
         )}
       </div>
 
-      {/* Demo Student Shortcuts */}
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-premium">
-        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Demo Profiles (Bypass Verification)</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <button onClick={() => handleQuickDemo('STU-2026-0001')} className="px-4 py-3 border border-slate-100 hover:border-univ-indigo hover:shadow-sm rounded-xl text-left transition-all bg-slate-50/50 hover:bg-white cursor-pointer flex flex-col justify-between h-20">
-            <p className="text-xs font-bold text-univ-navy">Maria Santos</p>
-            <Badge className="mt-2 self-start">Documents pending</Badge>
-          </button>
-          <button onClick={() => handleQuickDemo('STU-2026-0002')} className="px-4 py-3 border border-slate-100 hover:border-univ-indigo hover:shadow-sm rounded-xl text-left transition-all bg-slate-50/50 hover:bg-white cursor-pointer flex flex-col justify-between h-20">
-            <p className="text-xs font-bold text-univ-navy">Carlos Reyes</p>
-            <Badge tone="warning" className="mt-2 self-start">Advising</Badge>
-          </button>
-          <button onClick={() => handleQuickDemo('STU-2026-0003')} className="px-4 py-3 border border-slate-100 hover:border-univ-indigo hover:shadow-sm rounded-xl text-left transition-all bg-slate-50/50 hover:bg-white cursor-pointer flex flex-col justify-between h-20">
-            <p className="text-xs font-bold text-univ-navy">Ana Torres</p>
-            <Badge tone="info" className="mt-2 self-start">Payment</Badge>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
-    <section className="py-24 bg-white">
+    <section id="faq" className="py-24 bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-sm font-extrabold text-univ-blue uppercase tracking-[0.2em] mb-3">Frequently Asked Questions</h2>
@@ -40,7 +40,10 @@ export default function FAQSection() {
                 }`}
               >
                 <button
+                  id={`faq-question-${index}`}
                   onClick={() => setOpenIndex(isOpen ? -1 : index)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${index}`}
                   className="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none cursor-pointer"
                 >
                   <span className={`font-bold text-base transition-colors ${isOpen ? 'text-univ-navy' : 'text-slate-700'}`}>
@@ -53,6 +56,9 @@ export default function FAQSection() {
                   </div>
                 </button>
                 <div 
+                  id={`faq-answer-${index}`}
+                  role="region"
+                  aria-labelledby={`faq-question-${index}`}
                   className={`px-6 overflow-hidden transition-all duration-300 ease-in-out ${
                     isOpen ? 'max-h-48 pb-5 opacity-100' : 'max-h-0 opacity-0'
                   }`}

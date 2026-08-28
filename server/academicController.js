@@ -5,12 +5,12 @@ import CourseOffering from './models/CourseOffering.js';
 import CourseMembership from './models/CourseMembership.js';
 import Student from './Student.js';
 import User from './User.js';
-import Settings from './Settings.js';
 import AcademicAuditLog from './models/AcademicAuditLog.js';
 import Section from './models/Section.js';
 import { ensureAcademicTerm } from './services/academicFoundationService.js';
 import { parseAcademicTermLabel } from './academicTermUtils.js';
 import { buildAcademicIntegrityAudit } from './services/academicIntegrityAuditService.js';
+import { buildTermClosingQueue } from './services/continuingRolloverService.js';
 import {
   applyDeterministicAcademicRepairs,
   previewDeterministicAcademicRepairs,
@@ -100,14 +100,10 @@ export const updateAcademicTerm = asyncHandler(async (req, res) => {
 export const activateAcademicTerm = asyncHandler(async (req, res) => {
   const existing = await AcademicTerm.findById(req.params.id);
   if (!existing) return res.status(404).json({ success: false, message: 'Academic term not found.' });
-
-  const term = await ensureAcademicTerm(existing.name, { activate: true });
-  await Settings.findOneAndUpdate(
-    {},
-    { $set: { activeTerm: term.name } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-  res.json({ success: true, data: term });
+  res.status(400).json({
+    success: false,
+    message: 'Use Academic Term Management to activate the next term safely.',
+  });
 });
 
 export const listCourseOfferings = asyncHandler(async (req, res) => {
@@ -344,6 +340,10 @@ export const listSubmittedGrades = asyncHandler(async (req, res) => {
     })
     .sort({ gradeSubmittedAt: 1 });
   res.json({ success: true, data: memberships });
+});
+
+export const getTermClosingQueue = asyncHandler(async (_req, res) => {
+  res.json({ success: true, data: await buildTermClosingQueue() });
 });
 
 export const reviewFinalGrade = asyncHandler(async (req, res) => {

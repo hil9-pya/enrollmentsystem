@@ -11,6 +11,7 @@ export function ConfirmationProvider({ children }) {
     message: '',
     confirmText: 'Confirm',
     cancelText: 'Cancel',
+    animate: true,
     type: 'info', // 'info' | 'success' | 'warning' | 'danger'
   });
 
@@ -23,6 +24,7 @@ export function ConfirmationProvider({ children }) {
       message: options.message || 'Are you sure you want to proceed?',
       confirmText: options.confirmText || 'Confirm',
       cancelText: options.cancelText || 'Cancel',
+      animate: options.animate !== false,
       type: options.type || 'info',
     });
     return new Promise((resolve) => {
@@ -88,6 +90,7 @@ export function ConfirmationProvider({ children }) {
         title={modalState.title}
         maxWidth="max-w-sm"
         zIndex="z-[100]"
+        animate={modalState.animate}
       >
         <div className="flex items-start gap-3">
           {renderIcon()}

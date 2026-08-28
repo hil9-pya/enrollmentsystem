@@ -1029,27 +1029,47 @@ function StaffTab() {
 function SettingsTab() {
   const { confirm } = useConfirm();
   const [settings, setSettings] = useState({ activeTerm: '', enrollmentOpen: true, systemMaintenance: false, announcement: '' });
+  const [termPreview, setTermPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await authFetch('/api/settings');
-        const data = await safeJson(res);
-        setSettings(data);
-      } catch { toast.error('Failed to load settings'); }
-      finally { setLoading(false); }
-    })();
+  const loadSettings = useCallback(async () => {
+    try {
+      const [settingsResponse, previewResponse] = await Promise.all([
+        authFetch('/api/settings'),
+        authFetch('/api/settings/term-transition-preview'),
+      ]);
+      const [settingsData, previewData] = await Promise.all([
+        safeJson(settingsResponse),
+        safeJson(previewResponse),
+      ]);
+      setSettings(settingsData);
+      setTermPreview(previewData);
+    } catch (error) {
+      toast.error(error.message || 'Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await authFetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+      const res = await authFetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enrollmentOpen: settings.enrollmentOpen,
+          systemMaintenance: settings.systemMaintenance,
+          announcement: settings.announcement,
+        }),
+      });
       const updated = await safeJson(res);
       setSettings(updated);
-      toast.success('Settings saved successfully');
+      toast.success('System settings saved');
     } catch (err) { toast.error(err.message || 'Failed to save settings'); }
     finally { setSaving(false); }
   };
@@ -1057,23 +1077,27 @@ function SettingsTab() {
   const handleAdvanceSemester = async () => {
     const isConfirmed = await confirm({
       title: 'Advance academic term?',
-      message: 'This changes the active term and archives students who have not enrolled for two consecutive semesters. Review the active term before continuing.',
-      confirmText: 'Advance Term',
+      message: `Activate ${termPreview?.nextTerm}? ${termPreview?.counts.continuingStudents || 0} enrolled students become eligible for continuing enrollment and ${termPreview?.counts.archiveRisk || 0} inactive students will be archived.`,
+      confirmText: 'Activate Next Term',
       cancelText: 'Cancel',
       type: 'danger',
     });
     if (!isConfirmed) return;
     
-    setSaving(true);
+    setAdvancing(true);
     try {
-      const res = await authFetch('/api/settings/advance-semester', { method: 'POST' });
+      const res = await authFetch('/api/settings/advance-semester', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expectedCurrentTerm: termPreview.currentTerm }),
+      });
       const data = await safeJson(res);
       setSettings(data.settings);
       toast.success(`System advanced to ${data.newTerm}`);
-      // Refresh the page to ensure all components have the newest settings
-      window.location.reload();
+      setLoading(true);
+      await loadSettings();
     } catch (err) { toast.error(err.message || 'Failed to advance semester'); }
-    finally { setSaving(false); }
+    finally { setAdvancing(false); }
   };
 
   if (loading) return <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>;
@@ -1082,71 +1106,136 @@ function SettingsTab() {
     <div className="h-full w-full space-y-5 overflow-y-auto bg-slate-50 p-4 sm:p-5 lg:p-6">
       <PortalPageHeader
         title="System configuration"
-        description="Configure the active term, enrollment access, maintenance state, and applicant announcements."
+        description="Manage academic-term transitions and system-wide access settings."
       />
 
-      <div className="max-w-3xl space-y-5">
-      {/* Term Settings */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-8 h-8 bg-indigo-100 rounded-md flex items-center justify-center">
-            <Calendar className="w-4 h-4 text-indigo-600" />
-          </div>
+      <div className="max-w-5xl space-y-5">
+      <section className="rounded-lg border border-slate-200 bg-white">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Academic Term</h3>
-            <p className="text-xs text-slate-400">Configure the current enrollment term</p>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-univ-blue" />
+              <h2 className="text-sm font-semibold text-univ-navy">Academic Term Management</h2>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Review term readiness before opening next enrollment cycle.</p>
           </div>
+          <button
+            type="button"
+            onClick={() => { setLoading(true); loadSettings(); }}
+            disabled={loading || advancing}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Refresh
+          </button>
         </div>
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Active Academic Term</label>
-          <input
-            value={settings.activeTerm}
-            onChange={e => setSettings(p => ({ ...p, activeTerm: e.target.value }))}
-            placeholder="1st Semester 2026-2027"
-            className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all"
-          />
-          <p className="text-[10px] text-slate-500 mt-2">Use format: 1st Semester 2026-2027. Saving activates matching academic-term record.</p>
-          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+
+        <div className="space-y-6 p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-medium text-slate-500">Current active term</p>
+              <p className="mt-1 text-base font-semibold text-univ-navy">{termPreview?.currentTerm || settings.activeTerm}</p>
+            </div>
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3">
+              <p className="text-xs font-medium text-blue-700">Next term</p>
+              <p className="mt-1 text-base font-semibold text-univ-navy">{termPreview?.nextTerm || 'Unavailable'}</p>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Readiness checks</h3>
+            <div className="mt-3 divide-y divide-slate-200 rounded-md border border-slate-200">
+              {[
+                {
+                  label: 'Previous-term classes finalized',
+                  detail: termPreview?.counts.unresolvedClasses
+                    ? `${termPreview.counts.unresolvedClasses} class memberships remain active`
+                    : 'No unresolved class memberships',
+                  ready: termPreview?.counts.unresolvedClasses === 0,
+                },
+                {
+                  label: 'Grades awaiting action',
+                  detail: `${termPreview?.counts.submittedGrades || 0} submitted or under review; ${termPreview?.counts.unsubmittedGrades || 0} not submitted`,
+                  ready: (termPreview?.counts.unresolvedClasses || 0) === 0,
+                },
+                {
+                  label: 'Next-term offerings prepared',
+                  detail: `${termPreview?.counts.nextTermOfferings || 0} active or planned offerings`,
+                  ready: (termPreview?.counts.nextTermOfferings || 0) > 0,
+                  informational: true,
+                },
+              ].map((check) => (
+                <div key={check.label} className="flex items-center justify-between gap-4 px-4 py-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">{check.label}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{check.detail}</p>
+                  </div>
+                  <span className={`text-xs font-semibold ${check.ready ? 'text-emerald-700' : check.informational ? 'text-amber-700' : 'text-rose-700'}`}>
+                    {check.ready ? 'Ready' : check.informational ? 'Review' : 'Blocked'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Student impact</h3>
+            <dl className="mt-3 grid gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 sm:grid-cols-3">
+              {[
+                ['Continuing eligible', termPreview?.counts.continuingStudents || 0],
+                ['Inactive students', termPreview?.counts.inactiveStudents || 0],
+                ['Will be archived', termPreview?.counts.archiveRisk || 0],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-white px-4 py-3">
+                  <dt className="text-xs text-slate-500">{label}</dt>
+                  <dd className="mt-1 text-lg font-semibold text-univ-navy">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {!termPreview?.canAdvance && (
+            <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-amber-900">Term advancement changes student records</p>
-                <p className="mt-1 text-xs leading-5 text-amber-800">Inactive students may be archived. This action requires confirmation.</p>
+                <p className="text-xs font-semibold">Term activation blocked</p>
+                <p className="mt-1 text-xs">{termPreview?.blockers?.[0] || 'Complete readiness checks before activation.'}</p>
               </div>
             </div>
+          )}
+
+          <div className="flex flex-col justify-between gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center">
+            <p className="max-w-xl text-xs leading-5 text-slate-500">
+              Activation closes current term, updates inactivity counts, and unlocks Registrar rollover for continuing students.
+            </p>
             <button
               onClick={handleAdvanceSemester}
-              disabled={saving}
-              className="mt-3 rounded-md border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 shadow-sm transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={advancing || !termPreview?.canAdvance}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-univ-blue px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Advance Academic Term & Archive Inactive Students
+              {advancing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+              Activate {termPreview?.nextTerm || 'Next Term'}
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Toggles */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-5">
+      <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-8 h-8 bg-amber-100 rounded-md flex items-center justify-center">
-            <Sliders className="w-4 h-4 text-amber-600" />
-          </div>
+          <Sliders className="h-4 w-4 text-univ-blue" />
           <div>
-            <h3 className="text-sm font-bold text-slate-900">System Toggles</h3>
-            <p className="text-xs text-slate-400">Enable or disable key system features</p>
+            <h2 className="text-sm font-semibold text-univ-navy">System Access</h2>
+            <p className="mt-1 text-xs text-slate-500">Control enrollment availability and maintenance state.</p>
           </div>
         </div>
         {[
-          { key: 'enrollmentOpen', label: 'Enrollment Open', desc: 'Allow new applicants to begin the enrollment process', iconClass: 'bg-indigo-50 text-indigo-600', icon: Unlock },
-          { key: 'systemMaintenance', label: 'Maintenance Mode', desc: 'Show a maintenance message to all users', iconClass: 'bg-amber-50 text-amber-600', icon: AlertTriangle },
+          { key: 'enrollmentOpen', label: 'Enrollment Open', desc: 'Allow new applicants to begin the enrollment process', iconClass: 'text-univ-blue', icon: Unlock },
+          { key: 'systemMaintenance', label: 'Maintenance Mode', desc: 'Show a maintenance message to all users', iconClass: 'text-amber-600', icon: AlertTriangle },
         ].map(toggle => {
           const Icon = toggle.icon;
           return (
             <div key={toggle.key} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex h-7 w-7 items-center justify-center rounded-md ${toggle.iconClass}`}>
-                  <Icon className="h-3.5 w-3.5" />
-                </div>
+                <Icon className={`h-4 w-4 ${toggle.iconClass}`} />
                 <div>
                   <p className="text-xs font-semibold text-slate-900">{toggle.label}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">{toggle.desc}</p>
@@ -1164,32 +1253,29 @@ function SettingsTab() {
             </div>
           );
         })}
-      </div>
+      </section>
 
-      {/* Announcement */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 space-y-4">
+      <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-8 h-8 bg-rose-100 rounded-md flex items-center justify-center">
-            <Bell className="w-4 h-4 text-rose-600" />
-          </div>
+          <Bell className="h-4 w-4 text-univ-blue" />
           <div>
-            <h3 className="text-sm font-bold text-slate-900">System Announcement</h3>
-            <p className="text-xs text-slate-400">Displayed prominently across the applicant portal</p>
+            <h2 className="text-sm font-semibold text-univ-navy">System Announcement</h2>
+            <p className="mt-1 text-xs text-slate-500">Displayed across applicant portal.</p>
           </div>
         </div>
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Announcement Message</label>
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700">Announcement message</label>
           <textarea value={settings.announcement} onChange={e => setSettings(p => ({ ...p, announcement: e.target.value }))}
             rows={4} placeholder="Enter an important system-wide notice here…"
             className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all resize-none" />
           <p className="text-[10px] text-slate-400 mt-1">Leave blank to hide announcement banner.</p>
         </div>
-      </div>
+      </section>
 
       <button onClick={handleSave} disabled={saving}
-        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-md transition-colors cursor-pointer disabled:opacity-60 shadow-sm">
+        className="flex items-center gap-2 rounded-md bg-univ-blue px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 cursor-pointer disabled:opacity-60">
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-        Save Settings
+        Save system settings
       </button>
       </div>
     </div>

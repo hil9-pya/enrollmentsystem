@@ -36,8 +36,16 @@ export function EnrollmentProvider({ children }) {
     return localStorage.getItem('student_active_id') || null;
   });
 
-  const setActiveStudent = useCallback((id) => {
+  const setActiveStudent = useCallback((id, student = null) => {
     setActiveStudentId(id);
+    if (student?.id) {
+      setStudents((prev) => {
+        const exists = prev.some((item) => item.id === student.id);
+        return exists
+          ? prev.map((item) => (item.id === student.id ? student : item))
+          : [...prev, student];
+      });
+    }
     if (id) {
       localStorage.setItem('student_active_id', id);
     } else {
@@ -413,7 +421,7 @@ export function EnrollmentProvider({ children }) {
       }
 
       else if (type === 'ROLLOVER_STUDENT') {
-        const res = await authFetch(`/api/students/${payload.studentId}/rollover`, {
+        const res = await authFetch(`/api/admin/students/${payload.studentId}/rollover`, {
           method: 'POST',
         });
         updatedStudent = await safeJson(res);
@@ -431,9 +439,12 @@ export function EnrollmentProvider({ children }) {
         return;
       }
       if (updatedStudent) {
-        setStudents((prev) =>
-          prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
-        );
+        setStudents((prev) => {
+          const exists = prev.some((student) => student.id === updatedStudent.id);
+          return exists
+            ? prev.map((student) => (student.id === updatedStudent.id ? updatedStudent : student))
+            : [...prev, updatedStudent];
+        });
       }
     } catch (err) {
       console.error('Failed to sync action with backend database:', err);

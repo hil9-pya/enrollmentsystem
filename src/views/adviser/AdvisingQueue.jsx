@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FileWarning, FileText, GraduationCap } from 'lucide-react';
-import { PROGRAMS, SUBJECTS } from '../../data/mockData';
+import { PROGRAMS } from '../../data/mockData';
 import StatusBadge from '../../components/StatusBadge';
 import Badge from '../../components/Badge';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { toast } from 'react-hot-toast';
 import PortalRefreshButton from '../../components/PortalRefreshButton';
 import SearchInput from '../../components/SearchInput';
+import { authFetch } from '../../utils/authFetch';
 
 export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const { dispatch } = useEnrollment();
@@ -18,6 +19,21 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   const [academicRecord, setAcademicRecord] = useState([]);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [adviserNotes, setAdviserNotes] = useState('');
+  const [catalogSubjects, setCatalogSubjects] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    authFetch('/api/scheduler/staff/subjects', { cache: 'no-store' })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Failed to load curriculum.');
+        if (!cancelled) setCatalogSubjects((data.data || []).filter((subject) => subject.isActive !== false));
+      })
+      .catch((error) => {
+        if (!cancelled) toast.error(error.message || 'Failed to load curriculum.');
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const relevantStudents = useMemo(() => {
     return students.filter(s =>
@@ -55,21 +71,32 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudentId]);
 
-  // Compute Eligible Subjects
-  const programPrefix = selectedStudent?.programId === 'bscs' ? 'cs' : selectedStudent?.programId === 'bsba' ? 'ba' : 'nu';
-  
-  const eligibleSubjects = useMemo(() => {
-    if (!selectedStudent || !programPrefix) return [];
-    
-    const passedSubjectIds = academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId);
+  const programSubjects = useMemo(() => {
+    if (!selectedStudent) return [];
+    return catalogSubjects.filter((subject) => (
+      subject.programId === selectedStudent.programId || subject.programId === 'elective'
+    ));
+  }, [catalogSubjects, selectedStudent]);
 
-    return SUBJECTS.filter(sub => {
-      if (!sub.id.startsWith(programPrefix)) return false;
+  // Compute Eligible Subjects
+  const eligibleSubjects = useMemo(() => {
+    if (!selectedStudent) return [];
+
+    const passedSubjectIds = academicRecord.filter(r => r.grade <= 3.0).map(r => r.subjectId);
+    const semester = /^(2s|2nd|2\b)/i.test(String(selectedStudent.academicTerm || '')) ? 2 : 1;
+
+    return programSubjects.filter(sub => {
+      if (sub.semester != null && Number(sub.semester) !== semester) return false;
       if (passedSubjectIds.includes(sub.id)) return false;
       if (!sub.prerequisites || sub.prerequisites.length === 0) return true;
       return sub.prerequisites.every(prereq => passedSubjectIds.includes(prereq));
     });
-  }, [selectedStudent, programPrefix, academicRecord]);
+  }, [selectedStudent, programSubjects, academicRecord]);
+
+  const selectedUnits = useMemo(() => selectedSubjects.reduce((total, subjectId) => {
+    const subject = catalogSubjects.find((entry) => entry.id === subjectId);
+    return total + (Number(subject?.units) || 0);
+  }, 0), [catalogSubjects, selectedSubjects]);
 
   const toggleCompleted = (id) => {
     setAcademicRecord(prev => {
@@ -87,14 +114,12 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
 
   const handleApprove = async () => {
     try {
-      const maxYear = eligibleSubjects.length > 0 ? Math.max(...eligibleSubjects.map(s => s.yearLevel || 1)) : 1;
       await dispatch({
         type: 'UPDATE_STUDENT_SUBJECTS',
         payload: {
           studentId: selectedStudent.id,
           subjects: selectedSubjects.map(id => ({ subjectId: id })),
           academicRecord,
-          yearLevel: maxYear
         }
       });
       await dispatch({
@@ -104,7 +129,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
       toast.success('Evaluation Approved!');
       setSelectedStudentId(null);
     } catch (err) {
-       console.error("Failed to approve", err);
+      toast.error(err.message || 'Failed to approve evaluation.');
     }
   };
 
@@ -238,7 +263,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                       <p className="text-xs text-slate-500">Check off the subjects this student has already passed.</p>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
-                        {SUBJECTS.filter(s => s.id.startsWith(programPrefix)).map(sub => (
+                        {programSubjects.map(sub => (
                           <div 
                             key={sub.id} 
                             onClick={() => toggleCompleted(sub.id)}
@@ -302,7 +327,7 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     ) : (
                       <div className="space-y-2">
                          {selectedSubjects.map(id => {
-                            const sub = SUBJECTS.find(s => s.id === id);
+                            const sub = catalogSubjects.find(s => s.id === id);
                             if (!sub) return null;
                             return (
                               <div key={id} className="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0">
@@ -341,8 +366,8 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
             {selectedStudent.status === 'advising_pending' && (
               <div className="border-t border-slate-200 bg-white p-4 z-20 shrink-0">
                 <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <p className="text-xs font-semibold text-slate-500 hidden sm:block">
-                    Ensure all subjects are properly credited before approving.
+                  <p className={`text-xs font-semibold hidden sm:block ${selectedUnits > 21 ? 'text-rose-700' : 'text-slate-500'}`}>
+                    {selectedUnits} of 21 units selected
                   </p>
                   <div className="flex gap-3 w-full sm:w-auto">
                     <button onClick={() => setSelectedStudentId(null)} className="sm:hidden flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold transition-colors">
@@ -351,7 +376,11 @@ export default function AdvisingQueue({ students, initialFilter, onNavigate }) {
                     <button onClick={handleReject} className="flex-1 rounded-lg border border-rose-200 bg-white px-4 py-2.5 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-50 sm:flex-none">
                       Return for changes
                     </button>
-                    <button onClick={handleApprove} className="flex-1 rounded-lg bg-univ-blue px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-700 sm:flex-none">
+                    <button
+                      onClick={handleApprove}
+                      disabled={selectedSubjects.length === 0 || selectedUnits > 21}
+                      className="flex-1 rounded-lg bg-univ-blue px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:flex-none"
+                    >
                       Approve
                     </button>
                   </div>

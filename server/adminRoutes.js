@@ -16,6 +16,8 @@ import {
   permanentlyDeleteStudent,
   callNextWalkInQueue,
   updateWalkInQueue,
+  rolloverStudent,
+  batchRolloverStudents,
 } from './studentsController.js';
 import { protect, authorize } from './authMiddleware.js';
 
@@ -45,5 +47,7 @@ router.post('/:id/subjects', authorize('admin', 'adviser'), setSubjects);
 router.post('/:id/confirm-payment', authorize('admin', 'accounting'), confirmPayment);
 router.post('/:id/walk-in-queue/:action', authorize('admin', 'accounting'), updateWalkInQueue);
 router.post('/:id/validate-enrollment', authorize('admin', 'registrar'), validateEnrollment);
+router.post('/batch-rollover', authorize('admin', 'registrar'), batchRolloverStudents);
+router.post('/:id/rollover', authorize('admin', 'registrar'), rolloverStudent);
 
 export default router;

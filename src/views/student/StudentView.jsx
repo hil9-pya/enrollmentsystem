@@ -458,7 +458,9 @@ export default function StudentView() {
             </div>
           )}
           <ErrorBoundary>
-            {renderStep()}
+            <div key={`${portalPage}-${effectiveStep}`} className="ui-content-enter">
+              {renderStep()}
+            </div>
           </ErrorBoundary>
         </div>
       </main>

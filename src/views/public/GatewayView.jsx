@@ -11,9 +11,10 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
       {/* Left-side campus context */}
       <div className="hidden lg:flex w-1/2 relative bg-univ-navy">
         <img 
-          src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80" 
-          alt="Campus" 
+          src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=60&fm=webp" 
+          alt="NCST Campus" 
           className="absolute inset-0 w-full h-full object-cover opacity-50"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-univ-navy-dark via-univ-navy/40 to-transparent"></div>
         
@@ -28,7 +29,9 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
 
         <div className="absolute bottom-16 left-16 right-16 z-10 text-white">
           <div className="mb-6 flex items-center gap-4">
-            <img src="/logo.png" alt="NCST Logo" className="h-14 w-14 object-contain" />
+            <button onClick={onBack} className="cursor-pointer group" aria-label="Back to NCST homepage">
+              <img src="/logo.png" alt="NCST Logo" className="h-14 w-14 object-contain group-hover:opacity-80 transition-opacity" />
+            </button>
             <div>
               <h1 className="font-heading text-3xl font-bold leading-tight tracking-tight text-white drop-shadow-md">National College of<br/>Science &amp; Technology</h1>
             </div>
@@ -43,11 +46,13 @@ export default function GatewayView({ onVerified, onBack, onLogin, initialView =
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-10 xl:p-16 relative bg-white overflow-y-auto">
         {/* Top bar for mobile only */}
         <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
-           <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-univ-navy rounded-lg transition-colors">
+           <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-univ-navy rounded-lg transition-colors cursor-pointer" aria-label="Back to homepage">
               <ArrowLeft className="w-5 h-5" />
            </button>
-           <img src="/logo.png" alt="NCST Logo" className="h-8 w-8 object-contain" />
-           <span className="font-heading font-bold text-univ-navy uppercase text-xs tracking-wider">NCST Gateway</span>
+           <button onClick={onBack} className="flex items-center gap-2 cursor-pointer group" aria-label="NCST — Go to homepage">
+             <img src="/logo.png" alt="NCST Logo" className="h-8 w-8 object-contain" />
+             <span className="font-heading font-bold text-univ-navy uppercase text-xs tracking-wider group-hover:text-univ-blue transition-colors">NCST Gateway</span>
+           </button>
         </div>
         
         <div className="w-full max-w-md mt-20 sm:mt-16 lg:mt-6">

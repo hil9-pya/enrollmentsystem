@@ -36,7 +36,7 @@ export default function WhyChooseSection() {
   ];
 
   return (
-    <section className="py-24 bg-[#f8fafc]">
+    <section id="why-choose" className="py-24 bg-[#f8fafc]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-16 items-center">
           
@@ -50,9 +50,10 @@ export default function WhyChooseSection() {
             </p>
             <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-2xl h-80">
               <img 
-                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-                alt="Students studying" 
+                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60&fm=webp" 
+                alt="Students studying at NCST" 
                 className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-univ-navy/20"></div>
             </div>

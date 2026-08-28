@@ -8,6 +8,8 @@ const errorHandler = (err, req, res, _next) => {
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   let message = err.message;
 
+  if (Number.isInteger(err.statusCode)) statusCode = err.statusCode;
+
   // Mongoose bad ObjectId / cast error
   if (err.name === 'CastError') {
     statusCode = 404;
