@@ -204,7 +204,7 @@ export async function seedStudents() {
   }
 }
 
-export async function seedUsers() {
+export async function seedUsers({ includeStudentAccounts = true } = {}) {
   console.log('Verifying demo accounts...');
   const passwordHash = await bcrypt.hash('password123', 10);
 
@@ -218,7 +218,7 @@ export async function seedUsers() {
       lastName: 'Account',
       role,
     })),
-    ...studentIds.map((sid, idx) => {
+    ...(includeStudentAccounts ? studentIds.map((sid, idx) => {
       const emailMap = {
         0: 'student@example.com',
         1: 'maria@example.com',
@@ -235,7 +235,7 @@ export async function seedUsers() {
         role: 'student',
         studentProfile: sid,
       };
-    })
+    }) : [])
   ];
 
   for (const userData of usersToSeed) {

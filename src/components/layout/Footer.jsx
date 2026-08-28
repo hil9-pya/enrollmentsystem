@@ -46,7 +46,6 @@ export default function Footer({ onNavigate }) {
               </div>
               <div>
                 <h3 className="font-heading font-extrabold text-xl text-white tracking-wide leading-tight">NCST</h3>
-                <p className="text-[9px] font-bold text-univ-gold uppercase tracking-widest">Gateway to Success</p>
               </div>
             </button>
             <p className="text-sm text-slate-400 leading-relaxed font-medium">

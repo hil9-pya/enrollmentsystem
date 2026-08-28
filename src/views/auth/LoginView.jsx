@@ -27,11 +27,7 @@ export default function LoginView({ portalType, onLogin }) {
 
   // Quick login helper for demo purposes
   const fillCredentials = (role) => {
-    if (role === 'student') {
-       setEmail('STU-2026-0000'); // the mock student ID
-    } else {
-       setEmail(`${role}@example.com`);
-    }
+    setEmail(`${role}@example.com`);
     setPassword('password123');
   };
 
@@ -89,7 +85,6 @@ export default function LoginView({ portalType, onLogin }) {
       
       {import.meta.env.DEV && portalType !== 'student' && (
         <div className="mt-8 pt-6 border-t border-slate-100">
-          <p className="mb-3 text-center text-xs font-semibold text-slate-500">Development test accounts</p>
           <div className="flex flex-wrap justify-center gap-2">
             {(portalType === 'admin' ? ['admin'] : ['admission', 'adviser', 'accounting', 'registrar']).map((role) => (
               <button

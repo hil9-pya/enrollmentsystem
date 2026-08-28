@@ -73,20 +73,78 @@ export async function ensureAcademicTerm(label, { activate = false, session = nu
 export async function repairLegacyEnrolledStudentTerms(activeTermLabel) {
   const activeTerm = parseAcademicTermLabel(activeTermLabel);
   const { default: Student } = await import('../Student.js');
+  const legacyPattern = /^(1st|2nd) Semester$/i;
+  const students = await Student.find({
+    status: 'enrolled',
+    $or: [
+      { academicTerm: legacyPattern },
+      { lastEnrolledTerm: legacyPattern },
+    ],
+  }).select('academicTerm lastEnrolledTerm academicRecord');
+
+  if (students.length === 0) return 0;
+
+  const memberships = await CourseMembership.find({
+    student: { $in: students.map((student) => student._id) },
+  })
+    .populate('term', 'name semester schoolYear')
+    .sort({ updatedAt: -1 })
+    .lean();
+  const membershipTermsByStudent = new Map();
+  for (const membership of memberships) {
+    if (!membership.term?.name) continue;
+    const studentId = String(membership.student);
+    if (!membershipTermsByStudent.has(studentId)) membershipTermsByStudent.set(studentId, []);
+    membershipTermsByStudent.get(studentId).push(membership.term.name);
+  }
+
+  const inferFullLabel = (legacyLabel, student) => {
+    const match = String(legacyLabel || '').trim().match(legacyPattern);
+    if (!match) return null;
+    const semester = match[1].toLowerCase() === '1st' ? '1' : '2';
+    const evidenceLabels = [
+      ...(membershipTermsByStudent.get(String(student._id)) || []),
+      ...(student.academicRecord || []).map((record) => record.term),
+    ];
+    const evidence = evidenceLabels
+      .map((label) => {
+        try { return parseAcademicTermLabel(label); } catch { return null; }
+      })
+      .filter((metadata) => metadata?.semester === semester)
+      .sort((a, b) => b.startYear - a.startYear);
+    if (evidence.length > 0) return evidence[0].name;
+
+    if (semester === activeTerm.semester) return activeTerm.name;
+    if (semester === '1' && activeTerm.semester === '2') {
+      return `1st Semester ${activeTerm.schoolYear}`;
+    }
+    if (semester === '2' && activeTerm.semester === '1') {
+      return `2nd Semester ${activeTerm.startYear - 1}-${activeTerm.endYear - 1}`;
+    }
+    return null;
+  };
+
   let modifiedCount = 0;
 
-  for (const semester of ['1st', '2nd']) {
-    const legacyLabel = `${semester} Semester`;
-    const repairedLabel = `${legacyLabel} ${activeTerm.schoolYear}`;
-    const academicTermResult = await Student.updateMany(
-      { status: 'enrolled', academicTerm: legacyLabel },
-      { $set: { academicTerm: repairedLabel } }
-    );
-    const lastEnrolledTermResult = await Student.updateMany(
-      { status: 'enrolled', lastEnrolledTerm: legacyLabel },
-      { $set: { lastEnrolledTerm: repairedLabel } }
-    );
-    modifiedCount += academicTermResult.modifiedCount + lastEnrolledTermResult.modifiedCount;
+  for (const student of students) {
+    let changed = false;
+    if (legacyPattern.test(String(student.academicTerm || '').trim())) {
+      const repaired = inferFullLabel(student.academicTerm, student);
+      if (repaired) {
+        student.academicTerm = repaired;
+        modifiedCount += 1;
+        changed = true;
+      }
+    }
+    if (legacyPattern.test(String(student.lastEnrolledTerm || '').trim())) {
+      const repaired = inferFullLabel(student.lastEnrolledTerm, student);
+      if (repaired) {
+        student.lastEnrolledTerm = repaired;
+        modifiedCount += 1;
+        changed = true;
+      }
+    }
+    if (changed) await student.save();
   }
 
   return modifiedCount;

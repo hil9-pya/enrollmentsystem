@@ -28,6 +28,7 @@ import {
   sendVerificationOtpEmail,
 } from './services/emailService.js';
 import { enqueueBackgroundJob } from './services/backgroundJobService.js';
+import { parseAcademicTermLabel } from './academicTermUtils.js';
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -693,7 +694,13 @@ const selectProgram = asyncHandler(async (req, res) => {
   const student = await findStudentOr404(res, req.params.id);
   if (!student) return;
 
-  const { programId, academicTerm } = req.body;
+  const { programId } = req.body;
+  const settings = await Settings.findOne().select('activeTerm').lean();
+  if (!settings?.activeTerm) {
+    res.status(409);
+    throw new Error('Active academic term is not configured. Contact the administrator.');
+  }
+  const academicTerm = parseAcademicTermLabel(settings.activeTerm).name;
 
   // Program selected during applicant admission stays fixed in Student Portal.
   // Only term may change for a new enrollment cycle.
@@ -1260,6 +1267,7 @@ const validateEnrollment = asyncHandler(async (req, res) => {
     current.registrationFormGenerated = true;
     current.receiptGenerated = true;
     current.missedSemesters = 0;
+    current.academicTerm = activeTerm;
     current.lastEnrolledTerm = activeTerm;
     ensureReceiptNumber(current);
 

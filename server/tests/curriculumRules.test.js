@@ -5,10 +5,13 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { validateSectionCode } from '../adminSchedulerController.js';
 import { addSchedulerSection, submitSchedule } from '../schedulerController.js';
 import Student from '../Student.js';
+import Settings from '../Settings.js';
 import Section from '../models/Section.js';
+import { selectProgram } from '../studentsController.js';
 import {
   getCurriculumSubjects,
   getPassedSubjectIds,
+  getStudyPlanSubjectsForStudent,
   getSemesterNumber,
   validateStudentSubjectEligibility,
 } from '../services/schedulerService.js';
@@ -29,6 +32,15 @@ test('curriculum selection stays within program, year, and semester', () => {
   assert.ok(subjects.some((subject) => subject.id === 'cs101'));
   assert.equal(subjects.some((subject) => subject.id === 'cs201'), false);
   assert.equal(subjects.some((subject) => subject.id === 'ba101'), false);
+
+  const secondSemester = getCurriculumSubjects('bscs', 1, 2);
+  assert.ok(secondSemester.some((subject) => subject.id === 'cs103'));
+  assert.ok(secondSemester.some((subject) => subject.id === 'cs104'));
+  assert.equal(secondSemester.some((subject) => subject.id === 'cs101'), false);
+  for (const programId of ['bscs', 'bsba', 'bsn']) {
+    assert.ok(getCurriculumSubjects(programId, 1, 2)
+      .some((subject) => subject.programId === programId && subject.semester === 2));
+  }
 });
 
 test('student subject eligibility enforces program, year, completion, and approval', () => {
@@ -57,6 +69,48 @@ test('student subject eligibility enforces program, year, completion, and approv
 
   const completed = { ...freshman, academicRecord: [{ subjectId: 'cs101', grade: 1.75, term: 'prior' }] };
   assert.match(validateStudentSubjectEligibility(completed, 'cs101').error, /already completed/i);
+});
+
+test('continuing first-year student receives only approved second-semester subjects', () => {
+  const student = {
+    enrollmentType: 'continuing',
+    programId: 'bscs',
+    yearLevel: 1,
+    academicTerm: '2nd Semester 2026-2027',
+    academicRecord: [
+      { subjectId: 'cs101', grade: 2, term: '1st Semester 2026-2027' },
+      { subjectId: 'cs102', grade: 2, term: '1st Semester 2026-2027' },
+    ],
+    approvedSubjectIds: ['cs103', 'cs104'],
+  };
+  assert.deepEqual(
+    getStudyPlanSubjectsForStudent(student).map((subject) => subject.id).sort(),
+    ['cs103', 'cs104']
+  );
+});
+
+test('program selection uses configured full academic term instead of client fallback', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    await Settings.create({ activeTerm: '1st Semester 2026-2027' });
+    const student = await Student.create({
+      _id: 'APP-TERM-SELECTION-0001',
+      status: 'documents_approved',
+      enrollmentType: 'new',
+    });
+
+    const result = await invoke(selectProgram, {
+      params: { id: student._id },
+      body: { programId: 'bscs', academicTerm: '1st Semester' },
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.payload.academicTerm, '1st Semester 2026-2027');
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
 });
 
 test('academic grade and semester helpers reject incomplete grades', () => {

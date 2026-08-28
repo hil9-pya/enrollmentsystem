@@ -149,12 +149,9 @@ export default function Navbar({ onNavigate }) {
               <div className={`p-1.5 rounded-xl transition-all duration-300 ${logoBadgeBg}`}>
                 <img src="/logo.png" alt="NCST Logo" className="w-8 h-8 object-contain" />
               </div>
-              <div className="flex flex-col text-left">
+              <div className="text-left">
                 <span className={`font-heading font-extrabold text-lg tracking-wide leading-tight transition-colors ${logoTitleStyle}`}>
                   NCST
-                </span>
-                <span className="text-[9px] font-bold text-univ-gold uppercase tracking-widest leading-none">
-                  Gateway to Success
                 </span>
               </div>
             </button>

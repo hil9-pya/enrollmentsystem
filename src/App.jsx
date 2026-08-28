@@ -114,6 +114,16 @@ function AppContent() {
     setViewMode(nextView);
   };
 
+  // A payment return performs a full-page navigation. If the browser no
+  // longer has a student session, send the user back to Student Sign In
+  // instead of presenting a misleading 404 page.
+  useEffect(() => {
+    if (!isLoading && viewMode === 'student' && !user) {
+      window.history.replaceState({}, '', buildPortalUrl('gateway', 'student'));
+      setViewMode('gateway');
+    }
+  }, [isLoading, viewMode, user]);
+
   useEffect(() => {
     const handlePopState = () => {
       setIsApplicantVerified(false);
@@ -302,8 +312,26 @@ function AppContent() {
         </div>
       );
     }
-    // Accessing student portal without student credentials -> 404
-    return <NotFoundView onNavigate={navigateTo} />;
+    // The redirect effect above replaces this view with Student Sign In.
+    // Render the same gateway immediately so the 404 page never flashes.
+    return (
+      <GatewayView
+        initialView="student"
+        onLogin={(signedInUser) => {
+          const destination = signedInUser?.role === 'student'
+            ? 'student'
+            : signedInUser?.role === 'admin'
+              ? 'admin'
+              : 'staff';
+          navigateTo(destination);
+        }}
+        onVerified={() => {
+          setIsApplicantVerified(true);
+          navigateTo('applicant');
+        }}
+        onBack={() => navigateTo('landing')}
+      />
+    );
   }
 
   // 7. Staff/Admin Portal Views

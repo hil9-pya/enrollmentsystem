@@ -16,6 +16,7 @@ import {
   batchRolloverToActiveTerm,
   buildTermClosingQueue,
 } from '../services/continuingRolloverService.js';
+import { repairLegacyEnrolledStudentTerms } from '../services/academicFoundationService.js';
 
 function invoke(handler, req) {
   return new Promise((resolve, reject) => {
@@ -177,6 +178,61 @@ test('continuing rollover clears prior-term enrollment state and advances year a
     assert.equal(response.payload.amountPaid, 0);
     assert.equal(response.payload.paymentReference, null);
     assert.equal(response.payload.receiptNumber, null);
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('legacy semester-only student term is repaired from official history before rollover', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    await Settings.create({ activeTerm: '2nd Semester 2026-2027' });
+    const previousTerm = await AcademicTerm.create({
+      code: '1ST-SEMESTER-2026-2027',
+      name: '1st Semester 2026-2027',
+      schoolYear: '2026-2027',
+      semester: '1',
+      status: 'closed',
+      isActive: false,
+    });
+    await AcademicTerm.create({
+      code: '2ND-SEMESTER-2026-2027',
+      name: '2nd Semester 2026-2027',
+      schoolYear: '2026-2027',
+      semester: '2',
+      status: 'active',
+      isActive: true,
+    });
+    const offering = await createOffering(previousTerm, '1');
+    const student = await Student.create({
+      _id: 'APP-LEGACY-TERM-0001',
+      studentId: 'STU-2026-0001',
+      firstName: 'Legacy',
+      lastName: 'Term',
+      status: 'enrolled',
+      programId: 'bscs',
+      academicTerm: '1st Semester',
+      academicRecord: [{ subjectId: 'cs101', grade: 2, term: '1st Semester 2026-2027' }],
+    });
+    await CourseMembership.create({
+      student: student._id,
+      term: previousTerm._id,
+      offering: offering._id,
+      status: 'completed',
+      gradeStatus: 'published',
+      finalGrade: 2,
+    });
+
+    assert.equal(await repairLegacyEnrolledStudentTerms('2nd Semester 2026-2027'), 1);
+    assert.equal((await Student.findById(student._id)).academicTerm, '1st Semester 2026-2027');
+
+    const queue = await buildTermClosingQueue();
+    const row = queue.rollover.students.find((item) => item.id === student._id);
+    assert.equal(row.eligible, true);
+    assert.equal(row.previousTerm, '1st Semester 2026-2027');
   } finally {
     await mongoose.disconnect();
     await mongo.stop();
