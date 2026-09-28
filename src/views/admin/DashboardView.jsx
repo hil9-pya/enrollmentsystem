@@ -247,25 +247,25 @@ function StudentEditModal({ student, onClose, onSave }) {
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">First Name</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">First name</label>
               <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Last Name</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Last name</label>
               <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Email Address</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600">Email address</label>
             <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Phone</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Phone</label>
               <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Program</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Program</label>
               <select value={form.programId} onChange={e => setForm(p => ({ ...p, programId: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="">— Not Selected —</option>
                 {PROGRAMS.map(prog => <option key={prog.id} value={prog.id}>{prog.id.toUpperCase()} – {prog.name}</option>)}
@@ -273,12 +273,12 @@ function StudentEditModal({ student, onClose, onSave }) {
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Home Address</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600">Home address</label>
             <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent bg-slate-50 focus:bg-white transition-all" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Enrollment Type</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Enrollment type</label>
               <select value={form.enrollmentType} onChange={e => setForm(p => ({ ...p, enrollmentType: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="">— None —</option>
                 <option value="new">New Student</option>
@@ -288,7 +288,7 @@ function StudentEditModal({ student, onClose, onSave }) {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Payment Status</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Payment status</label>
               <select value={form.paymentStatus} onChange={e => setForm(p => ({ ...p, paymentStatus: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="unpaid">Unpaid</option>
                 <option value="pending">Pending</option>
@@ -298,7 +298,7 @@ function StudentEditModal({ student, onClose, onSave }) {
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Enrollment Status</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600">Enrollment status</label>
             <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
               <option value="registration">Registration</option>
               <option value="documents_submitted">Documents Submitted</option>
@@ -315,7 +315,7 @@ function StudentEditModal({ student, onClose, onSave }) {
           {/* Documents Section */}
           {student.documents && student.documents.length > 0 && (
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Submitted Documents</label>
+              <label className="mb-3 block text-xs font-medium text-slate-600">Submitted documents</label>
               <div className="space-y-2">
                 {student.documents.map((doc, i) => (
                   <div key={i} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-md px-4 py-2.5">
@@ -450,7 +450,7 @@ function DirectoryTab({ title, description, visibleStudents, onTrash, onStudentU
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
         <table className="w-full text-left text-xs min-w-[960px]">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+            <tr className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
               <th className="px-5 py-3.5">Student</th>
               <th className="px-5 py-3.5">Program</th>
               <th className="px-5 py-3.5">Status</th>
@@ -725,7 +725,7 @@ function TrashTab() {
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[980px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              <tr className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                 <th className="px-5 py-3.5">Student</th>
                 <th className="px-5 py-3.5">Program</th>
                 <th className="px-5 py-3.5">Last enrolled term</th>
@@ -892,14 +892,14 @@ function StaffTab() {
               { label: 'Email Address *', key: 'email', type: 'email', placeholder: 'juan@ncst.edu.ph' },
             ].map(f => (
               <div key={f.key}>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">{f.label}</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">{f.label}</label>
                 <input type={f.type || 'text'} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
                   placeholder={f.placeholder}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all" />
               </div>
             ))}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Role / Department *</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Role / department *</label>
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 focus:bg-white cursor-pointer transition-all">
                 <option value="admin">Admin (Superuser)</option>
@@ -911,7 +911,7 @@ function StaffTab() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">
                 Password {editingUser ? '(leave blank to keep)' : '*'}
               </label>
               <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
@@ -970,7 +970,7 @@ function StaffTab() {
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[600px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+              <tr className="border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500">
                 <th className="px-5 py-3.5">Staff Member</th>
                 <th className="px-5 py-3.5">Username</th>
                 <th className="px-5 py-3.5">Department / Role</th>

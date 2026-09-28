@@ -132,10 +132,10 @@ export default function EnrollmentValidation({ studentId, onBack }) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-lg font-extrabold text-univ-navy">
+            <h2 className="text-lg font-semibold text-univ-navy">
               {student.firstName} {student.lastName}
             </h2>
-            <div className="flex items-center gap-3 mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
               <span className="font-mono text-slate-400">{student.studentId || student.id}</span>
               <span>&bull;</span>
               <span>{program?.name || 'No program selected'}</span>
@@ -166,7 +166,7 @@ export default function EnrollmentValidation({ studentId, onBack }) {
         <div className="p-8 space-y-6">
           {/* Status Banner */}
           {student.status === 'enrolled' ? (
-            <div className="flex items-center gap-3.5 p-5 bg-emerald-50 border border-emerald-200/40 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-3.5 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
               <CheckCircle className="h-5 w-5 text-emerald-500 flex-shrink-0 stroke-[2]" />
               <div className="flex-1">
                 <p className="text-xs font-bold text-emerald-800">Enrollment Validated &amp; Finalized</p>
@@ -176,14 +176,14 @@ export default function EnrollmentValidation({ studentId, onBack }) {
               </div>
               <button 
                 onClick={handleRollover}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
               >
                 Initialize Next Semester
               </button>
               <StatusBadge status="enrolled" />
             </div>
           ) : (
-            <div className="flex items-center justify-between p-5 bg-white border border-univ-blue/30 rounded-2xl shadow-premium">
+            <div className="flex items-center justify-between rounded-lg border border-univ-blue/30 bg-white p-5">
               <div className="flex items-center gap-3.5">
                 <ShieldCheck className="h-5 w-5 text-univ-blue flex-shrink-0 stroke-[2]" />
                 <div>
@@ -207,8 +207,8 @@ export default function EnrollmentValidation({ studentId, onBack }) {
             <div className="space-y-6 lg:col-span-1">
               {/* Generated Documents (enrolled only) */}
               {student.status === 'enrolled' && (
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-                  <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Generated Records</h3>
+                <div className="rounded-lg border border-slate-200 bg-white p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-univ-navy">Generated records</h3>
                   <div className="space-y-2.5">
                     {[
                       { label: 'Class Schedule', icon: Calendar, generated: student.scheduleGenerated },
@@ -239,11 +239,11 @@ export default function EnrollmentValidation({ studentId, onBack }) {
               )}
 
               {/* Financial Clearance */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-                <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Financial Clearance</h3>
+              <div className="rounded-lg border border-slate-200 bg-white p-5">
+                <h3 className="mb-4 text-sm font-semibold text-univ-navy">Financial clearance</h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status</p>
+                    <p className="text-xs font-medium text-slate-500">Status</p>
                     <div className="mt-1.5">
                       <StatusBadge status={
                         ['paid', 'partial'].includes(student.paymentStatus)
@@ -272,8 +272,8 @@ export default function EnrollmentValidation({ studentId, onBack }) {
               </div>
 
               {/* Documents Checklist */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-                <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Admissions Documents</h3>
+              <div className="rounded-lg border border-slate-200 bg-white p-5">
+                <h3 className="mb-4 text-sm font-semibold text-univ-navy">Admissions documents</h3>
                 <div className="space-y-2.5">
                   {student.documents.map((doc) => (
                     <div
@@ -299,8 +299,8 @@ export default function EnrollmentValidation({ studentId, onBack }) {
             <div className="space-y-6 lg:col-span-2">
               {/* Selected Subjects */}
               {(scheduleRows.length > 0 || student.selectedSubjects?.length > 0) && (
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-                  <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Final Schedule Selection</h3>
+                <div className="rounded-lg border border-slate-200 bg-white p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-univ-navy">Final schedule selection</h3>
                   {isScheduleLoading && (
                     <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] font-semibold text-blue-700">
                       Loading saved section schedules...
@@ -311,10 +311,10 @@ export default function EnrollmentValidation({ studentId, onBack }) {
                       {scheduleError}
                     </div>
                   )}
-                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="overflow-hidden rounded-lg border border-slate-200">
                     <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                        <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
                           <th className="px-4 py-3.5">Code</th>
                           <th className="px-4 py-3.5">Subject Description</th>
                           <th className="px-4 py-3.5">Units</th>
@@ -350,9 +350,9 @@ export default function EnrollmentValidation({ studentId, onBack }) {
 
               {/* Assessment Summary */}
               {student.tuitionBreakdown && student.tuitionBreakdown.length > 0 && (
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-                  <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Official Assessment Summary</h3>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm max-w-lg">
+                <div className="rounded-lg border border-slate-200 bg-white p-5">
+                  <h3 className="mb-4 text-sm font-semibold text-univ-navy">Official assessment summary</h3>
+                  <div className="max-w-lg overflow-hidden rounded-lg border border-slate-200">
                     <table className="w-full text-left text-xs">
                       <tbody className="divide-y divide-slate-100 bg-white">
                         {student.tuitionBreakdown.map((item, idx) => (
@@ -364,8 +364,8 @@ export default function EnrollmentValidation({ studentId, onBack }) {
                           </tr>
                         ))}
                         <tr className="bg-slate-50/80 font-bold">
-                          <td className="px-4 py-3 text-univ-navy font-extrabold uppercase tracking-widest text-[10px]">Total Tuition Due</td>
-                          <td className="px-4 py-3 text-right text-univ-navy font-extrabold text-sm">
+                          <td className="px-4 py-3 text-sm font-semibold text-univ-navy">Total tuition due</td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold text-univ-navy">
                             {formatPeso(student.totalTuition)}
                           </td>
                         </tr>

@@ -165,29 +165,29 @@ function SubjectFormModal({ isOpen, onClose, onSave, subjects, initialData }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="subject-id" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">ID (Unique) *</label>
+              <label htmlFor="subject-id" className="mb-1.5 block text-xs font-medium text-slate-600">Unique ID *</label>
               <input id="subject-id" name="id" type="text" value={form.id} onChange={(e) => updateField('id', sanitizeSubjectId(e.target.value))} required disabled={!!initialData} pattern="[a-z0-9-]+" maxLength={32} autoCapitalize="none" spellCheck="false" title="Use lowercase letters, numbers, and hyphens only." placeholder="e.g. cs401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500" />
             </div>
             <div>
-              <label htmlFor="subject-code" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Code *</label>
+              <label htmlFor="subject-code" className="mb-1.5 block text-xs font-medium text-slate-600">Code *</label>
               <input id="subject-code" name="code" type="text" value={form.code} onChange={(e) => updateField('code', formatSubjectCode(e.target.value))} required pattern={SUBJECT_CODE_PATTERN.source} maxLength={6} spellCheck="false" title="Use a course code such as CS 401." placeholder="e.g. CS 401" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500" />
               <p className="mt-1 text-[11px] text-slate-500">Use two letters and three numbers; prefix must match the program.</p>
             </div>
           </div>
           <div>
-            <label htmlFor="subject-name" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Name *</label>
+            <label htmlFor="subject-name" className="mb-1.5 block text-xs font-medium text-slate-600">Subject name *</label>
             <input id="subject-name" name="name" type="text" value={form.name} onChange={(e) => updateField('name', e.target.value)} required placeholder="e.g. Advanced AI" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="subject-program" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Program *</label>
+              <label htmlFor="subject-program" className="mb-1.5 block text-xs font-medium text-slate-600">Program *</label>
               <select id="subject-program" name="programId" value={form.programId} onChange={(e) => updateField('programId', e.target.value)} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                 <option value="">Select program...</option>
                 {PROGRAMS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="subject-units" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Units *</label>
+              <label htmlFor="subject-units" className="mb-1.5 block text-xs font-medium text-slate-600">Units *</label>
               <input id="subject-units" name="units" type="number" value={form.units} onChange={(e) => { const digits = e.target.value.replace(/\D/g, '').slice(0, 2); const normalized = digits.replace(/^0+(?=\d)/, ''); updateField('units', normalized && Number(normalized) > 30 ? '30' : normalized); }} required min={1} max={30} step={1} inputMode="numeric" title="Enter a whole number from 1 to 30." className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
             </div>
           </div>
@@ -196,7 +196,7 @@ function SubjectFormModal({ isOpen, onClose, onSave, subjects, initialData }) {
           {form.programId && form.programId !== 'elective' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="subject-year-level" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Year Level *</label>
+                <label htmlFor="subject-year-level" className="mb-1.5 block text-xs font-medium text-slate-600">Year level *</label>
                 <select id="subject-year-level" name="yearLevel" value={form.yearLevel} onChange={(e) => updateField('yearLevel', e.target.value)} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                   <option value="">Select year...</option>
                   <option value={1}>1st Year</option>
@@ -206,7 +206,7 @@ function SubjectFormModal({ isOpen, onClose, onSave, subjects, initialData }) {
                 </select>
               </div>
               <div>
-                <label htmlFor="subject-semester" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Semester *</label>
+                <label htmlFor="subject-semester" className="mb-1.5 block text-xs font-medium text-slate-600">Semester *</label>
                 <select id="subject-semester" name="semester" value={form.semester} onChange={(e) => updateField('semester', e.target.value)} required className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500">
                   <option value="">Select semester...</option>
                   <option value={1}>1st Semester</option>
@@ -217,7 +217,7 @@ function SubjectFormModal({ isOpen, onClose, onSave, subjects, initialData }) {
           )}
 
           <div>
-            <label htmlFor="subject-fee" className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject Fee (₱) *</label>
+            <label htmlFor="subject-fee" className="mb-1.5 block text-xs font-medium text-slate-600">Subject fee (₱) *</label>
             <input id="subject-fee" name="fee" type="number" value={form.fee} onChange={(e) => updateField('fee', e.target.value)} required min={0} step="0.01" inputMode="decimal" placeholder="e.g. 4500" className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
           </div>
 
@@ -454,7 +454,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
           <form onSubmit={handleSubmit} className="flex-1 p-6 space-y-4 min-w-0">
             {/* Subject */}
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Subject *</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Subject *</label>
               <select value={form.subjectId} onChange={(e) => setForm({ ...form, subjectId: e.target.value })}
                 required disabled={!!initialData?.id}
                 className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
@@ -465,7 +465,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
 
             {/* Section Code */}
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Section Code *</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Section code *</label>
               <input
                 type="text"
                 value={form.sectionCode}
@@ -484,7 +484,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
 
             {/* Days */}
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Days *</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Days *</label>
               <select value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} required
                 className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
                 {DAYS_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -494,7 +494,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
             {/* Start / End Time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Start Time *</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">Start time *</label>
                 <select
                   value={form.startTime}
                   onChange={(e) => {
@@ -511,7 +511,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">End Time *</label>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">End time *</label>
                 <select
                   value={form.endTime}
                   onChange={(e) => setForm({ ...form, endTime: e.target.value })}
@@ -526,7 +526,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
 
             {/* Room */}
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Room</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Room</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -556,7 +556,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
 
             {/* Max Slots */}
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Max Slots</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Maximum slots</label>
               <input type="number" value={form.maxSlots} onChange={(e) => setForm({ ...form, maxSlots: parseInt(e.target.value) || 40 })}
                 min={1} max={200}
                 className="w-full px-3 py-2 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500" />
@@ -564,7 +564,7 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
 
             {/* Instructor */}
             <div>
-              <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1.5">Instructor</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Instructor</label>
               <select
                 value={form.instructorUser || ''}
                 onChange={(e) => {
@@ -607,8 +607,8 @@ function SectionFormModal({ isOpen, onClose, onSave, subjects, allSections, inst
           </form>
 
           {/* ── Right: Availability Panel ── */}
-          <div className="w-64 shrink-0 p-5 bg-slate-50/60 rounded-r-3xl space-y-4">
-            <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Live Availability</p>
+          <div className="w-64 shrink-0 space-y-4 rounded-r-lg bg-slate-50/60 p-5">
+            <p className="text-xs font-semibold text-slate-600">Live availability</p>
 
             {/* Room Schedule */}
             {form.room?.trim() ? (
@@ -949,8 +949,8 @@ export default function CourseManagementTab() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">{sub.code}</span>
-                          <span className="text-[10px] text-slate-400 font-semibold">{sub.units} units</span>
-                          <span className="text-[9px] text-slate-400 font-medium uppercase tracking-wider">
+                          <span className="text-xs font-medium text-slate-500">{sub.units} units</span>
+                          <span className="text-xs font-medium text-slate-500">
                             {PROGRAMS.find((p) => p.id === sub.programId)?.label || sub.programId}
                           </span>
                           {sub.isActive === false && <span className="text-[10px] font-semibold text-amber-700">Archived</span>}
@@ -1009,12 +1009,12 @@ export default function CourseManagementTab() {
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="border-b border-slate-100 bg-slate-50/60">
-                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Section</th>
-                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Schedule</th>
-                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Room</th>
-                              <th className="text-left p-3 font-semibold text-slate-500 uppercase tracking-wider">Instructor</th>
-                              <th className="text-center p-3 font-semibold text-slate-500 uppercase tracking-wider">Slots</th>
-                              <th className="text-right p-3 font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                              <th className="p-3 text-left font-semibold text-slate-500">Section</th>
+                              <th className="p-3 text-left font-semibold text-slate-500">Schedule</th>
+                              <th className="p-3 text-left font-semibold text-slate-500">Room</th>
+                              <th className="p-3 text-left font-semibold text-slate-500">Instructor</th>
+                              <th className="p-3 text-center font-semibold text-slate-500">Slots</th>
+                              <th className="p-3 text-right font-semibold text-slate-500">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">

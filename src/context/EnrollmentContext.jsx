@@ -23,8 +23,6 @@ const safeJson = async (res) => {
   return res.json();
 };
 
-
-
 export function EnrollmentProvider({ children }) {
   const { token, user } = useAuth();
   const [currentRole, setRole] = useState('student');
@@ -498,8 +496,9 @@ export function EnrollmentProvider({ children }) {
       setActiveStudent,
       refreshActiveStudent,
       refreshStudents,
+      settings,
     }),
-    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent, refreshStudents]
+    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent, refreshStudents, settings]
   );
 
   return (

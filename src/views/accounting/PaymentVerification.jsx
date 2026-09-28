@@ -58,7 +58,7 @@ export default function PaymentVerification({ studentId, onBack }) {
             <h2 className="text-lg font-semibold text-univ-navy">
               {student.firstName} {student.lastName}
             </h2>
-            <div className="flex items-center gap-3 mt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
               <span className="font-mono text-slate-400">{student.studentId || student.id}</span>
               <span>&bull;</span>
               <span>{program?.name || 'No program selected'}</span>
@@ -111,7 +111,7 @@ export default function PaymentVerification({ studentId, onBack }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Tuition Breakdown */}
             <div className="bg-white border border-slate-200/80 rounded-lg p-6 shadow-sm">
-              <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4 flex items-center gap-2">
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-univ-navy">
                 <Receipt className="w-4 h-4 text-slate-400" />
                 Tuition &amp; Fees Assessment
               </h3>
@@ -129,8 +129,8 @@ export default function PaymentVerification({ studentId, onBack }) {
                         </tr>
                       ))}
                       <tr className="bg-slate-50/60 font-bold border-t border-slate-200">
-                        <td className="px-4 py-4 text-univ-navy font-extrabold uppercase tracking-widest text-[10px]">Total Tuition Due</td>
-                        <td className="px-4 py-4 text-right text-univ-navy font-extrabold text-sm">
+                        <td className="px-4 py-4 text-sm font-semibold text-univ-navy">Total tuition due</td>
+                        <td className="px-4 py-4 text-right text-sm font-semibold text-univ-navy">
                           {formatPeso(student.totalTuition)}
                         </td>
                       </tr>
@@ -145,35 +145,35 @@ export default function PaymentVerification({ studentId, onBack }) {
             {/* Action Section */}
             <div className="space-y-6">
               <div className="bg-white border border-slate-200/80 rounded-lg p-6 shadow-sm">
-                <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Settlement Details</h3>
+                <h3 className="mb-4 text-sm font-semibold text-univ-navy">Settlement details</h3>
                 
                 <div className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Payment Method</p>
+                      <p className="text-xs font-medium text-slate-500">Payment method</p>
                       <p className="text-sm font-semibold text-univ-navy mt-1 capitalize">{student.paymentMethod || '—'}</p>
                     </div>
                     {student.paymentReference && (
                       <div>
-                        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Reference Code</p>
+                        <p className="text-xs font-medium text-slate-500">Reference code</p>
                         <p className="text-sm font-semibold text-univ-navy mt-1 font-mono">{student.paymentReference}</p>
                       </div>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Payment Received</p>
+                      <p className="text-xs font-medium text-slate-500">Payment received</p>
                       <p className="text-sm font-bold text-univ-navy mt-1">{formatPeso(student.amountPaid || student.totalTuition)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Remaining Balance</p>
+                      <p className="text-xs font-medium text-slate-500">Remaining balance</p>
                       <p className="text-sm font-bold text-univ-navy mt-1">{formatPeso(student.remainingBalance)}</p>
                     </div>
                   </div>
                   
                   {isPending && (
                     <div className="pt-4 border-t border-slate-100">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-3">Accounting Action</p>
+                      <p className="mb-3 text-xs font-medium text-slate-500">Accounting action</p>
                       <button
                         onClick={handleConfirmPayment}
                         className="w-full rounded-lg bg-univ-blue px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-blue-700 cursor-pointer"

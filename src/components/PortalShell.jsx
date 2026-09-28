@@ -74,7 +74,7 @@ export default function PortalShell({
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-slate-900">{mobileTitle || portalTitle}</p>
             {mobileSubtitle && (
-              <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <p className="truncate text-xs font-medium text-slate-500">
                 {mobileSubtitle}
               </p>
             )}
