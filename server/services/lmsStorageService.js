@@ -96,5 +96,5 @@ export async function removeLmsStoredFile(storageId) {
 }
 
 export async function listLmsStoredFiles() {
-  return listFileIds();
+  return listFileIds({ 'metadata.kind': { $in: ['lms-material', 'lms-submission'] } });
 }

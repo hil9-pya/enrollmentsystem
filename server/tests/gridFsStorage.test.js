@@ -47,3 +47,23 @@ test('GridFS treats malformed and missing identifiers as absent', async () => {
   assert.equal(await deleteFile('not-an-object-id'), false);
   assert.equal(await openFile(new mongoose.Types.ObjectId().toString()), null);
 });
+
+test('GridFS listing can isolate one file category', async () => {
+  const applicantId = await storeFile({
+    buffer: Buffer.from('applicant'),
+    filename: 'applicant.pdf',
+    contentType: 'application/pdf',
+    metadata: { kind: 'applicant-document' },
+  });
+  const lmsId = await storeFile({
+    buffer: Buffer.from('lms'),
+    filename: 'lesson.pdf',
+    contentType: 'application/pdf',
+    metadata: { kind: 'lms-material' },
+  });
+
+  assert.deepEqual(await listFileIds({ 'metadata.kind': 'lms-material' }), [lmsId]);
+
+  await deleteFile(applicantId);
+  await deleteFile(lmsId);
+});

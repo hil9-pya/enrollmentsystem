@@ -37,7 +37,7 @@ export async function deleteFile(id) {
   return true;
 }
 
-export async function listFileIds() {
-  const files = await bucket().find({}).sort({ uploadDate: 1 }).toArray();
+export async function listFileIds(filter = {}) {
+  const files = await bucket().find(filter).sort({ uploadDate: 1 }).toArray();
   return files.map((file) => file._id.toString());
 }

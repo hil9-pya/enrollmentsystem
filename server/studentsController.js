@@ -625,7 +625,7 @@ const uploadDocument = asyncHandler(async (req, res) => {
     buffer: req.file.buffer,
     filename: req.file.originalname,
     contentType: req.file.mimetype,
-    metadata: { studentId: student._id, typeId },
+    metadata: { studentId: student._id, typeId, kind: 'applicant-document' },
   });
 
   try {
