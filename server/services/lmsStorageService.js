@@ -1,10 +1,7 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { deleteFile, listFileIds } from './gridFsStorageService.js';
 
-const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
-export const LMS_UPLOADS_DIRECTORY = path.resolve(moduleDirectory, '..', 'lms-uploads');
 export const LMS_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 export const LMS_CLASS_STORAGE_LIMIT_BYTES = Math.max(
   LMS_MAX_FILE_SIZE_BYTES,
@@ -91,28 +88,13 @@ export function inspectLmsFileBuffer(buffer, originalName) {
 }
 
 export async function inspectStoredLmsUpload(file) {
-  const buffer = await fs.readFile(file.path);
-  return inspectLmsFileBuffer(buffer, file.originalname);
+  return inspectLmsFileBuffer(file.buffer, file.originalname);
 }
 
-export function resolveLmsStoragePath(storageName) {
-  const safeName = path.basename(String(storageName || ''));
-  if (!safeName || safeName !== storageName) throw new Error('Invalid LMS storage name.');
-  const resolved = path.resolve(LMS_UPLOADS_DIRECTORY, safeName);
-  if (!resolved.startsWith(`${LMS_UPLOADS_DIRECTORY}${path.sep}`)) throw new Error('Invalid LMS storage path.');
-  return resolved;
-}
-
-export async function removeLmsStoredFile(filePathOrName) {
-  if (!filePathOrName) return;
-  const target = path.isAbsolute(filePathOrName) ? path.resolve(filePathOrName) : resolveLmsStoragePath(filePathOrName);
-  if (!target.toLowerCase().startsWith(`${LMS_UPLOADS_DIRECTORY}${path.sep}`.toLowerCase())) {
-    throw new Error('Refusing to remove file outside LMS storage.');
-  }
-  await fs.unlink(target).catch(() => {});
+export async function removeLmsStoredFile(storageId) {
+  return storageId ? deleteFile(storageId) : false;
 }
 
 export async function listLmsStoredFiles() {
-  const entries = await fs.readdir(LMS_UPLOADS_DIRECTORY, { withFileTypes: true }).catch(() => []);
-  return entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
+  return listFileIds();
 }

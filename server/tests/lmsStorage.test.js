@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   inspectLmsFileBuffer,
+  inspectStoredLmsUpload,
   sanitizeLmsOriginalName,
   validateLmsUploadMetadata,
 } from '../services/lmsStorageService.js';
@@ -24,6 +25,15 @@ test('LMS storage validates file content instead of trusting MIME metadata', () 
     () => validateLmsUploadMetadata({ originalname: 'legacy.doc', mimetype: 'application/msword' }),
     /Unsupported file type/
   );
+});
+
+test('LMS storage inspects Multer memory buffers', async () => {
+  const result = await inspectStoredLmsUpload({
+    buffer: Buffer.from('%PDF-1.7\nmemory upload'),
+    originalname: 'lesson.pdf',
+  });
+  assert.equal(result.mimeType, 'application/pdf');
+  assert.equal(result.checksum.length, 64);
 });
 
 test('LMS storage checks Office containers and blocks scripts inside ZIP files', () => {

@@ -1,11 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import multer from 'multer';
 import express from 'express';
 import { protect, authorize } from './authMiddleware.js';
 import {
   LMS_MAX_FILE_SIZE_BYTES,
-  LMS_UPLOADS_DIRECTORY,
   validateLmsUploadMetadata,
 } from './services/lmsStorageService.js';
 import {
@@ -41,19 +38,8 @@ import {
   validateLmsUploadedFile,
 } from './lmsController.js';
 
-fs.mkdirSync(LMS_UPLOADS_DIRECTORY, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, callback) => callback(null, LMS_UPLOADS_DIRECTORY),
-  filename: (req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '');
-    const ownerId = String(req.params.offeringId || req.params.assignmentId || 'lms').replace(/[^a-zA-Z0-9_-]/g, '');
-    callback(null, `${ownerId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}${extension}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: LMS_MAX_FILE_SIZE_BYTES, files: 1 },
   fileFilter: (_req, file, callback) => {
     try {
