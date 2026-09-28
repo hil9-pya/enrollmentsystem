@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { useConfirm } from '../../context/ConfirmationContext';
@@ -680,7 +681,7 @@ export default function CourseManagementTab() {
   const authFetch = useCallback((url, options = {}) => {
     // Use context token if available, otherwise fall back to localStorage
     const token = ctxToken || localStorage.getItem('token');
-    return fetch(url, {
+    return apiFetch(url, {
       ...options,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers },
     });

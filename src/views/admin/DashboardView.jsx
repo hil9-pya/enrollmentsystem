@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { PROGRAMS, SUBJECTS } from '../../data/mockData';
@@ -46,7 +47,7 @@ const authFetch = (url, options = {}) => {
   const token = localStorage.getItem('token');
   const headers = { ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  return fetch(url, { ...options, headers });
+  return apiFetch(url, { ...options, headers });
 };
 const safeJson = async (res) => {
   if (!res.ok) {
