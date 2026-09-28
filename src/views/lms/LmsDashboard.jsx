@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 
@@ -177,7 +178,7 @@ export default function LmsDashboard({ role, token, onOpenClass, onViewAssignmen
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/lms/dashboard', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const response = await apiFetch('/api/lms/dashboard', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load LMS dashboard.');
       setData(payload.data);

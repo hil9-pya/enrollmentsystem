@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle, RotateCcw, Users } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -25,7 +26,7 @@ export default function TermClosingQueue({ onNavigate }) {
 
   const loadQueue = useCallback(async () => {
     setError('');
-    const response = await fetch('/api/academic/term-closing', {
+    const response = await apiFetch('/api/academic/term-closing', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -102,7 +103,7 @@ export default function TermClosingQueue({ onNavigate }) {
     setProcessing(true);
     setBatchResult(null);
     try {
-      const response = await fetch('/api/admin/students/batch-rollover', {
+      const response = await apiFetch('/api/admin/students/batch-rollover', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Download, Loader2, Pin, Search, Trash2, Upload } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -65,13 +66,13 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const requests = [
-        fetch(`/api/lms/offerings/${offeringId}`, { headers, cache: 'no-store' }),
-        fetch(`/api/lms/offerings/${offeringId}/announcements`, { headers, cache: 'no-store' }),
-        fetch(`/api/lms/offerings/${offeringId}/materials`, { headers, cache: 'no-store' }),
-        fetch(`/api/lms/offerings/${offeringId}/assignments`, { headers, cache: 'no-store' }),
+        apiFetch(`/api/lms/offerings/${offeringId}`, { headers, cache: 'no-store' }),
+        apiFetch(`/api/lms/offerings/${offeringId}/announcements`, { headers, cache: 'no-store' }),
+        apiFetch(`/api/lms/offerings/${offeringId}/materials`, { headers, cache: 'no-store' }),
+        apiFetch(`/api/lms/offerings/${offeringId}/assignments`, { headers, cache: 'no-store' }),
       ];
       if (role === 'instructor' || role === 'admin') {
-        requests.push(fetch(`/api/academic/offerings/${offeringId}/roster`, { headers, cache: 'no-store' }));
+        requests.push(apiFetch(`/api/academic/offerings/${offeringId}/roster`, { headers, cache: 'no-store' }));
       }
       const responses = await Promise.all(requests);
       const payloads = await Promise.all(responses.map((response) => response.json()));
@@ -130,7 +131,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
     event.preventDefault();
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/lms/offerings/${offeringId}/announcements`, {
+      const response = await apiFetch(`/api/lms/offerings/${offeringId}/announcements`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(announcementDraft),
@@ -151,7 +152,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const removeAnnouncement = async (announcement) => {
     const accepted = await confirm({ title: 'Delete announcement', message: `Delete “${announcement.title}”?`, confirmText: 'Delete', cancelText: 'Cancel', type: 'danger' });
     if (!accepted) return;
-    const response = await fetch(`/api/lms/announcements/${announcement._id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const response = await apiFetch(`/api/lms/announcements/${announcement._id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     const payload = await response.json();
     if (!response.ok) return toast.error(payload.message || payload.error || 'Unable to delete announcement.');
     setAnnouncements((current) => current.filter((item) => item._id !== announcement._id));
@@ -167,7 +168,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
       formData.append('title', materialDraft.title);
       formData.append('description', materialDraft.description);
       formData.append('file', materialDraft.file);
-      const response = await fetch(`/api/lms/offerings/${offeringId}/materials`, {
+      const response = await apiFetch(`/api/lms/offerings/${offeringId}/materials`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -188,7 +189,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
 
   const downloadMaterial = async (material) => {
     try {
-      const response = await fetch(`/api/lms/materials/${material._id}/download`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await apiFetch(`/api/lms/materials/${material._id}/download`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) {
         const payload = await response.json();
         throw new Error(payload.message || payload.error || 'Unable to download file.');
@@ -210,7 +211,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const removeMaterial = async (material) => {
     const accepted = await confirm({ title: 'Delete material', message: `Delete “${material.title}”? The uploaded file will also be removed.`, confirmText: 'Delete', cancelText: 'Cancel', type: 'danger' });
     if (!accepted) return;
-    const response = await fetch(`/api/lms/materials/${material._id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    const response = await apiFetch(`/api/lms/materials/${material._id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     const payload = await response.json();
     if (!response.ok) return toast.error(payload.message || payload.error || 'Unable to delete material.');
     setMaterials((current) => current.filter((item) => item._id !== material._id));

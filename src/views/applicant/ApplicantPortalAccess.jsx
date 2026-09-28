@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
@@ -23,7 +24,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
     setError('');
 
     try {
-      const res = await fetch(`/api/students/applicant-login`, {
+      const res = await apiFetch(`/api/students/applicant-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -47,7 +48,7 @@ export default function ApplicantPortalAccess({ onVerified }) {
 
   const handleStartNew = async () => {
     try {
-      const res = await fetch(`/api/students/draft`, { method: 'POST' });
+      const res = await apiFetch(`/api/students/draft`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         storeApplicantAccess(data);

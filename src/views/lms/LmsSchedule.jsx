@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 
@@ -33,7 +34,7 @@ export default function LmsSchedule({ classes, token, onOpenClass }) {
     setError('');
     try {
       const fetchPage = async (page) => {
-        const response = await fetch(`/api/lms/assignments?page=${page}&limit=100`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+        const response = await apiFetch(`/api/lms/assignments?page=${page}&limit=100`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load schedule.');
         return payload;

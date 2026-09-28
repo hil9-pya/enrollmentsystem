@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/apiUrl';
 import { createContext, useContext, useState, useEffect } from 'react';
 import { clearApplicantAccess } from '../utils/authFetch.js';
 
@@ -21,7 +22,7 @@ export const AuthProvider = ({ children }) => {
 
       setToken(storedToken);
       try {
-        const response = await fetch('/api/auth/profile', {
+        const response = await apiFetch('/api/auth/profile', {
           headers: { Authorization: `Bearer ${storedToken}` },
           cache: 'no-store',
         });
@@ -47,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useState } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { FilePlus, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
@@ -89,7 +90,7 @@ export default function StudentPortalAccess({ onVerified }) {
     }
 
     try {
-      const res = await fetch('/api/students/register', {
+      const res = await apiFetch('/api/students/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

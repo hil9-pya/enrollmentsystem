@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -95,7 +96,7 @@ export default function InstructorView() {
 
   const loadClasses = useCallback(async () => {
     setError('');
-    const response = await fetch('/api/academic/my-classes', {
+    const response = await apiFetch('/api/academic/my-classes', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -109,7 +110,7 @@ export default function InstructorView() {
     setIsRosterLoading(true);
     setRosterError('');
     try {
-      const response = await fetch(`/api/academic/offerings/${course._id}/roster`, {
+      const response = await apiFetch(`/api/academic/offerings/${course._id}/roster`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       });
@@ -171,7 +172,7 @@ export default function InstructorView() {
 
     setSubmittingId(membership._id);
     try {
-      const response = await fetch(`/api/academic/memberships/${membership._id}/grade/submit`, {
+      const response = await apiFetch(`/api/academic/memberships/${membership._id}/grade/submit`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

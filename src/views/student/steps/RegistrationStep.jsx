@@ -1,3 +1,4 @@
+import { apiFetch } from '../../../utils/apiUrl';
 import React, { useEffect, useRef, useState } from 'react';
 import { useEnrollment } from '../../../context/EnrollmentContext';
 import FloatingInput from '../../../components/FloatingInput';
@@ -191,7 +192,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     const timer = setTimeout(async () => {
       try {
         const params = new URLSearchParams({ email, excludeStudentId: student?.id || '' });
-        const res = await fetch(`/api/students/email-availability?${params}`);
+        const res = await apiFetch(`/api/students/email-availability?${params}`);
         const data = await res.json();
         if (!cancelled) setEmailAvailability(data.available ? 'available' : 'taken');
       } catch {
