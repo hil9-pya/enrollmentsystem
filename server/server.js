@@ -29,6 +29,7 @@ import {
 import { startBackgroundJobWorker } from './services/backgroundJobService.js';
 import { repairStoredAcademicTermLabel } from './academicTermUtils.js';
 import { seedMemoryDemoAcademicData } from './services/memoryDemoAcademicSeedService.js';
+import { getApiRateLimitMax } from './rateLimitConfig.js';
 
 let mongoServerInstance = null;
 
@@ -158,7 +159,7 @@ const startServer = async () => {
     // Protects against brute-force and Denial-of-Service (DoS) attacks.
     const apiLimiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: process.env.NODE_ENV === 'production' ? 100 : 2000, // generous limit in dev so normal UI use never trips it
+      max: getApiRateLimitMax(process.env.NODE_ENV), // generous limit in dev so normal UI use never trips it
       standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
       legacyHeaders: false, // Disable the `X-RateLimit-*` headers
       message: { error: 'Too many requests from this IP, please try again after 15 minutes.' },
