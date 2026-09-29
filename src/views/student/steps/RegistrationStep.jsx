@@ -570,6 +570,7 @@ export default function RegistrationStep({ onNext, onBack }) {
               label="Applicant Password"
               id="password"
               type="password"
+              showPasswordToggle
               icon={Lock}
               value={password}
               autoComplete="new-password"
@@ -585,6 +586,7 @@ export default function RegistrationStep({ onNext, onBack }) {
               label="Confirm Password"
               id="confirmPassword"
               type="password"
+              showPasswordToggle
               icon={Lock}
               value={confirmPassword}
               autoComplete="new-password"
