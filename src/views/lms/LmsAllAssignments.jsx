@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, RefreshCw, Search } from 'lucide-react';
 
@@ -46,7 +47,7 @@ export default function LmsAllAssignments({ role, token, onOpenClass }) {
     try {
       const params = new URLSearchParams({ page: String(page), limit: '25', state: filter });
       if (debouncedSearch) params.set('search', debouncedSearch);
-      const response = await fetch(`/api/lms/assignments?${params}`, {
+      const response = await apiFetch(`/api/lms/assignments?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       });

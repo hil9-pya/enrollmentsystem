@@ -161,16 +161,16 @@ export default function ApplicantDetails({ studentId, onBack }) {
 
       <div className="flex-1 overflow-y-auto p-8 space-y-6">
 
-        <div className="flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl p-5 shadow-premium">
+        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl bg-univ-indigo/10 flex items-center justify-center flex-shrink-0 text-univ-indigo font-extrabold text-xl uppercase">
               {student.firstName[0]}{student.lastName[0]}
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-univ-navy">
+              <h2 className="text-lg font-semibold text-univ-navy">
                 {student.firstName} {student.lastName}
               </h2>
-              <div className="flex items-center gap-3.5 mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
                 <span className="font-mono text-slate-400">{student.studentId || student.id}</span>
                 <span>&bull;</span>
                 <span className="text-univ-indigo">{program?.name || 'No program selected'}</span>
@@ -196,34 +196,34 @@ export default function ApplicantDetails({ studentId, onBack }) {
           </div>
         )}
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Personal Contact Details</h3>
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h3 className="mb-4 text-sm font-semibold text-univ-navy">Personal contact details</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</p>
-              <p className="text-xs font-bold text-univ-navy mt-1">{student.email || '—'}</p>
+              <p className="text-xs font-medium text-slate-500">Email address</p>
+              <p className="mt-1 text-sm font-medium text-univ-navy">{student.email || '—'}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Contact Phone</p>
-              <p className="text-xs font-bold text-univ-navy mt-1">{student.phone || '—'}</p>
+              <p className="text-xs font-medium text-slate-500">Contact phone</p>
+              <p className="mt-1 text-sm font-medium text-univ-navy">{student.phone || '—'}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Date of Birth</p>
-              <p className="text-xs font-bold text-univ-navy mt-1">{formatDate(student.birthDate)}</p>
+              <p className="text-xs font-medium text-slate-500">Date of birth</p>
+              <p className="mt-1 text-sm font-medium text-univ-navy">{formatDate(student.birthDate)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Home Address</p>
-              <p className="text-xs font-bold text-univ-navy mt-1 leading-relaxed truncate">{student.address || '—'}</p>
+              <p className="text-xs font-medium text-slate-500">Home address</p>
+              <p className="mt-1 truncate text-sm font-medium leading-relaxed text-univ-navy">{student.address || '—'}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Submitted Documents Checklist</h3>
-          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h3 className="mb-4 text-sm font-semibold text-univ-navy">Submitted documents</h3>
+          <div className="overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
                   <th className="px-4 py-3.5">Document Type</th>
                   <th className="px-4 py-3.5">Filename Link</th>
                   <th className="px-4 py-3.5">Date Uploaded</th>
@@ -275,13 +275,13 @@ export default function ApplicantDetails({ studentId, onBack }) {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-premium">
-          <h3 className="text-xs font-bold text-univ-navy uppercase tracking-wider mb-4">Admissions Evaluation Actions</h3>
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <h3 className="mb-4 text-sm font-semibold text-univ-navy">Admissions evaluation</h3>
           {student.status === 'registration' ? (
             <div className="flex items-center gap-3 px-5 py-4 rounded-xl border shadow-sm bg-slate-50 border-slate-200 text-slate-500">
               <Clock className="w-6 h-6 shrink-0 text-slate-400" />
               <div>
-                <p className="font-extrabold uppercase tracking-widest text-[10px]">Awaiting Submission</p>
+                <p className="text-xs font-semibold">Awaiting submission</p>
                 <p className="font-semibold text-sm text-slate-600">Applicant has not submitted documents yet</p>
               </div>
             </div>

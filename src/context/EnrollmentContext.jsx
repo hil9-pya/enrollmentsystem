@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/apiUrl';
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { SUBJECTS } from '../data/mockData.js';
@@ -22,8 +23,6 @@ const safeJson = async (res) => {
   }
   return res.json();
 };
-
-
 
 export function EnrollmentProvider({ children }) {
   const { token, user } = useAuth();
@@ -89,7 +88,7 @@ export function EnrollmentProvider({ children }) {
     async function loadStudents() {
       // Fetch global settings (public) with cache-busting
       try {
-        const settingsRes = await fetch('/api/settings', { cache: 'no-store' });
+        const settingsRes = await apiFetch('/api/settings', { cache: 'no-store' });
         const settingsData = await safeJson(settingsRes);
         setSettings(settingsData);
       } catch (err) {
@@ -498,8 +497,9 @@ export function EnrollmentProvider({ children }) {
       setActiveStudent,
       refreshActiveStudent,
       refreshStudents,
+      settings,
     }),
-    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent, refreshStudents]
+    [state, dispatch, getStudentsByStatus, getStudentById, getActiveStudent, getSubjectById, setActiveStudent, refreshActiveStudent, refreshStudents, settings]
   );
 
   return (

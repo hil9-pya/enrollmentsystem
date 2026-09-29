@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useState, useEffect } from 'react';
 import { useEnrollment } from '../../context/EnrollmentContext';
 import { CheckCircle, Loader2 } from 'lucide-react';
@@ -23,7 +24,7 @@ export default function PaymentSuccessView() {
     async function verifyPayment() {
       try {
         // 1. Get the session details to extract student reference _id
-        const sessionRes = await fetch(`/api/paymongo/v1/checkout_sessions/${sessionId}`);
+        const sessionRes = await apiFetch(`/api/paymongo/v1/checkout_sessions/${sessionId}`);
         if (!sessionRes.ok) {
           throw new Error('Failed to retrieve checkout session details.');
         }

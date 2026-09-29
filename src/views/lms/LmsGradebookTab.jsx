@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, Loader2, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -24,7 +25,7 @@ export default function LmsGradebookTab({ offeringId, token, canEdit }) {
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/lms/offerings/${offeringId}/gradebook`, {
+      const response = await apiFetch(`/api/lms/offerings/${offeringId}/gradebook`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       });
@@ -80,7 +81,7 @@ export default function LmsGradebookTab({ offeringId, token, canEdit }) {
     const key = `${assignment._id}:${submission.student}`;
     setSavingKey(key);
     try {
-      const response = await fetch(`/api/lms/submissions/${submission._id}/grade`, {
+      const response = await apiFetch(`/api/lms/submissions/${submission._id}/grade`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ score: Number(drafts[submission._id]), feedback: submission.feedback || '' }),

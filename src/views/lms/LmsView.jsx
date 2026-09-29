@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Bell, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, LogOut, RefreshCw, Search, Settings2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -82,7 +83,7 @@ export default function LmsView({ onBack, onSignOut }) {
     setIsLoading(true);
     try {
       const endpoint = user.role === 'admin' ? '/api/academic/offerings?status=active' : '/api/academic/my-classes?scope=current';
-      const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const response = await apiFetch(endpoint, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load LMS classes.');
       const rows = user.role === 'student'
@@ -102,7 +103,7 @@ export default function LmsView({ onBack, onSignOut }) {
     if (!allowedRoles.has(user?.role)) return;
     setNotificationsError('');
     try {
-      const response = await fetch('/api/lms/notifications?page=1&limit=50', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const response = await apiFetch('/api/lms/notifications?page=1&limit=50', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load notifications.');
       const nextUnreadCount = payload.unreadCount || 0;
@@ -126,7 +127,7 @@ export default function LmsView({ onBack, onSignOut }) {
     setNotificationsLoadingMore(true);
     try {
       const nextPage = notificationPagination.page + 1;
-      const response = await fetch(`/api/lms/notifications?page=${nextPage}&limit=50`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const response = await apiFetch(`/api/lms/notifications?page=${nextPage}&limit=50`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load more notifications.');
       setNotifications((current) => {
@@ -181,7 +182,7 @@ export default function LmsView({ onBack, onSignOut }) {
     const timeout = window.setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const response = await fetch(`/api/lms/search?q=${encodeURIComponent(query)}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal: controller.signal });
+        const response = await apiFetch(`/api/lms/search?q=${encodeURIComponent(query)}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal: controller.signal });
         const payload = await response.json();
         if (response.ok) setSearchIndex(payload.data || []);
       } catch (requestError) {
@@ -227,7 +228,7 @@ export default function LmsView({ onBack, onSignOut }) {
 
   const markNotificationRead = async (notification) => {
     if (notification.readAt) return true;
-    const response = await fetch(`/api/lms/notifications/${notification._id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    const response = await apiFetch(`/api/lms/notifications/${notification._id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) return false;
     setNotifications((current) => current.map((item) => item._id === notification._id ? { ...item, readAt: new Date().toISOString() } : item));
     setUnreadCount((current) => Math.max(0, current - 1));
@@ -235,7 +236,7 @@ export default function LmsView({ onBack, onSignOut }) {
   };
 
   const markAllNotificationsRead = async () => {
-    const response = await fetch('/api/lms/notifications/read-all', { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    const response = await apiFetch('/api/lms/notifications/read-all', { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) return false;
     const readAt = new Date().toISOString();
     setNotifications((current) => current.map((item) => ({ ...item, readAt: item.readAt || readAt })));
@@ -254,7 +255,7 @@ export default function LmsView({ onBack, onSignOut }) {
   const updateAccess = async (offering) => {
     setUpdatingId(offering._id);
     try {
-      const response = await fetch(`/api/lms/offerings/${offering._id}/status`, {
+      const response = await apiFetch(`/api/lms/offerings/${offering._id}/status`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: !offering.lmsEnabled }),

@@ -1,9 +1,7 @@
 import asyncHandler from 'express-async-handler';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import axios from 'axios';
 import crypto from 'crypto';
+import { pipeline } from 'node:stream/promises';
 import Student from './Student.js';
 import User from './User.js';
 import Settings from './Settings.js';
@@ -29,10 +27,8 @@ import {
 } from './services/emailService.js';
 import { enqueueBackgroundJob } from './services/backgroundJobService.js';
 import { parseAcademicTermLabel } from './academicTermUtils.js';
+import { deleteFile, openFile, storeFile } from './services/gridFsStorageService.js';
 
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DOWNPAYMENT_AMOUNT = 3000;
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
@@ -623,26 +619,32 @@ const uploadDocument = asyncHandler(async (req, res) => {
     return;
   }
 
-  const docEntry = {
-    typeId,
-    fileName: req.file.filename,
-    originalName: req.file.originalname,
-    uploadedAt: new Date(),
-    status: 'pending',
-  };
-
   const existingIndex = student.documents.findIndex((d) => d.typeId === typeId);
-  if (existingIndex >= 0) {
-    // Remove the previously uploaded file for this document type from disk.
-    const previous = student.documents[existingIndex];
-    const prevPath = path.join(UPLOADS_DIR, previous.fileName);
-    fs.unlink(prevPath, () => {});
-    student.documents[existingIndex] = docEntry;
-  } else {
-    student.documents.push(docEntry);
+  const previousFileId = existingIndex >= 0 ? student.documents[existingIndex].fileName : null;
+  const fileId = await storeFile({
+    buffer: req.file.buffer,
+    filename: req.file.originalname,
+    contentType: req.file.mimetype,
+    metadata: { studentId: student._id, typeId, kind: 'applicant-document' },
+  });
+
+  try {
+    const docEntry = {
+      typeId,
+      fileName: fileId,
+      originalName: req.file.originalname,
+      uploadedAt: new Date(),
+      status: 'pending',
+    };
+    if (existingIndex >= 0) student.documents[existingIndex] = docEntry;
+    else student.documents.push(docEntry);
+    await student.save();
+  } catch (error) {
+    await deleteFile(fileId);
+    throw error;
   }
 
-  await student.save();
+  if (previousFileId) await deleteFile(previousFileId);
   res.json(student);
 });
 
@@ -654,12 +656,9 @@ const removeDocument = asyncHandler(async (req, res) => {
 
   const { typeId } = req.params;
   const existing = student.documents.find((d) => d.typeId === typeId);
-  if (existing) {
-    fs.unlink(path.join(UPLOADS_DIR, existing.fileName), () => {});
-  }
-
   student.documents = student.documents.filter((d) => d.typeId !== typeId);
   await student.save();
+  if (existing) await deleteFile(existing.fileName);
   res.json(student);
 });
 
@@ -673,19 +672,16 @@ const getDocumentFile = asyncHandler(async (req, res) => {
     throw new Error('Document not found.');
   }
 
-  const safeFileName = path.basename(document.fileName);
-  if (safeFileName !== document.fileName) {
-    res.status(400);
-    throw new Error('Invalid document path.');
-  }
-  const filePath = path.join(UPLOADS_DIR, safeFileName);
-  if (!fs.existsSync(filePath)) {
+  const stored = await openFile(document.fileName);
+  if (!stored) {
     res.status(404);
     throw new Error('Uploaded file is missing.');
   }
 
-  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.originalName || safeFileName)}"`);
-  res.sendFile(filePath);
+  res.setHeader('Content-Type', stored.file.contentType || 'application/octet-stream');
+  res.setHeader('Content-Length', stored.file.length);
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.originalName || stored.file.filename)}"`);
+  await pipeline(stored.stream, res);
 });
 
 // @desc    Select degree program & academic term

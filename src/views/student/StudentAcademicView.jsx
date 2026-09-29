@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BookOpen, CalendarDays, Clock, FileText, MapPin } from 'lucide-react';
 import { SUBJECTS } from '../../data/mockData';
@@ -26,7 +27,7 @@ export default function StudentAcademicView({ view, student }) {
 
   const loadMemberships = useCallback(async () => {
     setError('');
-    const response = await fetch('/api/academic/my-classes', {
+    const response = await apiFetch('/api/academic/my-classes', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, FileCheck, RotateCcw, Send, Users } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -40,7 +41,7 @@ export default function GradeReviewQueue() {
 
   const loadGrades = useCallback(async () => {
     setError('');
-    const response = await fetch('/api/academic/grades', {
+    const response = await apiFetch('/api/academic/grades', {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -82,7 +83,7 @@ export default function GradeReviewQueue() {
   const reviewGrade = async (membership, action, notes = '') => {
     setProcessingId(membership._id);
     try {
-      const response = await fetch(`/api/academic/memberships/${membership._id}/grade/review`, {
+      const response = await apiFetch(`/api/academic/memberships/${membership._id}/grade/review`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -130,7 +131,7 @@ export default function GradeReviewQueue() {
 
     setProcessingId(membership._id);
     try {
-      const response = await fetch(`/api/academic/memberships/${membership._id}/grade/publish`, {
+      const response = await apiFetch(`/api/academic/memberships/${membership._id}/grade/publish`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

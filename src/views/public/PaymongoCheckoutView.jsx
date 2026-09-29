@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Smartphone, ShieldCheck, ArrowLeft, Loader2, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -35,7 +36,7 @@ export default function PaymongoCheckoutView() {
 
     async function fetchSession() {
       try {
-        const response = await fetch(`/api/paymongo/v1/checkout_sessions/${sessionId}`);
+        const response = await apiFetch(`/api/paymongo/v1/checkout_sessions/${sessionId}`);
         if (!response.ok) {
           throw new Error('Checkout session not found or expired.');
         }
@@ -114,7 +115,7 @@ export default function PaymongoCheckoutView() {
           referenceCode: `pay_pm_${Math.floor(10000000 + Math.random() * 90000000)}`,
         };
 
-        const response = await fetch(`/api/paymongo/v1/checkout_sessions/${sessionId}/pay`, {
+        const response = await apiFetch(`/api/paymongo/v1/checkout_sessions/${sessionId}/pay`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

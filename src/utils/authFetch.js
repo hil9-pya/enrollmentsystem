@@ -1,3 +1,5 @@
+import { apiFetch } from './apiUrl';
+
 export function getAccessToken() {
   return localStorage.getItem('token') || localStorage.getItem('applicant_token');
 }
@@ -6,7 +8,7 @@ export function authFetch(url, options = {}) {
   const token = getAccessToken();
   const headers = { ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(url, { ...options, headers });
+  return apiFetch(url, { ...options, headers });
 }
 
 export function storeApplicantAccess(data) {

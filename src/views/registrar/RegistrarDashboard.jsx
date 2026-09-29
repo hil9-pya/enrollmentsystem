@@ -94,7 +94,7 @@ export default function RegistrarDashboard({ students, onNavigate, initialFilter
         <div className="flex-1 overflow-auto">
           <table className="min-w-[52rem] w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50 sticky top-0 z-10 shadow-[0_1px_0_0_#e2e8f0]">
-              <tr className="text-slate-500 font-semibold text-xs uppercase tracking-wider">
+              <tr className="text-xs font-semibold text-slate-500">
                 <th className="px-6 py-4">Student ID</th>
                 <th className="px-6 py-4">Student Name</th>
                 <th className="px-6 py-4">Program</th>

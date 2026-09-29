@@ -1,5 +1,5 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import asyncHandler from 'express-async-handler';
 import CourseMembership from './models/CourseMembership.js';
 import CourseOffering from './models/CourseOffering.js';
@@ -16,9 +16,9 @@ import {
   inspectStoredLmsUpload,
   listLmsStoredFiles,
   removeLmsStoredFile,
-  resolveLmsStoragePath,
   sanitizeLmsOriginalName,
 } from './services/lmsStorageService.js';
+import { openFile, storeFile } from './services/gridFsStorageService.js';
 
 async function getOffering(offeringId) {
   return CourseOffering.findById(offeringId)
@@ -483,7 +483,6 @@ export const validateLmsUploadedFile = asyncHandler(async (req, res, next) => {
     req.file.originalname = sanitizeLmsOriginalName(req.file.originalname);
     next();
   } catch (error) {
-    await removeLmsStoredFile(req.file.path);
     res.status(error.status || 400).json({ success: false, message: error.message || 'File validation failed.' });
   }
 });
@@ -715,6 +714,12 @@ export const authorizeMaterialUpload = asyncHandler(async (req, res, next) => {
 export const createMaterial = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'Select a file to upload.' });
   const title = String(req.body.title || path.parse(req.file.originalname).name).trim();
+  const storageName = await storeFile({
+    buffer: req.file.buffer,
+    filename: req.file.originalname,
+    contentType: req.file.detectedMimeType,
+    metadata: { offeringId: String(req.lmsOffering._id), kind: 'lms-material' },
+  });
   let material;
   try {
     material = await LmsMaterial.create({
@@ -723,13 +728,13 @@ export const createMaterial = asyncHandler(async (req, res) => {
       title,
       description: String(req.body.description || '').trim(),
       originalName: req.file.originalname,
-      storageName: req.file.filename,
+      storageName,
       mimeType: req.file.detectedMimeType,
       size: req.file.size,
       checksum: req.file.checksum,
     });
   } catch (error) {
-    await removeLmsStoredFile(req.file.path);
+    await removeLmsStoredFile(storageName);
     throw error;
   }
   await material.populate('author', 'firstName lastName role');
@@ -752,18 +757,14 @@ export const downloadMaterial = asyncHandler(async (req, res) => {
   if (!material) return res.status(404).json({ success: false, message: 'Material not found.' });
   const access = await resolveViewer(req, material.offering);
   if (access.error) return sendAccessError(res, access.error);
-  let filePath;
-  try {
-    filePath = resolveLmsStoragePath(material.storageName);
-  } catch {
-    return res.status(404).json({ success: false, message: 'Material file has an invalid storage reference.' });
-  }
-  try {
-    await fs.access(filePath);
-  } catch {
+  const stored = await openFile(material.storageName);
+  if (!stored) {
     return res.status(404).json({ success: false, message: 'Material file is missing from storage.' });
   }
-  return res.download(filePath, material.originalName);
+  res.setHeader('Content-Type', stored.file.contentType || material.mimeType || 'application/octet-stream');
+  res.setHeader('Content-Length', stored.file.length);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(material.originalName)}"`);
+  await pipeline(stored.stream, res);
 });
 
 export const deleteMaterial = asyncHandler(async (req, res) => {
@@ -772,14 +773,8 @@ export const deleteMaterial = asyncHandler(async (req, res) => {
   req.params.offeringId = String(material.offering);
   const access = await requireEnabledEditor(req, res);
   if (!access) return;
-  let filePath;
-  try {
-    filePath = resolveLmsStoragePath(material.storageName);
-  } catch {
-    return res.status(409).json({ success: false, message: 'Material file has an invalid storage reference.' });
-  }
   await material.deleteOne();
-  await removeLmsStoredFile(filePath);
+  await removeLmsStoredFile(material.storageName);
   await logLmsAction(req, 'deleted_lms_material', 'lms_material', material._id, {
     offeringId: String(material.offering),
   });
@@ -996,7 +991,6 @@ export const submitAssignment = asyncHandler(async (req, res) => {
     student: access.membership.student,
   });
   if (existing?.status === 'graded') {
-    if (req.file) await fs.unlink(req.file.path).catch(() => {});
     return res.status(409).json({ success: false, message: 'Graded submission cannot be replaced.' });
   }
   if (!text && !req.file && !existing?.storageName) {
@@ -1027,9 +1021,16 @@ export const submitAssignment = asyncHandler(async (req, res) => {
   submission.feedback = '';
   submission.gradedBy = null;
   submission.gradedAt = null;
+  let uploadedStorageName = null;
   if (req.file) {
+    uploadedStorageName = await storeFile({
+      buffer: req.file.buffer,
+      filename: req.file.originalname,
+      contentType: req.file.detectedMimeType,
+      metadata: { assignmentId: String(access.assignment._id), studentId: String(access.membership.student), kind: 'lms-submission' },
+    });
     submission.originalName = req.file.originalname;
-    submission.storageName = req.file.filename;
+    submission.storageName = uploadedStorageName;
     submission.mimeType = req.file.detectedMimeType;
     submission.size = req.file.size;
     submission.checksum = req.file.checksum;
@@ -1054,7 +1055,7 @@ export const submitAssignment = asyncHandler(async (req, res) => {
   try {
     await submission.save();
   } catch (error) {
-    if (req.file) await removeLmsStoredFile(req.file.path);
+    if (uploadedStorageName) await removeLmsStoredFile(uploadedStorageName);
     throw error;
   }
   await logLmsAction(req, existing ? 'resubmitted_lms_assignment' : 'submitted_lms_assignment', 'lms_submission', submission._id, {
@@ -1203,18 +1204,14 @@ export const downloadSubmission = asyncHandler(async (req, res) => {
   if (!access.canManage && String(access.membership?.student) !== String(submission.student)) {
     return res.status(403).json({ success: false, message: 'You cannot download another student’s submission.' });
   }
-  let filePath;
-  try {
-    filePath = resolveLmsStoragePath(submission.storageName);
-  } catch {
-    return res.status(404).json({ success: false, message: 'Submission file has an invalid storage reference.' });
-  }
-  try {
-    await fs.access(filePath);
-  } catch {
+  const stored = await openFile(submission.storageName);
+  if (!stored) {
     return res.status(404).json({ success: false, message: 'Submission file is missing from storage.' });
   }
-  return res.download(filePath, submission.originalName);
+  res.setHeader('Content-Type', stored.file.contentType || submission.mimeType || 'application/octet-stream');
+  res.setHeader('Content-Length', stored.file.length);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(submission.originalName)}"`);
+  await pipeline(stored.stream, res);
 });
 
 export const downloadSubmissionAttempt = asyncHandler(async (req, res) => {
@@ -1227,16 +1224,12 @@ export const downloadSubmissionAttempt = asyncHandler(async (req, res) => {
   if (!access.canManage && String(access.membership?.student) !== String(submission.student)) {
     return res.status(403).json({ success: false, message: 'You cannot download another student’s submission.' });
   }
-  let filePath;
-  try {
-    filePath = resolveLmsStoragePath(attempt.storageName);
-  } catch {
-    return res.status(404).json({ success: false, message: 'Attempt file has an invalid storage reference.' });
-  }
-  try {
-    await fs.access(filePath);
-  } catch {
+  const stored = await openFile(attempt.storageName);
+  if (!stored) {
     return res.status(404).json({ success: false, message: 'Attempt file is missing from storage.' });
   }
-  return res.download(filePath, attempt.originalName);
+  res.setHeader('Content-Type', stored.file.contentType || attempt.mimeType || 'application/octet-stream');
+  res.setHeader('Content-Length', stored.file.length);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(attempt.originalName)}"`);
+  await pipeline(stored.stream, res);
 });

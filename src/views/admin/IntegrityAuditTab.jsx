@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, Loader2, Wrench } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -56,9 +57,9 @@ export default function IntegrityAuditTab() {
       const token = contextToken || localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
       const [response, usersResponse, sectionsResponse] = await Promise.all([
-        fetch('/api/academic/integrity-audit', { headers }),
-        fetch('/api/admin/users', { headers }),
-        fetch('/api/scheduler/admin/sections', { headers }),
+        apiFetch('/api/academic/integrity-audit', { headers }),
+        apiFetch('/api/admin/users', { headers }),
+        apiFetch('/api/scheduler/admin/sections', { headers }),
       ]);
       const [payload, usersPayload, sectionsPayload] = await Promise.all([response.json(), usersResponse.json(), sectionsResponse.json()]);
       if (response.status === 401 || usersResponse.status === 401 || sectionsResponse.status === 401) {
@@ -84,7 +85,7 @@ export default function IntegrityAuditTab() {
     setSavingAssignment(true);
     try {
       const token = contextToken || localStorage.getItem('token');
-      const response = await fetch(`/api/academic/offerings/${assignmentIssue.records.offeringId}/instructor`, {
+      const response = await apiFetch(`/api/academic/offerings/${assignmentIssue.records.offeringId}/instructor`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ instructorId: selectedInstructorId }),
@@ -108,7 +109,7 @@ export default function IntegrityAuditTab() {
     setSavingSection(true);
     try {
       const token = contextToken || localStorage.getItem('token');
-      const response = await fetch(`/api/academic/offerings/${sectionIssue.records.offeringId}/section`, {
+      const response = await apiFetch(`/api/academic/offerings/${sectionIssue.records.offeringId}/section`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ sectionId: selectedSectionId }),
@@ -140,7 +141,7 @@ export default function IntegrityAuditTab() {
     setRepairingIssueId(issue.id);
     try {
       const token = contextToken || localStorage.getItem('token');
-      const response = await fetch(`/api/academic/integrity-repairs/memberships/${membershipId}/reservation`, {
+      const response = await apiFetch(`/api/academic/integrity-repairs/memberships/${membershipId}/reservation`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -169,7 +170,7 @@ export default function IntegrityAuditTab() {
     setRepairingDeterministic(true);
     try {
       const token = contextToken || localStorage.getItem('token');
-      const response = await fetch('/api/academic/integrity-repairs/deterministic', {
+      const response = await apiFetch('/api/academic/integrity-repairs/deterministic', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

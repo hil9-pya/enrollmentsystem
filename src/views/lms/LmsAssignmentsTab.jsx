@@ -1,3 +1,4 @@
+import { apiFetch } from '../../utils/apiUrl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CalendarClock, Download, FileUp, Loader2, LockKeyhole, LockKeyholeOpen, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -76,7 +77,7 @@ function assignmentTiming(assignment) {
 }
 
 async function downloadProtected(url, token, filename) {
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await apiFetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!response.ok) {
     const payload = await response.json();
     throw new Error(payload.message || payload.error || 'Unable to download file.');
@@ -141,7 +142,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
       setError('');
     }
     try {
-      const response = await fetch(`/api/lms/offerings/${offeringId}/assignments`, { headers, cache: 'no-store' });
+      const response = await apiFetch(`/api/lms/offerings/${offeringId}/assignments`, { headers, cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load assignments.');
       setAssignments(payload.data || []);
@@ -169,7 +170,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
     if (!canManage) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/lms/assignments/${assignment._id}/submissions`, { headers, cache: 'no-store' });
+      const response = await apiFetch(`/api/lms/assignments/${assignment._id}/submissions`, { headers, cache: 'no-store' });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load submissions.');
       const rows = payload.data || [];
@@ -186,7 +187,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
     event.preventDefault();
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/lms/offerings/${offeringId}/assignments`, {
+      const response = await apiFetch(`/api/lms/offerings/${offeringId}/assignments`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -211,7 +212,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
   const deleteAssignment = async (assignment) => {
     const accepted = await confirm({ title: 'Delete assignment', message: `Delete “${assignment.title}”? If submissions exist, assignment will be archived to preserve records.`, confirmText: 'Delete', cancelText: 'Cancel', type: 'danger' });
     if (!accepted) return;
-    const response = await fetch(`/api/lms/assignments/${assignment._id}`, { method: 'DELETE', headers });
+    const response = await apiFetch(`/api/lms/assignments/${assignment._id}`, { method: 'DELETE', headers });
     const payload = await response.json();
     if (!response.ok) return toast.error(payload.message || payload.error || 'Unable to delete assignment.');
     setAssignments((current) => current.filter((item) => item._id !== assignment._id));
@@ -220,7 +221,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
   };
 
   const requestAssignmentUpdate = async (changes, confirmPointChange = false) => {
-    const response = await fetch(`/api/lms/assignments/${selected._id}`, {
+    const response = await apiFetch(`/api/lms/assignments/${selected._id}`, {
       method: 'PATCH',
       headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...changes, confirmPointChange }),
@@ -288,7 +289,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
       const body = new FormData();
       body.append('text', submissionDraft.text);
       if (submissionDraft.file) body.append('file', submissionDraft.file);
-      const response = await fetch(`/api/lms/assignments/${selected._id}/submissions`, { method: 'POST', headers, body });
+      const response = await apiFetch(`/api/lms/assignments/${selected._id}/submissions`, { method: 'POST', headers, body });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to submit assignment.');
       const updated = { ...selected, submission: payload.data };
@@ -308,7 +309,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
     const draft = gradeDrafts[submission._id] || {};
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/lms/submissions/${submission._id}/grade`, {
+      const response = await apiFetch(`/api/lms/submissions/${submission._id}/grade`, {
         method: 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ score: Number(draft.score), feedback: draft.feedback || '' }),
@@ -337,7 +338,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
     if (!accepted) return;
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/lms/submissions/${submission._id}/return`, {
+      const response = await apiFetch(`/api/lms/submissions/${submission._id}/return`, {
         method: 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ feedback }),
