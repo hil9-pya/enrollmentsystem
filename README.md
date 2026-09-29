@@ -84,7 +84,7 @@ Render's free service sleeps when idle, so the first API request can take about 
 ## Safe Git workflow
 
 Create commits on a feature branch, push that branch, and open a pull request into `main`. Review and test the pull request before merging.
-Eligible commits count toward your GitHub contributions after they reach `main`; the graph can take up to 24 hours to update.
+HI
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
