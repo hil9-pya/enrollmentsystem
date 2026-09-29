@@ -19,6 +19,13 @@ const capitalizeFirstLetter = (value) => {
   return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
+const isStrongApplicantPassword = (value) => Boolean(
+  value?.length >= 6
+  && /[A-Z]/.test(value)
+  && /[0-9]/.test(value)
+  && /[^a-zA-Z0-9]/.test(value)
+);
+
 const TRANSFER_REASONS = [
   { value: '', label: 'Select a reason' },
   { value: 'financial', label: 'Financial Reasons' },
@@ -137,6 +144,7 @@ export default function RegistrationStep({ onNext, onBack }) {
   const [isEmailAction, setIsEmailAction] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const saveTimerRef = useRef(null);
+  const savedCredentialsRef = useRef('');
   const dirtyRef = useRef(false);
   const studentRef = useRef(student);
   studentRef.current = student;
@@ -152,6 +160,7 @@ export default function RegistrationStep({ onNext, onBack }) {
     setOtpSent(false);
     setOtpError('');
     setIsVerifyingOtp(false);
+    savedCredentialsRef.current = '';
     dirtyRef.current = false;
   }, [student?.id]);
 
@@ -175,6 +184,38 @@ export default function RegistrationStep({ onNext, onBack }) {
       }
     };
   }, [draft, dispatch, isTransferee, student?.id]);
+
+  useEffect(() => {
+    const email = draft.email.trim().toLowerCase();
+    if (
+      !student?.id
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      || !isStrongApplicantPassword(password)
+      || password !== confirmPassword
+    ) return undefined;
+
+    const credentialsKey = `${email}\0${password}`;
+    if (savedCredentialsRef.current === credentialsKey) return undefined;
+
+    let cancelled = false;
+    const saveCredentials = async () => {
+      try {
+        const response = await authFetch(`/api/students/${student.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, applicantPassword: password }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Could not save your application login.');
+        if (!cancelled) savedCredentialsRef.current = credentialsKey;
+      } catch (error) {
+        if (!cancelled) setErrors(prev => ({ ...prev, confirmPassword: error.message }));
+      }
+    };
+    saveCredentials();
+
+    return () => { cancelled = true; };
+  }, [confirmPassword, draft.email, password, student?.id]);
 
   useEffect(() => {
     if (emailLocked) {
@@ -273,12 +314,9 @@ export default function RegistrationStep({ onNext, onBack }) {
       }
     }
 
-    const hasUppercase = /[A-Z]/.test(password || '');
-    const hasNumber = /[0-9]/.test(password || '');
-    const hasSpecialChar = /[^a-zA-Z0-9]/.test(password || '');
     if (!password || password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters.';
-    } else if (!hasUppercase || !hasNumber || !hasSpecialChar) {
+    } else if (!isStrongApplicantPassword(password)) {
       newErrors.password = 'Password must include at least one uppercase letter, one number, and one special character.';
     }
     if (password !== confirmPassword) {
