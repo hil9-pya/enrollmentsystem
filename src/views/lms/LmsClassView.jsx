@@ -84,7 +84,7 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
       setCourseAssignments(payloads[3].data || []);
       setRoster(payloads[4]?.data || []);
       setError('');
-      setContentRefreshKey((current) => current + 1);
+      if (silent) setContentRefreshKey((current) => current + 1);
     } catch (requestError) {
       if (!silent) setError(requestError.message);
     } finally {
