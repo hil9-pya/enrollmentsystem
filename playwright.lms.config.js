@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'lms-class-loading.spec.js',
+  testMatch: ['lms-class-loading.spec.js', 'subject-enrollment-loading.spec.js'],
   workers: 1,
   reporter: 'list',
   use: { baseURL: 'http://127.0.0.1:4173' },

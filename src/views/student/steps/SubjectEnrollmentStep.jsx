@@ -106,7 +106,10 @@ export default function SubjectEnrollmentStep({ onNext, onBack }) {
 
   // ── Fetch curriculum subjects from API ────────────────────────────────────
   const fetchSubjects = useCallback(async () => {
-    if (!studentId) return;
+    if (!studentId) {
+      setLoadingSubjects(false);
+      return;
+    }
     try {
       const res = await authFetch(`/api/scheduler/${studentId}/subjects`);
       const data = await res.json();
