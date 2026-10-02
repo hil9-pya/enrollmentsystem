@@ -40,7 +40,6 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
@@ -84,7 +83,6 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
       setCourseAssignments(payloads[3].data || []);
       setRoster(payloads[4]?.data || []);
       setError('');
-      if (silent) setContentRefreshKey((current) => current + 1);
     } catch (requestError) {
       if (!silent) setError(requestError.message);
     } finally {
@@ -97,12 +95,10 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
     const refresh = () => {
       if (document.visibilityState === 'visible') loadClass({ silent: true });
     };
-    const interval = window.setInterval(refresh, 15_000);
-    window.addEventListener('focus', refresh);
+    const interval = window.setInterval(refresh, 60_000);
     document.addEventListener('visibilitychange', refresh);
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
   }, [loadClass]);
@@ -358,8 +354,8 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
           offeringId={offeringId}
           canManage={canManage}
           canEdit={canEdit}
+          initialAssignments={courseAssignments}
           isEnabled={canWrite}
-          refreshKey={contentRefreshKey}
           token={token}
         />
       )}

@@ -1,5 +1,5 @@
 import { apiFetch } from '../../utils/apiUrl';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CalendarClock, Download, FileUp, Loader2, LockKeyhole, LockKeyholeOpen, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useConfirm } from '../../context/ConfirmationContext';
@@ -119,42 +119,25 @@ function AttemptHistory({ submission, token }) {
   );
 }
 
-export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEnabled, refreshKey, token }) {
+export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, initialAssignments = [], isEnabled, token }) {
   const { confirm } = useConfirm();
-  const [assignments, setAssignments] = useState([]);
+  const [assignments, setAssignments] = useState(initialAssignments);
   const [selected, setSelected] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [gradeDrafts, setGradeDrafts] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [error, setError] = useState('');
   const [assignmentDraft, setAssignmentDraft] = useState(() => ({ title: '', instructions: '', dueAt: getCurrentLocalDateTime(), points: 100, allowLateSubmissions: false }));
   const [submissionDraft, setSubmissionDraft] = useState({ text: '', file: null });
   const [editDraft, setEditDraft] = useState({ title: '', instructions: '', dueAt: '', points: 100, allowLateSubmissions: false });
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
-  const loadAssignments = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) {
-      setIsLoading(true);
-      setError('');
-    }
-    try {
-      const response = await apiFetch(`/api/lms/offerings/${offeringId}/assignments`, { headers, cache: 'no-store' });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to load assignments.');
-      setAssignments(payload.data || []);
-      setSelected((current) => current ? (payload.data || []).find((item) => item._id === current._id) || null : null);
-    } catch (requestError) {
-      if (!silent) setError(requestError.message);
-    } finally {
-      if (!silent) setIsLoading(false);
-    }
-  }, [headers, offeringId]);
-
-  useEffect(() => { loadAssignments({ silent: refreshKey > 0 }); }, [loadAssignments, refreshKey]);
+  useEffect(() => {
+    setAssignments(initialAssignments);
+    setSelected((current) => current ? initialAssignments.find((item) => item._id === current._id) || null : null);
+  }, [initialAssignments]);
 
   const openAssignment = async (assignment) => {
     setSelected(assignment);
@@ -168,7 +151,6 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
     });
     setSubmissionDraft({ text: assignment.submission?.text || '', file: null });
     if (!canManage) return;
-    setIsLoading(true);
     try {
       const response = await apiFetch(`/api/lms/assignments/${assignment._id}/submissions`, { headers, cache: 'no-store' });
       const payload = await response.json();
@@ -178,8 +160,6 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
       setGradeDrafts(Object.fromEntries(rows.map((row) => [row._id, { score: row.score ?? '', feedback: row.feedback || '' }])));
     } catch (requestError) {
       toast.error(requestError.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -359,9 +339,6 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, isEn
       setIsSaving(false);
     }
   };
-
-  if (isLoading && assignments.length === 0) return <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading assignments...</div>;
-  if (error) return <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">{error}</div>;
 
   if (selected) {
     const duePassed = Date.now() > new Date(selected.dueAt).getTime();

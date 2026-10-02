@@ -144,16 +144,13 @@ export default function LmsView({ onBack, onSignOut }) {
 
   useEffect(() => {
     loadNotifications();
-    const refreshOnFocus = () => loadNotifications();
     const refreshOnVisible = () => {
       if (document.visibilityState === 'visible') loadNotifications();
     };
-    const interval = window.setInterval(loadNotifications, 10_000);
-    window.addEventListener('focus', refreshOnFocus);
+    const interval = window.setInterval(loadNotifications, 60_000);
     document.addEventListener('visibilitychange', refreshOnVisible);
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('focus', refreshOnFocus);
       document.removeEventListener('visibilitychange', refreshOnVisible);
     };
   }, [loadNotifications]);
