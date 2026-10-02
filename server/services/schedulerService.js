@@ -55,7 +55,7 @@ function expandDays(dayStr) {
  * @param {object} schedB
  * @returns {boolean}
  */
-function schedulesOverlap(schedA, schedB) {
+export function schedulesOverlap(schedA, schedB) {
   const daysA = expandDays(schedA.day);
   const daysB = expandDays(schedB.day);
   const sharedDays = daysA.filter((d) => daysB.includes(d));

@@ -135,3 +135,102 @@ test('memory demo seed adds valid instructors and scheduled sections without tou
     await mongo.stop();
   }
 });
+
+test('persistent demo seed creates demo data without overwriting existing records', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    await seedUsers({ includeStudentAccounts: false });
+    await initCatalog();
+    await Section.create({
+      subjectId: 'cs101',
+      sectionCode: 'CS-11M1',
+      days: 'TBA',
+      time: 'TBA',
+      room: '',
+      instructor: '',
+      maxSlots: 40,
+      isActive: false,
+    });
+    const existingInstructor = await User.findOne({ username: 'instructor' });
+    await Section.create({
+      subjectId: 'cs102',
+      sectionCode: 'CS-11E9',
+      days: 'MWF',
+      time: '8:00 AM - 9:00 AM',
+      room: 'Legacy Room 100',
+      instructor: 'Existing Instructor',
+      instructorUser: existingInstructor._id,
+      maxSlots: 40,
+      isActive: true,
+    });
+
+    const firstRun = await seedMemoryDemoAcademicData({
+      seedDemoData: true,
+      preserveExisting: true,
+    });
+    assert.equal(firstRun.skipped, false);
+    assert.equal(firstRun.applicants, 6);
+    assert.equal(firstRun.instructors, 11);
+    assert.equal(firstRun.sections, SUBJECTS_CATALOG.length * 2);
+
+    const section = await Section.findOne({ subjectId: 'cs101', sectionCode: 'CS-11M2' });
+    assert.ok(section);
+    assert.notEqual(section.time, '8:00 AM - 9:00 AM');
+    assert.equal((await Section.findOne({ subjectId: 'cs101', sectionCode: 'CS-11M1' })).isActive, false);
+    const instructor = await User.findOne({ username: 'instructor.cs.cruz' });
+    await Section.updateOne({ _id: section._id }, { $set: { room: 'Admin Room 999' } });
+    await User.updateOne({ _id: instructor._id }, { $set: { lastName: 'Admin Edited' } });
+    await Student.updateOne(
+      { _id: 'APP-2026-1001' },
+      {
+        $set: {
+          admissionNotes: 'Admin note',
+          selectedSubjects: [{ subjectId: 'cs101', sectionId: 'cs101-a' }],
+        },
+      }
+    );
+
+    const secondRun = await seedMemoryDemoAcademicData({
+      seedDemoData: true,
+      preserveExisting: true,
+    });
+    assert.equal(secondRun.skipped, false);
+    assert.equal((await Section.findById(section._id)).room, 'Admin Room 999');
+    assert.equal((await User.findById(instructor._id)).lastName, 'Admin Edited');
+    const preservedStudent = await Student.findById('APP-2026-1001');
+    assert.equal(preservedStudent.admissionNotes, 'Admin note');
+    assert.equal(preservedStudent.selectedSubjects[0].sectionId, 'cs101-a');
+    assert.equal(await User.countDocuments({ role: 'instructor' }), 12);
+    assert.equal(await Student.countDocuments({ _id: { $regex: '^APP-2026-10' } }), 6);
+    assert.equal(await Section.countDocuments(), (SUBJECTS_CATALOG.length * 2) + 2);
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});
+
+test('persistent demo seed refuses to link known credentials to a preexisting applicant', async () => {
+  const mongo = await MongoMemoryServer.create();
+  await mongoose.connect(mongo.getUri());
+
+  try {
+    await Student.create({
+      _id: 'APP-2026-1001',
+      firstName: 'Existing',
+      lastName: 'Applicant',
+      email: 'existing@example.com',
+    });
+
+    await assert.rejects(
+      seedMemoryDemoAcademicData({ seedDemoData: true, preserveExisting: true }),
+      /demo applicant collision/i
+    );
+    assert.equal(await User.exists({ username: 'APP-2026-1001' }), null);
+    assert.equal(await User.exists({ username: 'instructor.cs.cruz' }), null);
+  } finally {
+    await mongoose.disconnect();
+    await mongo.stop();
+  }
+});

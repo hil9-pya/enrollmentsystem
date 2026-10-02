@@ -3,6 +3,7 @@ import Section from '../models/Section.js';
 import Student from '../Student.js';
 import User from '../User.js';
 import { SUBJECTS_CATALOG } from '../subjectsCatalog.js';
+import { schedulesOverlap } from './schedulerService.js';
 
 const DEMO_PASSWORD = 'password123';
 
@@ -141,22 +142,83 @@ function buildSectionCode(subject, period, sectionNumber) {
   return `${PROGRAM_CODE[subject.programId]}-${year}${semester}${period}${sectionNumber}`;
 }
 
-async function seedInstructorAccounts() {
+function getSchoolEmail(applicant) {
+  const safeFirst = applicant.firstName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const safeLast = applicant.lastName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  return `${safeFirst}.${safeLast}@ncst.edu`;
+}
+
+function isUsableSection(section) {
+  return section
+    && section.isActive !== false
+    && section.days !== 'TBA'
+    && section.time !== 'TBA'
+    && section.room
+    && section.instructorUser;
+}
+
+async function validatePersistentSeedCollisions() {
+  for (const profile of Object.values(FACULTY_BY_PROGRAM).flat()) {
+    const [byUsername, byEmail] = await Promise.all([
+      User.findOne({ username: profile.username }),
+      User.findOne({ email: profile.email }),
+    ]);
+    const passwordMatches = byUsername ? await byUsername.comparePassword(DEMO_PASSWORD) : true;
+    if (byUsername && (
+      byUsername.role !== 'instructor'
+      || byUsername.email !== profile.email
+      || !passwordMatches
+    )) {
+      throw new Error(`Demo instructor collision for ${profile.username}.`);
+    }
+    if (byEmail && (!byUsername || String(byEmail._id) !== String(byUsername._id))) {
+      throw new Error(`Demo instructor email collision for ${profile.email}.`);
+    }
+  }
+
+  for (const applicant of DEMO_APPLICANTS) {
+    const schoolEmail = getSchoolEmail(applicant);
+    const [student, byUsername, byEmail] = await Promise.all([
+      Student.findById(applicant._id),
+      User.findOne({ username: applicant._id }),
+      User.findOne({ email: schoolEmail }),
+    ]);
+    const mismatchedEmailOwner = byEmail && (!byUsername || String(byEmail._id) !== String(byUsername._id));
+    const invalidAccount = byUsername && (
+      byUsername.role !== 'student'
+      || byUsername.studentProfile !== applicant._id
+      || byUsername.email !== schoolEmail
+    );
+    const portalPasswordMatches = byUsername ? await byUsername.comparePassword('NCST2026!') : true;
+    const applicantPasswordMatches = student ? await student.compareApplicantPassword(DEMO_PASSWORD) : true;
+    if (
+      mismatchedEmailOwner
+      || invalidAccount
+      || !portalPasswordMatches
+      || !applicantPasswordMatches
+      || Boolean(student) !== Boolean(byUsername)
+    ) {
+      throw new Error(`Demo applicant collision for ${applicant._id}.`);
+    }
+  }
+}
+
+async function seedInstructorAccounts({ preserveExisting = false } = {}) {
   const password = await bcrypt.hash(DEMO_PASSWORD, 10);
   const profiles = Object.values(FACULTY_BY_PROGRAM).flat();
 
   for (const profile of profiles) {
+    const account = {
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      role: 'instructor',
+    };
     await User.updateOne(
       { username: profile.username },
-      {
-        $setOnInsert: { password },
-        $set: {
-          email: profile.email,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          role: 'instructor',
-        },
-      },
+      preserveExisting
+        ? { $setOnInsert: { ...account, password } }
+        : { $setOnInsert: { password }, $set: account },
       { upsert: true }
     );
   }
@@ -165,14 +227,12 @@ async function seedInstructorAccounts() {
   return new Map(users.map((user) => [user.username, user]));
 }
 
-async function seedApplicantAccounts() {
+async function seedApplicantAccounts({ preserveExisting = false, memoryDatabase = false } = {}) {
   const applicantPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
   const studentPortalPassword = await bcrypt.hash('NCST2026!', 10);
 
   for (const applicant of DEMO_APPLICANTS) {
-    const safeFirst = applicant.firstName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    const safeLast = applicant.lastName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    const schoolEmail = `${safeFirst}.${safeLast}@ncst.edu`;
+    const schoolEmail = getSchoolEmail(applicant);
     const documents = REQUIRED_DOCUMENTS[applicant.enrollmentType].map((typeId) => ({
       typeId,
       fileName: `${applicant._id.toLowerCase()}-${typeId}.pdf`,
@@ -180,40 +240,41 @@ async function seedApplicantAccounts() {
       status: 'approved',
     }));
 
+    const student = {
+      ...applicant,
+      emailVerified: true,
+      schoolEmail,
+      acceptanceLetterSeen: true,
+      status: applicant.enrollmentType === 'new' ? 'advising_approved' : 'advising_pending',
+      documents,
+      admissionNotes: memoryDatabase
+        ? 'Application form and admission documents approved for memory database testing.'
+        : 'Application form and admission documents approved for demo testing.',
+      isDeleted: false,
+    };
     await Student.updateOne(
       { _id: applicant._id },
-      {
-        $set: {
-          ...applicant,
-          emailVerified: true,
-          schoolEmail,
-          acceptanceLetterSeen: true,
-          status: applicant.enrollmentType === 'new' ? 'advising_approved' : 'advising_pending',
-          documents,
-          admissionNotes: 'Application form and admission documents approved for memory database testing.',
-          isDeleted: false,
-        },
-        $setOnInsert: {
-          applicantPassword,
-          selectedSubjects: [],
-          tuitionBreakdown: [],
-        },
-      },
+      preserveExisting
+        ? { $setOnInsert: { ...student, applicantPassword, selectedSubjects: [], tuitionBreakdown: [] } }
+        : {
+            $set: student,
+            $setOnInsert: { applicantPassword, selectedSubjects: [], tuitionBreakdown: [] },
+          },
       { upsert: true }
     );
 
+    const account = {
+      email: schoolEmail,
+      firstName: applicant.firstName,
+      lastName: applicant.lastName,
+      role: 'student',
+      studentProfile: applicant._id,
+    };
     await User.updateOne(
       { username: applicant._id },
-      {
-        $set: {
-          email: schoolEmail,
-          firstName: applicant.firstName,
-          lastName: applicant.lastName,
-          role: 'student',
-          studentProfile: applicant._id,
-        },
-        $setOnInsert: { password: studentPortalPassword },
-      },
+      preserveExisting
+        ? { $setOnInsert: { ...account, password: studentPortalPassword } }
+        : { $set: account, $setOnInsert: { password: studentPortalPassword } },
       { upsert: true }
     );
   }
@@ -241,17 +302,27 @@ async function remapLegacyDemoSelections(sectionIdByLegacyId) {
   return remappedSelections;
 }
 
-export async function seedMemoryDemoAcademicData({ memoryDatabase = false } = {}) {
-  if (!memoryDatabase) {
+export async function seedMemoryDemoAcademicData({
+  memoryDatabase = false,
+  seedDemoData = false,
+  preserveExisting = false,
+} = {}) {
+  if (!memoryDatabase && !seedDemoData) {
     return { skipped: true, applicants: 0, studentAccounts: 0, instructors: 0, sections: 0, remappedSelections: 0 };
   }
 
-  const applicantCount = await seedApplicantAccounts();
-  const instructorByUsername = await seedInstructorAccounts();
+  if (preserveExisting) await validatePersistentSeedCollisions();
+
+  const applicantCount = await seedApplicantAccounts({ preserveExisting, memoryDatabase });
+  const instructorByUsername = await seedInstructorAccounts({ preserveExisting });
   const programSubjectIndex = new Map();
   const usedScheduleIndicesByInstructor = new Map();
   const usedScheduleIndicesByCohort = new Map();
   const sectionIdByLegacyId = new Map();
+  const persistedSections = preserveExisting
+    ? await Section.find({ isActive: { $ne: false } }).lean()
+    : [];
+  const subjectById = new Map(SUBJECTS_CATALOG.map((entry) => [entry.id, entry]));
   let sectionCount = 0;
 
   for (const subject of SUBJECTS_CATALOG.filter((entry) => entry.isActive !== false)) {
@@ -284,25 +355,73 @@ export async function seedMemoryDemoAcademicData({ memoryDatabase = false } = {}
     for (let variantIndex = 0; variantIndex < schedules.length; variantIndex += 1) {
       const period = variantIndex === 0 ? 'M' : 'A';
       const sectionNumber = variantIndex + 1;
-      const schedule = schedules[variantIndex];
-      const sectionCode = buildSectionCode(subject, period, sectionNumber);
+      let schedule = schedules[variantIndex];
+      let sectionCode = buildSectionCode(subject, period, sectionNumber);
       const roomNumber = 201 + (subjectIndex * 2) + variantIndex;
-      const section = await Section.findOneAndUpdate(
-        { subjectId: subject.id, sectionCode },
-        {
-          $set: {
-            days: schedule.days,
-            time: schedule.time,
-            room: `${ROOM_PREFIX[subject.programId]} ${roomNumber}`,
-            instructor: instructorName,
-            instructorUser: instructor._id,
-            maxSlots: subject.programId === 'elective' ? 45 : 40,
-            isActive: true,
-          },
-          $setOnInsert: { enrolledCount: 0, enrolledStudentIds: [] },
-        },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      );
+      let details = {
+        days: schedule.days,
+        time: schedule.time,
+        room: `${ROOM_PREFIX[subject.programId]} ${roomNumber}`,
+        instructor: instructorName,
+        instructorUser: instructor._id,
+        maxSlots: subject.programId === 'elective' ? 45 : 40,
+        isActive: true,
+      };
+      let section = null;
+      if (preserveExisting) {
+        const existing = await Section.findOne({ subjectId: subject.id, sectionCode });
+        if (isUsableSection(existing)) {
+          section = existing;
+        } else if (existing) {
+          sectionCode = null;
+          for (let candidate = 1; candidate <= 9; candidate += 1) {
+            const candidateCode = buildSectionCode(subject, period, candidate);
+            const candidateSection = await Section.findOne({ subjectId: subject.id, sectionCode: candidateCode });
+            if (isUsableSection(candidateSection)) {
+              section = candidateSection;
+              sectionCode = candidateCode;
+              break;
+            }
+            if (!candidateSection && !sectionCode) {
+              sectionCode = candidateCode;
+            }
+          }
+          if (!sectionCode) throw new Error(`No available demo section code for ${subject.code} ${period}.`);
+        }
+      }
+      if (!section) {
+        if (preserveExisting) {
+          const candidates = variantIndex === 0 ? MORNING_SLOTS : AFTERNOON_SLOTS;
+          const available = candidates.find((candidate) => !persistedSections.some((persisted) => {
+            if (persisted.subjectId === subject.id) return false;
+            const persistedSubject = subjectById.get(persisted.subjectId);
+            const sameCohort = persistedSubject
+              && persistedSubject.programId === subject.programId
+              && persistedSubject.yearLevel === subject.yearLevel
+              && persistedSubject.semester === subject.semester;
+            const overlaps = schedulesOverlap(
+              { day: candidate.days, time: candidate.time },
+              { day: persisted.days, time: persisted.time }
+            );
+            if (!overlaps) return false;
+            const sameRoom = persisted.room && persisted.room.toLowerCase() === details.room.toLowerCase();
+            const sameInstructor = persisted.instructor
+              && persisted.instructor.toLowerCase() === instructorName.toLowerCase();
+            return sameCohort || sameRoom || sameInstructor;
+          }));
+          if (!available) throw new Error(`No conflict-free demo schedule for ${subject.code} ${period}.`);
+          schedule = available;
+          details = { ...details, days: schedule.days, time: schedule.time };
+        }
+        section = await Section.findOneAndUpdate(
+          { subjectId: subject.id, sectionCode },
+          preserveExisting
+            ? { $setOnInsert: { ...details, enrolledCount: 0, enrolledStudentIds: [] } }
+            : { $set: details, $setOnInsert: { enrolledCount: 0, enrolledStudentIds: [] } },
+          { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+        if (preserveExisting) persistedSections.push(section.toObject());
+      }
 
       const legacyId = subject.sections?.[variantIndex]?.id;
       if (legacyId) sectionIdByLegacyId.set(legacyId, section._id.toString());
@@ -310,7 +429,7 @@ export async function seedMemoryDemoAcademicData({ memoryDatabase = false } = {}
     }
   }
 
-  const remappedSelections = await remapLegacyDemoSelections(sectionIdByLegacyId);
+  const remappedSelections = preserveExisting ? 0 : await remapLegacyDemoSelections(sectionIdByLegacyId);
   return {
     skipped: false,
     applicants: applicantCount,

@@ -93,10 +93,15 @@ const startServer = async () => {
     await seedUsers({ includeStudentAccounts: !useMemoryDatabase });
     if (!useMemoryDatabase) await seedStudents();
     await initCatalog();
-    if (useMemoryDatabase) {
-      const demoAcademicData = await seedMemoryDemoAcademicData({ memoryDatabase: true });
+    const seedDemoData = process.env.SEED_DEMO_DATA === 'true';
+    if (useMemoryDatabase || seedDemoData) {
+      const demoAcademicData = await seedMemoryDemoAcademicData({
+        memoryDatabase: useMemoryDatabase,
+        seedDemoData,
+        preserveExisting: !useMemoryDatabase,
+      });
       console.log(
-        `Seeded memory demo data: ${demoAcademicData.applicants} applicants, `
+        `Seeded demo data: ${demoAcademicData.applicants} applicants, `
         + `${demoAcademicData.studentAccounts} approved student accounts, `
         + `${demoAcademicData.instructors} instructors, `
         + `${demoAcademicData.sections} sections, ${demoAcademicData.remappedSelections} saved selections remapped.`
