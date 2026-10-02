@@ -29,6 +29,7 @@ import {
 import { startBackgroundJobWorker } from './services/backgroundJobService.js';
 import { repairStoredAcademicTermLabel } from './academicTermUtils.js';
 import { seedMemoryDemoAcademicData } from './services/memoryDemoAcademicSeedService.js';
+import { startupErrorMessages } from './services/startupErrorService.js';
 import { getApiRateLimitMax } from './rateLimitConfig.js';
 
 let mongoServerInstance = null;
@@ -223,14 +224,7 @@ const startServer = async () => {
 
     return server; // Return the server instance for graceful shutdown
   } catch (error) {
-    if (error.code === 'EADDRINUSE') {
-      console.error(`\nFATAL ERROR: Port ${process.env.PORT || 5000} is already in use.`);
-      console.error('Please stop the process using that port, or change PORT in your .env file.');
-    } else {
-      console.error(`\nMongoDB connection failed: ${error.message}`);
-      console.error(`Attempted to connect to: ${process.env.MONGO_URI}`);
-      console.error('Please ensure that MongoDB is running and that the MONGO_URI in your .env file is correct.\n');
-    }
+    startupErrorMessages(error, process.env.PORT || 5000).forEach((message) => console.error(message));
     process.exit(1);
   }
 };
