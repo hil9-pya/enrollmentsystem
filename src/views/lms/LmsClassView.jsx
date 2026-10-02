@@ -352,10 +352,11 @@ export default function LmsClassView({ offering: initialOffering, role, token, o
       {activeTab === 'assignments' && (
         <LmsAssignmentsTab
           offeringId={offeringId}
+          assignments={courseAssignments}
           canManage={canManage}
           canEdit={canEdit}
-          initialAssignments={courseAssignments}
           isEnabled={canWrite}
+          onAssignmentsChange={setCourseAssignments}
           token={token}
         />
       )}

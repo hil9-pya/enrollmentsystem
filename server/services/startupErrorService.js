@@ -8,6 +8,12 @@ export function startupErrorMessages(error, port) {
       'Stop the process using that port, or change PORT.',
     ];
   }
+  if (error?.startupStage === 'database') {
+    return [
+      'Server startup failed: Database configuration is invalid or database is unavailable.',
+      'Verify MONGO_URI and MongoDB availability.',
+    ];
+  }
   return [
     `Server startup failed: ${redactMongoCredentials(error?.message)}`,
     'Review service configuration and startup logs.',

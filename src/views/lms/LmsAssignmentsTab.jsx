@@ -119,9 +119,8 @@ function AttemptHistory({ submission, token }) {
   );
 }
 
-export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, initialAssignments = [], isEnabled, token }) {
+export default function LmsAssignmentsTab({ offeringId, assignments = [], canManage, canEdit, isEnabled, onAssignmentsChange, token }) {
   const { confirm } = useConfirm();
-  const [assignments, setAssignments] = useState(initialAssignments);
   const [selected, setSelected] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [gradeDrafts, setGradeDrafts] = useState({});
@@ -135,9 +134,8 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, init
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
   useEffect(() => {
-    setAssignments(initialAssignments);
-    setSelected((current) => current ? initialAssignments.find((item) => item._id === current._id) || null : null);
-  }, [initialAssignments]);
+    setSelected((current) => current ? assignments.find((item) => item._id === current._id) || null : null);
+  }, [assignments]);
 
   const openAssignment = async (assignment) => {
     setSelected(assignment);
@@ -178,7 +176,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, init
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to create assignment.');
-      setAssignments((current) => [...current, payload.data].sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt)));
+      onAssignmentsChange((current) => [...current, payload.data].sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt)));
       setAssignmentDraft({ title: '', instructions: '', dueAt: getCurrentLocalDateTime(), points: 100, allowLateSubmissions: false });
       setShowCreateForm(false);
       toast.success('Assignment published.');
@@ -195,7 +193,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, init
     const response = await apiFetch(`/api/lms/assignments/${assignment._id}`, { method: 'DELETE', headers });
     const payload = await response.json();
     if (!response.ok) return toast.error(payload.message || payload.error || 'Unable to delete assignment.');
-    setAssignments((current) => current.filter((item) => item._id !== assignment._id));
+    onAssignmentsChange((current) => current.filter((item) => item._id !== assignment._id));
     setSelected(null);
     toast.success(payload.archived ? 'Assignment archived.' : 'Assignment deleted.');
   };
@@ -235,7 +233,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, init
       });
       if (!updated) return;
       setSelected((current) => ({ ...current, ...updated, submission: current.submission }));
-      setAssignments((current) => current.map((item) => item._id === updated._id ? { ...item, ...updated, submission: item.submission } : item));
+      onAssignmentsChange((current) => current.map((item) => item._id === updated._id ? { ...item, ...updated, submission: item.submission } : item));
       setIsEditing(false);
       toast.success('Assignment updated.');
     } catch (requestError) {
@@ -252,7 +250,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, init
       const updated = await requestAssignmentUpdate({ status });
       if (!updated) return;
       setSelected((current) => ({ ...current, ...updated, submission: current.submission }));
-      setAssignments((current) => current.map((item) => item._id === updated._id ? { ...item, ...updated, submission: item.submission } : item));
+      onAssignmentsChange((current) => current.map((item) => item._id === updated._id ? { ...item, ...updated, submission: item.submission } : item));
       toast.success(status === 'closed' ? 'Assignment closed.' : 'Assignment reopened.');
     } catch (requestError) {
       toast.error(requestError.message);
@@ -274,7 +272,7 @@ export default function LmsAssignmentsTab({ offeringId, canManage, canEdit, init
       if (!response.ok) throw new Error(payload.message || payload.error || 'Unable to submit assignment.');
       const updated = { ...selected, submission: payload.data };
       setSelected(updated);
-      setAssignments((current) => current.map((item) => item._id === selected._id ? updated : item));
+      onAssignmentsChange((current) => current.map((item) => item._id === selected._id ? updated : item));
       setSubmissionDraft((current) => ({ ...current, file: null }));
       form.querySelector('input[type="file"]').value = '';
       toast.success('Assignment submitted.');

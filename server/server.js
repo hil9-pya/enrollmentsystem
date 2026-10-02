@@ -83,7 +83,12 @@ const startServer = async () => {
       console.error('FATAL ERROR: MONGO_URI is not defined. Please create a .env file and add the MONGO_URI variable.');
       process.exit(1);
     }
-    await mongoose.connect(mongoUri);
+    try {
+      await mongoose.connect(mongoUri);
+    } catch (error) {
+      error.startupStage = 'database';
+      throw error;
+    }
     if (useMemoryDatabase) {
       console.log('Connected to in-memory MongoDB.');
     } else {

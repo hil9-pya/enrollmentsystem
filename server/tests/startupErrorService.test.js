@@ -22,3 +22,17 @@ test('redacts credentials embedded in MongoDB startup errors', () => {
   assert.doesNotMatch(messages, /dbuser|secret/);
   assert.match(messages, /mongodb\+srv:\/\/\[redacted\]@cluster\.example/);
 });
+
+test('does not expose credentials from malformed MongoDB parser errors', () => {
+  const error = Object.assign(new Error('Unable to parse dbuser:secret with URL'), { startupStage: 'database' });
+  const messages = startupErrorMessages(error, 5000).join(' ');
+  assert.doesNotMatch(messages, /dbuser|secret/);
+  assert.match(messages, /database configuration is invalid/i);
+});
+
+test('does not expose credentials containing whitespace or multiple at signs', () => {
+  const error = Object.assign(new Error('connect mongodb://dbuser:secret word@@cluster.example/test failed'), { startupStage: 'database' });
+  const messages = startupErrorMessages(error, 5000).join(' ');
+  assert.doesNotMatch(messages, /dbuser|secret|word/);
+  assert.match(messages, /database configuration is invalid/i);
+});
